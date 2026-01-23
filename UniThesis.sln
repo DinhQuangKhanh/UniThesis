@@ -3,13 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36429.23
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniThesis.Domain", "UniThesis.Domain\UniThesis.Domain.csproj", "{1645FCE6-4750-4C85-AEA7-8C5F0B070AA3}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniThesis.Infrastructure", "UniThesis.Infrastructure\UniThesis.Infrastructure.csproj", "{571A982D-ED05-40A5-AF5B-A11E457901E3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniThesis.Application", "UniThesis.Application\UniThesis.Application.csproj", "{1AF0F26E-5463-40EF-BF8E-F76ACD75FFF6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniThesis.API", "UniThesis.API\UniThesis.API.csproj", "{5928473C-4A96-45B4-A08E-2D9253A803E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniThesis.Persistence", "UniThesis.Persistence\UniThesis.Persistence.csproj", "{1367E84A-C23E-4BB6-8999-1F8BBACDC15D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniThesis.Domain", "UniThesis.Domain1\UniThesis.Domain.csproj", "{5F89FF91-31A2-457D-95B4-67A7D84EDA3A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +19,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{1645FCE6-4750-4C85-AEA7-8C5F0B070AA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1645FCE6-4750-4C85-AEA7-8C5F0B070AA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1645FCE6-4750-4C85-AEA7-8C5F0B070AA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1645FCE6-4750-4C85-AEA7-8C5F0B070AA3}.Release|Any CPU.Build.0 = Release|Any CPU
 		{571A982D-ED05-40A5-AF5B-A11E457901E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{571A982D-ED05-40A5-AF5B-A11E457901E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{571A982D-ED05-40A5-AF5B-A11E457901E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -33,6 +31,14 @@ Global
 		{5928473C-4A96-45B4-A08E-2D9253A803E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5928473C-4A96-45B4-A08E-2D9253A803E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5928473C-4A96-45B4-A08E-2D9253A803E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1367E84A-C23E-4BB6-8999-1F8BBACDC15D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1367E84A-C23E-4BB6-8999-1F8BBACDC15D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1367E84A-C23E-4BB6-8999-1F8BBACDC15D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1367E84A-C23E-4BB6-8999-1F8BBACDC15D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5F89FF91-31A2-457D-95B4-67A7D84EDA3A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5F89FF91-31A2-457D-95B4-67A7D84EDA3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5F89FF91-31A2-457D-95B4-67A7D84EDA3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5F89FF91-31A2-457D-95B4-67A7D84EDA3A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
