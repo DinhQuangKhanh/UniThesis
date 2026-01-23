@@ -1,0 +1,39 @@
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+using UniThesis.Domain.Enums.Message;
+
+namespace UniThesis.Persistence.MongoDB.Documents
+{
+    /// <summary>
+    /// Document for conversations.
+    /// </summary>
+    public class ConversationDocument
+    {
+        [BsonId]
+        [BsonRepresentation(BsonType.String)]
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        [BsonRepresentation(BsonType.String)]
+        public ConversationType Type { get; set; }
+
+        public string? Name { get; set; }
+
+        [BsonRepresentation(BsonType.String)]
+        public List<Guid> ParticipantIds { get; set; } = new();
+
+        [BsonRepresentation(BsonType.String)]
+        public Guid? GroupId { get; set; }
+
+        [BsonRepresentation(BsonType.String)]
+        public Guid? LastMessageId { get; set; }
+
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime? LastMessageAt { get; set; }
+
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime? UpdatedAt { get; set; }
+    }
+}

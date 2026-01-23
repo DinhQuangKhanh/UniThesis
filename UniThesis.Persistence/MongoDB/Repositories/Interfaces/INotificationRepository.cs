@@ -1,0 +1,15 @@
+﻿using UniThesis.Persistence.MongoDB.Documents;
+
+namespace UniThesis.Persistence.MongoDB.Repositories.Interfaces
+{
+    public interface INotificationRepository
+    {
+        Task AddAsync(NotificationDocument notification, CancellationToken ct = default);
+        Task AddManyAsync(IEnumerable<NotificationDocument> notifications, CancellationToken ct = default);
+        Task<IEnumerable<NotificationDocument>> GetByUserIdAsync(Guid userId, int limit = 50, CancellationToken ct = default);
+        Task<IEnumerable<NotificationDocument>> GetUnreadByUserIdAsync(Guid userId, CancellationToken ct = default);
+        Task<long> GetUnreadCountAsync(Guid userId, CancellationToken ct = default);
+        Task MarkAsReadAsync(Guid notificationId, CancellationToken ct = default);
+        Task MarkAllAsReadAsync(Guid userId, CancellationToken ct = default);
+    }
+}

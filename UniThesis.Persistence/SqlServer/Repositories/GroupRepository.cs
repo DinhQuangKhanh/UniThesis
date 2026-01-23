@@ -1,6 +1,94 @@
-﻿namespace UniThesis.Persistence.SqlServer.Repositories
+﻿using Microsoft.EntityFrameworkCore;
+using UniThesis.Domain.Aggregates.GroupAggregate;
+using UniThesis.Domain.Aggregates.GroupAggregate.ValueObjects;
+using UniThesis.Domain.Enums.Group;
+using UniThesis.Domain.Specifications.Groups;
+using UniThesis.Persistence.Common;
+
+namespace UniThesis.Persistence.SqlServer.Repositories
 {
-    public class GroupRepository
+    /// <summary>
+    /// Repository implementation for Group aggregate.
+    /// </summary>
+    public class GroupRepository : BaseRepository<Group, Guid>, IGroupRepository
     {
+        public GroupRepository(AppDbContext context) : base(context) { }
+
+        public async Task<Group?> GetByCodeAsync(GroupCode code, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .FirstOrDefaultAsync(g => g.Code == code, cancellationToken);
+        }
+
+        public async Task<Group?> GetWithMembersAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Include(g => g.Members)
+                .FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
+        }
+
+        public async Task<IEnumerable<Group>> GetBySemesterIdAsync(int semesterId, CancellationToken cancellationToken = default)
+        {
+            var spec = new GroupBySemesterSpec(semesterId, includeMembers: true);
+            return await ListAsync(spec, cancellationToken);
+        }
+
+        public async Task<IEnumerable<Group>> GetByStudentIdAsync(Guid studentId, CancellationToken cancellationToken = default)
+        {
+            var spec = new GroupByStudentSpec(studentId);
+            return await ListAsync(spec, cancellationToken);
+        }
+
+        public async Task<Group?> GetByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Include(g => g.Members)
+                .FirstOrDefaultAsync(g => g.ProjectId == projectId, cancellationToken);
+        }
+
+        public async Task<bool> ExistsCodeAsync(GroupCode code, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet.AnyAsync(g => g.Code == code, cancellationToken);
+        }
+
+        public async Task<int> GetNextSequenceAsync(int year, CancellationToken cancellationToken = default)
+        {
+            var prefix = $"G-{year}-";
+            var lastCode = await _dbSet
+                .Where(g => EF.Functions.Like(g.Code.Value, $"{prefix}%"))
+                .OrderByDescending(g => g.Code)
+                .Select(g => g.Code.Value)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (lastCode == null) return 1;
+
+            var sequencePart = lastCode.Replace(prefix, "");
+            return int.TryParse(sequencePart, out var seq) ? seq + 1 : 1;
+        }
+
+        public async Task<bool> IsStudentInActiveGroupAsync(Guid studentId, int semesterId, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Where(g => g.SemesterId == semesterId && g.Status == GroupStatus.Active)
+                .AnyAsync(g => g.Members.Any(m => m.StudentId == studentId && m.Status == GroupMemberStatus.Active), cancellationToken);
+        }
+
+        /// <summary>
+        /// Gets groups by leader using specification.
+        /// </summary>
+        public async Task<IEnumerable<Group>> GetByLeaderIdAsync(Guid leaderId, CancellationToken cancellationToken = default)
+        {
+            var spec = new GroupByLeaderSpec(leaderId);
+            return await ListAsync(spec, cancellationToken);
+        }
+
+        /// <summary>
+        /// Gets groups without project using specification.
+        /// </summary>
+        public async Task<IEnumerable<Group>> GetGroupsWithoutProjectAsync(int semesterId, CancellationToken cancellationToken = default)
+        {
+            var spec = new GroupWithoutProjectSpec(semesterId);
+            return await ListAsync(spec, cancellationToken);
+        }
     }
 }
