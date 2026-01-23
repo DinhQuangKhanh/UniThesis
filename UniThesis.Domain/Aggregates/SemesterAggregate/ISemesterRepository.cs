@@ -1,0 +1,16 @@
+﻿using UniThesis.Domain.Aggregates.SemesterAggregate.ValueObjects;
+using UniThesis.Domain.Common.Interfaces;
+
+namespace UniThesis.Domain.Aggregates.SemesterAggregate
+{
+    public interface ISemesterRepository : IRepository<Semester, int>
+    {
+        Task<Semester?> GetByCodeAsync(SemesterCode code, CancellationToken cancellationToken = default);
+        Task<Semester?> GetWithPhasesAsync(int id, CancellationToken cancellationToken = default);
+        Task<Semester?> GetActiveAsync(CancellationToken cancellationToken = default);
+        Task<IEnumerable<Semester>> GetByAcademicYearAsync(string academicYear, CancellationToken cancellationToken = default);
+        Task<IEnumerable<Semester>> GetUpcomingAsync(CancellationToken cancellationToken = default);
+        Task<bool> ExistsCodeAsync(SemesterCode code, CancellationToken cancellationToken = default);
+        Task<int> GetNextIdAsync(CancellationToken cancellationToken = default);
+    }
+}

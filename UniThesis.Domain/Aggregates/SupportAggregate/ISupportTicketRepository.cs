@@ -1,0 +1,20 @@
+﻿using UniThesis.Domain.Aggregates.SupportAggregate.ValueObjects;
+using UniThesis.Domain.Common.Interfaces;
+using UniThesis.Domain.Enums.Ticket;
+
+namespace UniThesis.Domain.Aggregates.SupportAggregate
+{
+    public interface ISupportTicketRepository : IRepository<SupportTicket, Guid>
+    {
+        Task<SupportTicket?> GetByCodeAsync(TicketCode code, CancellationToken cancellationToken = default);
+        Task<IEnumerable<SupportTicket>> GetByReporterIdAsync(Guid reporterId, CancellationToken cancellationToken = default);
+        Task<IEnumerable<SupportTicket>> GetByAssigneeIdAsync(Guid assigneeId, CancellationToken cancellationToken = default);
+        Task<IEnumerable<SupportTicket>> GetByStatusAsync(TicketStatus status, CancellationToken cancellationToken = default);
+        Task<IEnumerable<SupportTicket>> GetByCategoryAsync(TicketCategory category, CancellationToken cancellationToken = default);
+        Task<IEnumerable<SupportTicket>> GetOpenAsync(CancellationToken cancellationToken = default);
+        Task<IEnumerable<SupportTicket>> GetUnassignedAsync(CancellationToken cancellationToken = default);
+        Task<bool> ExistsCodeAsync(TicketCode code, CancellationToken cancellationToken = default);
+        Task<int> GetNextSequenceAsync(int year, CancellationToken cancellationToken = default);
+        Task<Dictionary<TicketStatus, int>> GetStatusCountAsync(CancellationToken cancellationToken = default);
+    }
+}
