@@ -11,7 +11,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniThesis.API", "UniThesis.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniThesis.Persistence", "UniThesis.Persistence\UniThesis.Persistence.csproj", "{1367E84A-C23E-4BB6-8999-1F8BBACDC15D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniThesis.Domain", "UniThesis.Domain1\UniThesis.Domain.csproj", "{5F89FF91-31A2-457D-95B4-67A7D84EDA3A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniThesis.Domain", "UniThesis.Domain\UniThesis.Domain.csproj", "{A4EDBC95-9D93-00A5-EC31-CD7C662CF75D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -35,10 +35,10 @@ Global
 		{1367E84A-C23E-4BB6-8999-1F8BBACDC15D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1367E84A-C23E-4BB6-8999-1F8BBACDC15D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1367E84A-C23E-4BB6-8999-1F8BBACDC15D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5F89FF91-31A2-457D-95B4-67A7D84EDA3A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5F89FF91-31A2-457D-95B4-67A7D84EDA3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5F89FF91-31A2-457D-95B4-67A7D84EDA3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5F89FF91-31A2-457D-95B4-67A7D84EDA3A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A4EDBC95-9D93-00A5-EC31-CD7C662CF75D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A4EDBC95-9D93-00A5-EC31-CD7C662CF75D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A4EDBC95-9D93-00A5-EC31-CD7C662CF75D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A4EDBC95-9D93-00A5-EC31-CD7C662CF75D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

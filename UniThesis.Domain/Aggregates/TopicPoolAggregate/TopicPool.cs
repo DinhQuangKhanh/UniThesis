@@ -15,7 +15,8 @@ namespace UniThesis.Domain.Aggregates.TopicPoolAggregate
 
         public TopicCode Code { get; private set; } = null!;
         public string NameVi { get; private set; } = string.Empty;
-        public string? NameEn { get; private set; }
+        public string NameEn { get; private set; }
+        public string NameAbbr { get; private set; }
         public string Description { get; private set; } = string.Empty;
         public string Objectives { get; private set; } = string.Empty;
         public string? Scope { get; private set; }
@@ -37,7 +38,7 @@ namespace UniThesis.Domain.Aggregates.TopicPoolAggregate
 
         private TopicPool() { }
 
-        public static TopicPool Create(TopicCode code, string nameVi, string description, string objectives,
+        public static TopicPool Create(TopicCode code, string nameVi, string nameEn, string nameAbbr, string description, string objectives,
             int majorId, Guid proposedBy, int maxStudents, int createdSemesterId, int expirationSemesterId)
         {
             var topic = new TopicPool
@@ -45,6 +46,8 @@ namespace UniThesis.Domain.Aggregates.TopicPoolAggregate
                 Id = Guid.NewGuid(),
                 Code = code,
                 NameVi = nameVi,
+                NameEn = nameEn,
+                NameAbbr = nameAbbr,
                 Description = description,
                 Objectives = objectives,
                 MajorId = majorId,
@@ -119,13 +122,14 @@ namespace UniThesis.Domain.Aggregates.TopicPoolAggregate
             UpdatedAt = DateTime.UtcNow;
         }
 
-        public void Update(string? nameVi = null, string? nameEn = null, string? description = null,
+        public void Update(string? nameVi = null, string? nameEn = null, string? nameAbbr = null, string? description = null,
             string? objectives = null, string? scope = null, string? technologies = null, string? expectedResults = null)
         {
             if (Status != TopicPoolStatus.Available)
                 throw new BusinessRuleValidationException("Only available topics can be updated.");
             if (!string.IsNullOrWhiteSpace(nameVi)) NameVi = nameVi;
             if (nameEn != null) NameEn = nameEn;
+            if (nameAbbr != null) NameAbbr = nameAbbr;
             if (!string.IsNullOrWhiteSpace(description)) Description = description;
             if (!string.IsNullOrWhiteSpace(objectives)) Objectives = objectives;
             if (scope != null) Scope = scope;
