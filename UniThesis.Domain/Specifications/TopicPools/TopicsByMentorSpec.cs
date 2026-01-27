@@ -1,15 +1,26 @@
-﻿using UniThesis.Domain.Aggregates.TopicPoolAggregate;
-using UniThesis.Domain.Enums.TopicPool;
+﻿using UniThesis.Domain.Aggregates.ProjectAggregate;
+using UniThesis.Domain.Enums.Project;
 
-namespace UniThesis.Domain.Specifications.TopicPools
+namespace UniThesis.Domain.Specifications.TopicPools;
+
+/// <summary>
+/// Specification to get topics (Projects from pool) proposed by a mentor.
+/// </summary>
+public class TopicsByMentorSpec : BaseSpecification<Project>
 {
-    public class TopicsByMentorSpec : BaseSpecification<TopicPool>
+    /// <summary>
+    /// Gets all topics proposed by a specific mentor in the topic pool.
+    /// </summary>
+    /// <param name="mentorId">Mentor's user ID</param>
+    /// <param name="poolStatus">Optional: Filter by pool status</param>
+    /// <param name="topicPoolId">Optional: Filter by specific topic pool</param>
+    public TopicsByMentorSpec(Guid mentorId, PoolTopicStatus? poolStatus = null, Guid? topicPoolId = null)
+        : base(p => p.SourceType == ProjectSourceType.FromPool &&
+                    p.Mentors.Any(m => m.MentorId == mentorId && m.IsActive) &&
+                    (!poolStatus.HasValue || p.PoolStatus == poolStatus.Value) &&
+                    (!topicPoolId.HasValue || p.TopicPoolId == topicPoolId.Value))
     {
-        public TopicsByMentorSpec(Guid mentorId, TopicPoolStatus? status = null)
-            : base(t => t.ProposedBy == mentorId &&
-                        (!status.HasValue || t.Status == status.Value))
-        {
-            ApplyOrderByDescending(t => t.CreatedAt);
-        }
+        AddInclude(p => p.Mentors);
+        ApplyOrderByDescending(p => p.CreatedAt);
     }
 }

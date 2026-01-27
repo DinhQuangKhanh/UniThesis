@@ -1,19 +1,18 @@
-namespace UniThesis.Domain.Enums.TopicPool;
+﻿namespace UniThesis.Domain.Enums.TopicPool;
 
 /// <summary>
-/// Status of a topic in the topic pool.
+/// Status of a Topic Pool (kho đề tài).
+/// Each major has one permanent pool.
 /// </summary>
 public enum TopicPoolStatus
 {
-    /// <summary>Topic is available for students to register.</summary>
-    Available = 0,
+    /// <summary>
+    /// Pool is active - accepting topic proposals and registrations.
+    /// </summary>
+    Active = 0,
 
-    /// <summary>Topic has been selected by a student group.</summary>
-    Selected = 1,
-
-    /// <summary>Topic has expired (passed 2 semesters without selection).</summary>
-    Expired = 2,
-
-    /// <summary>Topic has been archived.</summary>
-    Archived = 3
+    /// <summary>
+    /// Pool is temporarily suspended - not accepting new proposals/registrations.
+    /// </summary>
+    Suspended = 1
 }

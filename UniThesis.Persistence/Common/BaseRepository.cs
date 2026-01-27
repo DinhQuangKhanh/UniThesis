@@ -12,7 +12,7 @@ namespace UniThesis.Persistence.Common
     /// <typeparam name="TEntity">The entity type.</typeparam>
     /// <typeparam name="TId">The entity identifier type.</typeparam>
     public abstract class BaseRepository<TEntity, TId> : IRepository<TEntity, TId>
-        where TEntity : AggregateRoot<TId>
+        where TEntity : class, IIdentifiable<TId>
         where TId : notnull
     {
         protected readonly AppDbContext _context;

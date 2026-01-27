@@ -1,15 +1,26 @@
-﻿using UniThesis.Domain.Aggregates.TopicPoolAggregate;
-using UniThesis.Domain.Enums.TopicPool;
+﻿using UniThesis.Domain.Aggregates.ProjectAggregate;
+using UniThesis.Domain.Enums.Project;
 
-namespace UniThesis.Domain.Specifications.TopicPools
+namespace UniThesis.Domain.Specifications.TopicPools;
+
+/// <summary>
+/// Specification to get topics (Projects from pool) by major.
+/// </summary>
+public class TopicsByMajorSpec : BaseSpecification<Project>
 {
-    public class TopicsByMajorSpec : BaseSpecification<TopicPool>
+    /// <summary>
+    /// Gets all topics in a major's topic pool.
+    /// </summary>
+    /// <param name="majorId">Major ID</param>
+    /// <param name="availableOnly">If true, only return available topics</param>
+    /// <param name="includeExpired">If true, include expired topics</param>
+    public TopicsByMajorSpec(int majorId, bool availableOnly = true, bool includeExpired = false)
+        : base(p => p.SourceType == ProjectSourceType.FromPool &&
+                    p.MajorId == majorId &&
+                    (!availableOnly || p.PoolStatus == PoolTopicStatus.Available) &&
+                    (includeExpired || p.PoolStatus != PoolTopicStatus.Expired))
     {
-        public TopicsByMajorSpec(int majorId, bool availableOnly = true)
-            : base(t => t.MajorId == majorId &&
-                        (!availableOnly || t.Status == TopicPoolStatus.Available))
-        {
-            ApplyOrderByDescending(t => t.CreatedAt);
-        }
+        AddInclude(p => p.Mentors);
+        ApplyOrderByDescending(p => p.CreatedAt);
     }
 }

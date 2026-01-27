@@ -9,46 +9,54 @@ namespace UniThesis.Persistence.Common
     /// <typeparam name="T">The entity type.</typeparam>
     public static class SpecificationEvaluator<T> where T : class
     {
-        public static IQueryable<T> GetQuery(IQueryable<T> inputQuery, ISpecification<T> specification)
+        public static IQueryable<T> GetQuery(IQueryable<T> inputQuery, ISpecification<T> spec)
         {
             var query = inputQuery;
 
-            // Apply criteria
-            if (specification.Criteria != null)
-            {
-                query = query.Where(specification.Criteria);
-            }
+            if (spec.Criteria is not null)
+                query = query.Where(spec.Criteria);
 
-            // Apply includes
-            query = specification.Includes.Aggregate(query,
-                (current, include) => current.Include(include));
+            foreach (var include in spec.Includes)
+                query = query.Include(include);
 
-            // Apply string-based includes
-            query = specification.IncludeStrings.Aggregate(query,
-                (current, include) => current.Include(include));
+            foreach (var includeStr in spec.IncludeStrings)
+                query = query.Include(includeStr);
 
-            // Apply ordering
-            if (specification.OrderBy != null)
+            if (spec.OrderExpressions is not null && spec.OrderExpressions.Any())
             {
-                query = query.OrderBy(specification.OrderBy);
-            }
-            else if (specification.OrderByDescending != null)
-            {
-                query = query.OrderByDescending(specification.OrderByDescending);
-            }
-
-            // Apply paging
-            if (specification.IsPagingEnabled)
-            {
-                if (specification.Skip.HasValue)
+                IOrderedQueryable<T>? ordered = null;
+                foreach (var ord in spec.OrderExpressions)
                 {
-                    query = query.Skip(specification.Skip.Value);
+                    switch (ord.OrderType)
+                    {
+                        case OrderType.OrderBy:
+                            ordered = ordered is null
+                                ? query.OrderBy(ord.Expression)
+                                : ordered.ThenBy(ord.Expression);
+                            break;
+                        case OrderType.OrderByDescending:
+                            ordered = ordered is null
+                                ? query.OrderByDescending(ord.Expression)
+                                : ordered.ThenByDescending(ord.Expression);
+                            break;
+                        case OrderType.ThenBy:
+                            if (ordered is null)
+                                throw new InvalidOperationException("ThenBy cannot be first.");
+                            ordered = ordered.ThenBy(ord.Expression);
+                            break;
+                        case OrderType.ThenByDescending:
+                            if (ordered is null)
+                                throw new InvalidOperationException("ThenByDescending cannot be first.");
+                            ordered = ordered.ThenByDescending(ord.Expression);
+                            break;
+                    }
                 }
-                if (specification.Take.HasValue)
-                {
-                    query = query.Take(specification.Take.Value);
-                }
+                if (ordered is not null)
+                    query = ordered;
             }
+
+            if (spec.IsPagingEnabled)
+                query = query.Skip(spec.Skip!.Value).Take(spec.Take!.Value);
 
             return query;
         }

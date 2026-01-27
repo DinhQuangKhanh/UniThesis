@@ -1,0 +1,79 @@
+﻿using Microsoft.EntityFrameworkCore;
+using UniThesis.Domain.Aggregates.TopicPoolAggregate;
+using UniThesis.Domain.Aggregates.TopicPoolAggregate.Entities;
+using UniThesis.Domain.Enums.TopicPool;
+using UniThesis.Persistence.Common;
+
+namespace UniThesis.Persistence.SqlServer.Repositories;
+
+/// <summary>
+/// Repository implementation for TopicRegistration entity.
+/// </summary>
+public class TopicRegistrationRepository : BaseRepository<TopicRegistration, Guid>, ITopicRegistrationRepository
+{
+    public TopicRegistrationRepository(AppDbContext context) : base(context) { }
+
+    public async Task<IEnumerable<TopicRegistration>> GetByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Where(tr => tr.ProjectId == projectId)
+            .OrderBy(tr => tr.Priority)
+            .ThenBy(tr => tr.RegisteredAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IEnumerable<TopicRegistration>> GetByGroupIdAsync(Guid groupId, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Where(tr => tr.GroupId == groupId)
+            .OrderByDescending(tr => tr.RegisteredAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IEnumerable<TopicRegistration>> GetPendingByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Where(tr => tr.ProjectId == projectId && tr.Status == TopicRegistrationStatus.Pending)
+            .OrderBy(tr => tr.Priority)
+            .ThenBy(tr => tr.RegisteredAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<bool> HasPendingRegistrationAsync(Guid groupId, Guid projectId, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet.AnyAsync(
+            tr => tr.GroupId == groupId &&
+                  tr.ProjectId == projectId &&
+                  tr.Status == TopicRegistrationStatus.Pending,
+            cancellationToken);
+    }
+
+    public async Task<TopicRegistration?> GetConfirmedByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .FirstOrDefaultAsync(tr => tr.ProjectId == projectId && tr.Status == TopicRegistrationStatus.Confirmed, cancellationToken);
+    }
+
+    public async Task<IEnumerable<TopicRegistration>> GetConfirmedByGroupIdAsync(Guid groupId, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Where(tr => tr.GroupId == groupId && tr.Status == TopicRegistrationStatus.Confirmed)
+            .OrderByDescending(tr => tr.ProcessedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IEnumerable<TopicRegistration>> GetPendingByMentorIdAsync(Guid mentorId, CancellationToken cancellationToken = default)
+    {
+        // Get pending registrations for projects where this mentor is active
+        return await _dbSet
+            .Join(_context.Projects,
+                tr => tr.ProjectId,
+                p => p.Id,
+                (tr, p) => new { Registration = tr, Project = p })
+            .Where(x => x.Registration.Status == TopicRegistrationStatus.Pending &&
+                       x.Project.Mentors.Any(m => m.MentorId == mentorId && m.IsActive))
+            .Select(x => x.Registration)
+            .OrderBy(tr => tr.RegisteredAt)
+            .ToListAsync(cancellationToken);
+    }
+}

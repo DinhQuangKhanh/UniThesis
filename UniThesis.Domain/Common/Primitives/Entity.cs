@@ -1,8 +1,7 @@
 ﻿
-
 namespace UniThesis.Domain.Common.Primitives
 {
-    public abstract class Entity<TId> : IEquatable<Entity<TId>>
+    public abstract class Entity<TId> : IEquatable<Entity<TId>>, IIdentifiable<TId>
     where TId : notnull
     {
         public TId Id { get; protected init; } = default!;

@@ -16,11 +16,6 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate.Entities
         public Guid MentorId { get; private set; }
 
         /// <summary>
-        /// Gets the role of the mentor (Primary or Secondary).
-        /// </summary>
-        public MentorRole Role { get; private set; }
-
-        /// <summary>
         /// Gets the status of the mentor assignment.
         /// </summary>
         public ProjectMentorStatus Status { get; private set; }
@@ -53,14 +48,12 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate.Entities
         internal static ProjectMentor Create(
             Guid projectId,
             Guid mentorId,
-            MentorRole role,
             Guid assignedBy)
         {
             return new ProjectMentor
             {
                 ProjectId = projectId,
                 MentorId = mentorId,
-                Role = role,
                 Status = ProjectMentorStatus.Active,
                 AssignedAt = DateTime.UtcNow,
                 AssignedBy = assignedBy
@@ -81,15 +74,6 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate.Entities
         public void Reactivate()
         {
             Status = ProjectMentorStatus.Active;
-        }
-
-        /// <summary>
-        /// Changes the role of the mentor.
-        /// </summary>
-        /// <param name="newRole">The new role.</param>
-        public void ChangeRole(MentorRole newRole)
-        {
-            Role = newRole;
         }
 
         /// <summary>

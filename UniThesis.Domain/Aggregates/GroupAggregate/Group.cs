@@ -62,7 +62,7 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
             RaiseDomainEvent(new MemberAddedEvent(Id, studentId, GroupMemberRole.Member));
         }
 
-        public void RemoveMember(Guid studentId)
+        public void RemoveMember(Guid studentId, Guid removedBy)
         {
             var member = _members.FirstOrDefault(m => m.StudentId == studentId && m.IsActive)
                 ?? throw new EntityNotFoundException(nameof(GroupMember), studentId);
@@ -72,7 +72,7 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
 
             member.Leave();
             UpdatedAt = DateTime.UtcNow;
-            RaiseDomainEvent(new MemberRemovedEvent(Id, studentId));
+            RaiseDomainEvent(new MemberRemovedEvent(Id, studentId, removedBy));
         }
 
         public void ChangeLeader(Guid newLeaderId)

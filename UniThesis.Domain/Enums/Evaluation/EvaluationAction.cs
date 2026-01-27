@@ -36,5 +36,8 @@ public enum EvaluationAction
     Resubmitted = 9,
 
     /// <summary>Evaluation was cancelled.</summary>
-    Cancelled = 10
+    Cancelled = 10,
+
+    /// <summary>Evaluation was completed.</summary>
+    Completed = 11
 }

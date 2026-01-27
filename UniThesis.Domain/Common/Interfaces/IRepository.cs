@@ -3,7 +3,7 @@
 namespace UniThesis.Domain.Common.Interfaces
 {
     public interface IRepository<TEntity, TId>
-    where TEntity : AggregateRoot<TId>
+    where TEntity : IIdentifiable<TId>
     where TId : notnull
     {
         /// <summary>

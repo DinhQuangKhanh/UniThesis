@@ -18,9 +18,6 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Project
             builder.Property(pm => pm.Id)
                 .ValueGeneratedOnAdd();
 
-            builder.Property(pm => pm.Role)
-                .HasConversion<int>();
-
             builder.Property(pm => pm.Status)
                 .HasConversion<int>();
 

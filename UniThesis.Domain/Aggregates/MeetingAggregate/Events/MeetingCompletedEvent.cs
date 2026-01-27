@@ -2,5 +2,5 @@
 
 namespace UniThesis.Domain.Aggregates.MeetingAggregate.Events
 {
-    public sealed record MeetingCompletedEvent(Guid MeetingId) : DomainEventBase;
+    public sealed record MeetingCompletedEvent(Guid MeetingId, Guid ProjectId) : DomainEventBase;
 }

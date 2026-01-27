@@ -1,73 +1,70 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using UniThesis.Persistence.ValueConverters;
 
-namespace UniThesis.Persistence.SqlServer.Configurations.TopicPool
+namespace UniThesis.Persistence.SqlServer.Configurations.TopicPool;
+
+/// <summary>
+/// EF Core configuration for TopicPool entity.
+/// Each major has exactly one permanent topic pool.
+/// </summary>
+public class TopicPoolConfiguration : IEntityTypeConfiguration<Domain.Aggregates.TopicPoolAggregate.TopicPool>
 {
-    /// <summary>
-    /// EF Core configuration for TopicPool aggregate root.
-    /// </summary>
-    public class TopicPoolConfiguration : IEntityTypeConfiguration<Domain.Aggregates.TopicPoolAggregate.TopicPool>
+    public void Configure(EntityTypeBuilder<Domain.Aggregates.TopicPoolAggregate.TopicPool> builder)
     {
-        public void Configure(EntityTypeBuilder<Domain.Aggregates.TopicPoolAggregate.TopicPool> builder)
-        {
-            builder.ToTable("TopicPools");
+        builder.ToTable("TopicPools");
 
-            builder.HasKey(t => t.Id);
+        builder.HasKey(tp => tp.Id);
 
-            // Value Object conversions
-            builder.Property(t => t.Code)
-                .HasConversion<TopicCodeConverter>()
-                .HasMaxLength(20)
-                .IsRequired();
+        builder.Property(tp => tp.Code)
+            .IsRequired()
+            .HasMaxLength(50);
 
-            builder.Property(t => t.NameVi)
-                .HasMaxLength(350)
-                .IsRequired();
+        builder.Property(tp => tp.Name)
+            .IsRequired()
+            .HasMaxLength(200);
 
-            builder.Property(t => t.NameEn)
-                .HasMaxLength(350);
+        builder.Property(tp => tp.Description)
+            .HasMaxLength(1000);
 
-            builder.Property(t => t.NameAbbr)
-                .HasMaxLength(50);
+        builder.Property(tp => tp.MajorId)
+            .IsRequired();
 
-            builder.Property(t => t.Description)
-                .HasMaxLength(2000)
-                .IsRequired();
+        builder.Property(tp => tp.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired();
 
-            builder.Property(t => t.Objectives)
-                .HasMaxLength(2000)
-                .IsRequired();
+        builder.Property(tp => tp.MaxActiveTopicsPerMentor)
+            .IsRequired()
+            .HasDefaultValue(5);
 
-            builder.Property(t => t.Scope)
-                .HasMaxLength(2000);
+        builder.Property(tp => tp.ExpirationSemesters)
+            .IsRequired()
+            .HasDefaultValue(2);
 
-            builder.Property(t => t.Technologies)
-                .HasMaxLength(500);
+        builder.Property(tp => tp.CreatedAt)
+            .IsRequired();
 
-            builder.Property(t => t.ExpectedResults)
-                .HasMaxLength(2000);
+        // Indexes
+        builder.HasIndex(tp => tp.Code)
+            .IsUnique()
+            .HasDatabaseName("IX_TopicPools_Code");
 
-            builder.Property(t => t.Status)
-                .HasConversion<int>();
+        // One pool per major (permanent)
+        builder.HasIndex(tp => tp.MajorId)
+            .IsUnique()
+            .HasDatabaseName("IX_TopicPools_MajorId");
 
-            // Relationships
-            builder.HasMany(t => t.Registrations)
-                .WithOne()
-                .HasForeignKey(r => r.TopicPoolId)
-                .OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(tp => tp.Status)
+            .HasDatabaseName("IX_TopicPools_Status");
 
-            // Indexes
-            builder.HasIndex(t => t.Code).IsUnique();
-            builder.HasIndex(t => t.Status);
-            builder.HasIndex(t => t.MajorId);
-            builder.HasIndex(t => t.ProposedBy);
-            builder.HasIndex(t => t.CreatedSemesterId);
-            builder.HasIndex(t => t.ExpirationSemesterId);
-            builder.HasIndex(t => t.SelectedByGroupId);
+        // Ignore domain events
+        builder.Ignore(tp => tp.DomainEvents);
 
-            // Ignore domain events
-            builder.Ignore(t => t.DomainEvents);
-        }
+        // Relationships
+        builder.HasOne<Domain.Entities.Major>()
+            .WithOne()
+            .HasForeignKey<Domain.Aggregates.TopicPoolAggregate.TopicPool>(tp => tp.MajorId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

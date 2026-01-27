@@ -1,146 +1,187 @@
-﻿using UniThesis.Domain.Aggregates.TopicPoolAggregate.Entities;
-using UniThesis.Domain.Aggregates.TopicPoolAggregate.Events;
-using UniThesis.Domain.Aggregates.TopicPoolAggregate.Rules;
-using UniThesis.Domain.Aggregates.TopicPoolAggregate.ValueObjects;
+﻿using UniThesis.Domain.Aggregates.TopicPoolAggregate.Events;
 using UniThesis.Domain.Common.Exceptions;
 using UniThesis.Domain.Common.Primitives;
-using UniThesis.Domain.Common.Rules;
 using UniThesis.Domain.Enums.TopicPool;
 
-namespace UniThesis.Domain.Aggregates.TopicPoolAggregate
+namespace UniThesis.Domain.Aggregates.TopicPoolAggregate;
+
+/// <summary>
+/// TopicPool represents a permanent topic pool (kho đề tài) for a specific major.
+/// Each major has exactly ONE topic pool that exists permanently.
+/// The pool contains multiple projects/topics proposed by mentors.
+/// Projects in the pool expire after 2 semesters if not registered.
+/// </summary>
+public class TopicPool : AggregateRoot<Guid>
 {
-    public class TopicPool : AggregateRoot<Guid>
+    #region Properties
+
+    /// <summary>
+    /// Unique code for the topic pool (e.g., "KHO-SE", "KHO-AI").
+    /// </summary>
+    public string Code { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Name of the topic pool (e.g., "Kho đề tài Kỹ thuật phần mềm").
+    /// </summary>
+    public string Name { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Description of the topic pool.
+    /// </summary>
+    public string? Description { get; private set; }
+
+    /// <summary>
+    /// The major this pool belongs to. One major = One pool (permanent).
+    /// </summary>
+    public int MajorId { get; private set; }
+
+    /// <summary>
+    /// Current status of the pool.
+    /// </summary>
+    public TopicPoolStatus Status { get; private set; }
+
+    /// <summary>
+    /// Maximum number of active topics a single mentor can have in this pool.
+    /// </summary>
+    public int MaxActiveTopicsPerMentor { get; private set; }
+
+    /// <summary>
+    /// Number of semesters before an unregistered topic expires (default: 2).
+    /// </summary>
+    public int ExpirationSemesters { get; private set; }
+
+    public DateTime CreatedAt { get; private set; }
+    public Guid? CreatedBy { get; private set; }
+    public DateTime? UpdatedAt { get; private set; }
+    public Guid? UpdatedBy { get; private set; }
+
+    #endregion
+
+    #region Constructors
+
+    private TopicPool() { }
+
+    #endregion
+
+    #region Factory Methods
+
+    /// <summary>
+    /// Creates a new permanent topic pool for a major.
+    /// Should only be called once per major.
+    /// </summary>
+    public static TopicPool Create(
+        string code,
+        string name,
+        string? description,
+        int majorId,
+        int maxActiveTopicsPerMentor = 5,
+        int expirationSemesters = 2,
+        Guid? createdBy = null)
     {
-        private readonly List<TopicRegistration> _registrations = new();
-
-        public TopicCode Code { get; private set; } = null!;
-        public string NameVi { get; private set; } = string.Empty;
-        public string NameEn { get; private set; }
-        public string NameAbbr { get; private set; }
-        public string Description { get; private set; } = string.Empty;
-        public string Objectives { get; private set; } = string.Empty;
-        public string? Scope { get; private set; }
-        public string? Technologies { get; private set; }
-        public string? ExpectedResults { get; private set; }
-        public int MajorId { get; private set; }
-        public Guid ProposedBy { get; private set; }
-        public int MaxStudents { get; private set; }
-        public int CreatedSemesterId { get; private set; }
-        public int ExpirationSemesterId { get; private set; }
-        public TopicPoolStatus Status { get; private set; }
-        public Guid? SelectedByGroupId { get; private set; }
-        public DateTime? SelectedAt { get; private set; }
-        public Guid? ConvertedToProjectId { get; private set; }
-        public DateTime CreatedAt { get; private set; }
-        public DateTime? UpdatedAt { get; private set; }
-
-        public IReadOnlyCollection<TopicRegistration> Registrations => _registrations.AsReadOnly();
-
-        private TopicPool() { }
-
-        public static TopicPool Create(TopicCode code, string nameVi, string nameEn, string nameAbbr, string description, string objectives,
-            int majorId, Guid proposedBy, int maxStudents, int createdSemesterId, int expirationSemesterId)
+        var pool = new TopicPool
         {
-            var topic = new TopicPool
-            {
-                Id = Guid.NewGuid(),
-                Code = code,
-                NameVi = nameVi,
-                NameEn = nameEn,
-                NameAbbr = nameAbbr,
-                Description = description,
-                Objectives = objectives,
-                MajorId = majorId,
-                ProposedBy = proposedBy,
-                MaxStudents = maxStudents,
-                CreatedSemesterId = createdSemesterId,
-                ExpirationSemesterId = expirationSemesterId,
-                Status = TopicPoolStatus.Available,
-                CreatedAt = DateTime.UtcNow
-            };
-            topic.RaiseDomainEvent(new TopicCreatedEvent(topic.Id, proposedBy));
-            return topic;
-        }
+            Id = Guid.NewGuid(),
+            Code = code,
+            Name = name,
+            Description = description,
+            MajorId = majorId,
+            Status = TopicPoolStatus.Active,
+            MaxActiveTopicsPerMentor = maxActiveTopicsPerMentor,
+            ExpirationSemesters = expirationSemesters,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = createdBy
+        };
 
-        public TopicRegistration RequestRegistration(Guid groupId, Guid registeredBy)
-        {
-            CheckRule(new TopicMustBeAvailableForSelectionRule(Status));
-            if (_registrations.Any(r => r.GroupId == groupId && r.Status == TopicRegistrationStatus.Pending))
-                throw new BusinessRuleValidationException("Group already has a pending registration.");
+        pool.RaiseDomainEvent(new TopicPoolCreatedEvent(pool.Id, pool.Code, pool.MajorId));
 
-            var registration = TopicRegistration.Create(Id, groupId, registeredBy);
-            _registrations.Add(registration);
-            UpdatedAt = DateTime.UtcNow;
-            RaiseDomainEvent(new RegistrationRequestedEvent(Id, groupId, registeredBy));
-            return registration;
-        }
-
-        public void ConfirmRegistration(Guid registrationId, Guid confirmedBy)
-        {
-            var registration = _registrations.FirstOrDefault(r => r.Id == registrationId)
-                ?? throw new EntityNotFoundException(nameof(TopicRegistration), registrationId);
-
-            registration.Confirm(confirmedBy);
-            Status = TopicPoolStatus.Selected;
-            SelectedByGroupId = registration.GroupId;
-            SelectedAt = DateTime.UtcNow;
-            UpdatedAt = DateTime.UtcNow;
-
-            foreach (var other in _registrations.Where(r => r.Id != registrationId && r.Status == TopicRegistrationStatus.Pending))
-                other.Cancel("Another group was selected");
-
-            RaiseDomainEvent(new RegistrationConfirmedEvent(Id, registration.GroupId));
-        }
-
-        public void CancelRegistration(Guid registrationId, string? reason = null)
-        {
-            var registration = _registrations.FirstOrDefault(r => r.Id == registrationId)
-                ?? throw new EntityNotFoundException(nameof(TopicRegistration), registrationId);
-            registration.Cancel(reason);
-            UpdatedAt = DateTime.UtcNow;
-            RaiseDomainEvent(new RegistrationCancelledEvent(Id, registration.GroupId, reason));
-        }
-
-        public void MarkAsExpired()
-        {
-            if (Status != TopicPoolStatus.Available)
-                throw new BusinessRuleValidationException("Only available topics can be marked as expired.");
-            Status = TopicPoolStatus.Expired;
-            UpdatedAt = DateTime.UtcNow;
-            RaiseDomainEvent(new TopicExpiredEvent(Id));
-        }
-
-        public void Archive()
-        {
-            Status = TopicPoolStatus.Archived;
-            UpdatedAt = DateTime.UtcNow;
-        }
-
-        public void LinkToProject(Guid projectId)
-        {
-            ConvertedToProjectId = projectId;
-            UpdatedAt = DateTime.UtcNow;
-        }
-
-        public void Update(string? nameVi = null, string? nameEn = null, string? nameAbbr = null, string? description = null,
-            string? objectives = null, string? scope = null, string? technologies = null, string? expectedResults = null)
-        {
-            if (Status != TopicPoolStatus.Available)
-                throw new BusinessRuleValidationException("Only available topics can be updated.");
-            if (!string.IsNullOrWhiteSpace(nameVi)) NameVi = nameVi;
-            if (nameEn != null) NameEn = nameEn;
-            if (nameAbbr != null) NameAbbr = nameAbbr;
-            if (!string.IsNullOrWhiteSpace(description)) Description = description;
-            if (!string.IsNullOrWhiteSpace(objectives)) Objectives = objectives;
-            if (scope != null) Scope = scope;
-            if (technologies != null) Technologies = technologies;
-            if (expectedResults != null) ExpectedResults = expectedResults;
-            UpdatedAt = DateTime.UtcNow;
-        }
-
-        private void CheckRule(IBusinessRule rule)
-        {
-            if (rule.IsBroken()) throw new BusinessRuleValidationException(rule);
-        }
+        return pool;
     }
+
+    #endregion
+
+    #region Status Management
+
+    /// <summary>
+    /// Suspends the topic pool (temporarily stop accepting new topics/registrations).
+    /// </summary>
+    public void Suspend(Guid suspendedBy)
+    {
+        if (Status != TopicPoolStatus.Active)
+            throw new BusinessRuleValidationException("Only active pools can be suspended.");
+
+        Status = TopicPoolStatus.Suspended;
+        UpdatedAt = DateTime.UtcNow;
+        UpdatedBy = suspendedBy;
+
+        RaiseDomainEvent(new TopicPoolSuspendedEvent(Id));
+    }
+
+    /// <summary>
+    /// Reactivates a suspended topic pool.
+    /// </summary>
+    public void Activate(Guid activatedBy)
+    {
+        if (Status != TopicPoolStatus.Suspended)
+            throw new BusinessRuleValidationException("Only suspended pools can be activated.");
+
+        Status = TopicPoolStatus.Active;
+        UpdatedAt = DateTime.UtcNow;
+        UpdatedBy = activatedBy;
+
+        RaiseDomainEvent(new TopicPoolActivatedEvent(Id));
+    }
+
+    /// <summary>
+    /// Checks if the pool is accepting new topic proposals.
+    /// </summary>
+    public bool IsAcceptingProposals() => Status == TopicPoolStatus.Active;
+
+    /// <summary>
+    /// Checks if the pool is accepting registrations.
+    /// </summary>
+    public bool IsAcceptingRegistrations() => Status == TopicPoolStatus.Active;
+
+    #endregion
+
+    #region Update Methods
+
+    /// <summary>
+    /// Updates the topic pool information.
+    /// </summary>
+    public void Update(
+        string? name = null,
+        string? description = null,
+        int? maxActiveTopicsPerMentor = null,
+        int? expirationSemesters = null,
+        Guid? updatedBy = null)
+    {
+        if (!string.IsNullOrWhiteSpace(name))
+            Name = name;
+
+        if (description != null)
+            Description = description;
+
+        if (maxActiveTopicsPerMentor.HasValue && maxActiveTopicsPerMentor.Value > 0)
+            MaxActiveTopicsPerMentor = maxActiveTopicsPerMentor.Value;
+
+        if (expirationSemesters.HasValue && expirationSemesters.Value > 0)
+            ExpirationSemesters = expirationSemesters.Value;
+
+        UpdatedAt = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    #endregion
+
+    #region Code Generation Helper
+
+    /// <summary>
+    /// Generates a topic pool code from major code.
+    /// </summary>
+    public static string GenerateCode(string majorCode)
+    {
+        return $"KHO-{majorCode.ToUpperInvariant()}";
+    }
+
+    #endregion
 }

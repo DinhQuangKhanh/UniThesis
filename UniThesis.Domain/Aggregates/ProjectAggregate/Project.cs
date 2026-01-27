@@ -7,7 +7,6 @@ using UniThesis.Domain.Common.Primitives;
 using UniThesis.Domain.Common.Rules;
 using UniThesis.Domain.Enums.Document;
 using UniThesis.Domain.Enums.Evaluation;
-using UniThesis.Domain.Enums.Mentor;
 using UniThesis.Domain.Enums.Project;
 
 namespace UniThesis.Domain.Aggregates.ProjectAggregate
@@ -21,8 +20,8 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
 
         public ProjectCode Code { get; private set; } = null!;
         public ProjectName NameVi { get; private set; } = null!;
-        public ProjectName? NameEn { get; private set; }
-        public string? NameAbbr { get; private set; }
+        public ProjectName NameEn { get; private set; } = null!;
+        public string NameAbbr { get; private set; } = null!;
         public string Description { get; private set; } = string.Empty;
         public string Objectives { get; private set; } = string.Empty;
         public string? Scope { get; private set; }
@@ -46,12 +45,13 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
         public EvaluationResult? LastEvaluationResult { get; private set; }
         public DateTime CreatedAt { get; private set; }
         public DateTime? UpdatedAt { get; private set; }
+        public PoolTopicStatus? PoolStatus { get; private set; }
+        public int? CreatedInSemesterId { get; private set; }
+        public int? ExpirationSemesterId { get; private set; }
 
         public IReadOnlyCollection<ProjectMentor> Mentors => _mentors.AsReadOnly();
         public IReadOnlyCollection<Document> Documents => _documents.AsReadOnly();
         public IReadOnlyCollection<ProjectMentor> ActiveMentors => _mentors.Where(m => m.IsActive).ToList().AsReadOnly();
-        public ProjectMentor? PrimaryMentor => _mentors.FirstOrDefault(m => m.Role == MentorRole.Primary && m.IsActive);
-        public ProjectMentor? SecondaryMentor => _mentors.FirstOrDefault(m => m.Role == MentorRole.Secondary && m.IsActive);
 
         #endregion
 
@@ -59,17 +59,23 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
 
         private Project() { }
 
-        private Project(Guid id, ProjectCode code, ProjectName nameVi, string description, string objectives,
-            int majorId, int semesterId, int maxStudents, ProjectSourceType sourceType, Guid? topicPoolId = null) : base(id)
+        private Project(Guid id, ProjectCode code, ProjectName nameVi, ProjectName nameEn, string nameAbbr, string description, string objectives,
+            string? scope, TechnologyStack? technologyStack, string? expectedResults, int majorId, int semesterId, int maxStudents, ProjectSourceType sourceType, Guid? groupId = null, Guid? topicPoolId = null) : base(id)
         {
             Code = code;
             NameVi = nameVi;
+            NameEn = nameEn;
+            NameAbbr = nameAbbr;
             Description = description;
             Objectives = objectives;
+            Scope = scope;
+            Technologies = technologyStack;
+            ExpectedResults = expectedResults;
             MajorId = majorId;
             SemesterId = semesterId;
             MaxStudents = maxStudents;
             SourceType = sourceType;
+            GroupId = groupId;
             TopicPoolId = topicPoolId;
             Status = ProjectStatus.Draft;
             Priority = ProjectPriority.Normal;
@@ -82,44 +88,80 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
 
         #region Factory Methods
 
-        public static Project CreateFromPool(ProjectCode code, ProjectName nameVi, string description, string objectives,
-            int majorId, int semesterId, int maxStudents, Guid topicPoolId)
+        public static Project CreateFromPool(ProjectCode code, ProjectName nameVi, ProjectName nameEn, string nameAbbr, string description, string objectives,
+            string? scope, TechnologyStack? technologyStack, string? expectedResults, int majorId, int semesterId, int maxStudents, Guid topicPoolId, int expirationSemesterId)
         {
-            var project = new Project(Guid.NewGuid(), code, nameVi, description, objectives, majorId, semesterId, maxStudents, ProjectSourceType.FromPool, topicPoolId);
+            var project = new Project
+            {
+                Id = Guid.NewGuid(),
+                Code = code,
+                NameVi = nameVi,
+                NameEn = nameEn,
+                NameAbbr = nameAbbr,
+                Description = description,
+                Objectives = objectives,
+                Scope = scope,
+                Technologies = technologyStack,
+                ExpectedResults = expectedResults,
+                MajorId = majorId,
+                SemesterId = semesterId,
+                MaxStudents = maxStudents,
+                SourceType = ProjectSourceType.FromPool,
+                TopicPoolId = topicPoolId,
+                GroupId = null,                          // No group yet
+                PoolStatus = PoolTopicStatus.Available,  // Available for registration
+                CreatedInSemesterId = semesterId,
+                ExpirationSemesterId = expirationSemesterId,
+                Status = ProjectStatus.Draft,
+                Priority = ProjectPriority.Normal,
+                RegistrationType = RegistrationType.Public,
+                EvaluationCount = 0,
+                CreatedAt = DateTime.UtcNow
+            };
             project.RaiseDomainEvent(new ProjectCreatedEvent(project.Id, project.Code.Value, ProjectSourceType.FromPool));
             return project;
         }
 
-        public static Project CreateDirect(ProjectCode code, ProjectName nameVi, string description, string objectives,
-            int majorId, int semesterId, int maxStudents)
+        public static Project CreateDirect(ProjectCode code, ProjectName nameVi, ProjectName nameEn, string nameAbbr, string description, string objectives,
+             string? scope, TechnologyStack? technologyStack, string? expectedResults, int majorId, int semesterId, int maxStudents, ProjectSourceType sourceType)
         {
-            var project = new Project(Guid.NewGuid(), code, nameVi, description, objectives, majorId, semesterId, maxStudents, ProjectSourceType.DirectRegistration);
+            var project = new Project(Guid.NewGuid(), code, nameVi, nameEn, nameAbbr, description, objectives, scope, technologyStack, expectedResults, majorId, semesterId, maxStudents, ProjectSourceType.DirectRegistration);
             project.RaiseDomainEvent(new ProjectCreatedEvent(project.Id, project.Code.Value, ProjectSourceType.DirectRegistration));
             return project;
+        }
+
+        /// <summary>
+        /// Sets the pool status for projects from the topic pool.
+        /// </summary>
+        public void SetPoolStatus(PoolTopicStatus status)
+        {
+            if (SourceType != ProjectSourceType.FromPool)
+                throw new BusinessRuleValidationException("Pool status can only be set for projects from the topic pool.");
+
+            PoolStatus = status;
+            UpdatedAt = DateTime.UtcNow;
         }
 
         #endregion
 
         #region Mentor Management
 
-        public void AddMentor(Guid mentorId, MentorRole role, Guid assignedBy)
+        public void AddMentor(Guid mentorId, Guid assignedBy)
         {
             CheckRule(new ProjectCannotExceedMaxMentorsRule(ActiveMentors.Count));
             if (_mentors.Any(m => m.MentorId == mentorId && m.IsActive))
                 throw new BusinessRuleValidationException("Mentor is already assigned to this project.");
 
-            var mentor = ProjectMentor.Create(Id, mentorId, role, assignedBy);
+            var mentor = ProjectMentor.Create(Id, mentorId, assignedBy);
             _mentors.Add(mentor);
             UpdatedAt = DateTime.UtcNow;
-            RaiseDomainEvent(new MentorAssignedEvent(Id, mentorId, role));
+            RaiseDomainEvent(new MentorAssignedEvent(Id, mentorId));
         }
 
         public void RemoveMentor(Guid mentorId)
         {
             var mentor = _mentors.FirstOrDefault(m => m.MentorId == mentorId && m.IsActive)
                 ?? throw new EntityNotFoundException(nameof(ProjectMentor), mentorId);
-            if (mentor.Role == MentorRole.Primary)
-                throw new BusinessRuleValidationException("Cannot remove primary mentor.");
             mentor.Deactivate();
             UpdatedAt = DateTime.UtcNow;
             RaiseDomainEvent(new MentorRemovedEvent(Id, mentorId));
@@ -199,10 +241,17 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
 
         #region Project Lifecycle
 
+        /// <summary>
+        /// Assigns a group to this project (used when group registers for a topic from pool).
+        /// </summary>
         public void AssignGroup(Guid groupId)
         {
+            if (GroupId.HasValue)
+                throw new BusinessRuleValidationException("Project already has a group assigned.");
+
             GroupId = groupId;
             UpdatedAt = DateTime.UtcNow;
+
             RaiseDomainEvent(new ProjectGroupAssignedEvent(Id, groupId));
         }
 
@@ -235,6 +284,23 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
             Status = ProjectStatus.Cancelled;
             UpdatedAt = DateTime.UtcNow;
             RaiseDomainEvent(new ProjectCancelledEvent(Id));
+        }
+
+        /// <summary>
+        /// Marks this topic as expired (called when expiration semester is reached without registration).
+        /// </summary>
+        public void MarkAsExpired()
+        {
+            if (SourceType != ProjectSourceType.FromPool)
+                throw new BusinessRuleValidationException("Only pool topics can expire.");
+
+            if (PoolStatus != PoolTopicStatus.Available)
+                throw new BusinessRuleValidationException("Only available topics can be marked as expired.");
+
+            PoolStatus = PoolTopicStatus.Expired;
+            UpdatedAt = DateTime.UtcNow;
+
+            // RaiseDomainEvent(new PoolTopicExpiredEvent(Id, TopicPoolId!.Value, CreatedInSemesterId!.Value, ...));
         }
 
         #endregion
@@ -289,6 +355,17 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
         }
 
         #endregion
+
+        /// <summary>
+        /// Checks if this topic is expired based on current semester.
+        /// </summary>
+        public bool IsExpired(int currentSemesterId)
+        {
+            if (SourceType != ProjectSourceType.FromPool)
+                return false;
+
+            return ExpirationSemesterId.HasValue && currentSemesterId > ExpirationSemesterId.Value;
+        }
 
         private void CheckRule(IBusinessRule rule)
         {

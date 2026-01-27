@@ -27,7 +27,7 @@ namespace UniThesis.Persistence.MongoDB.Documents
         public EvaluationAction Action { get; set; }
 
         [BsonRepresentation(BsonType.String)]
-        public Guid PerformedBy { get; set; }
+        public Guid? PerformedBy { get; set; }
 
         public string PerformedByName { get; set; } = string.Empty;
 

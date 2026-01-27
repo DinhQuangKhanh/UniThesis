@@ -5,6 +5,8 @@ namespace UniThesis.Domain.Aggregates.EvaluationAggregate.ValueObjects
     public sealed class ProjectSnapshot : ValueObject
     {
         public string NameVi { get; }
+        public string NameEn { get; }
+        public string NameAbbr { get; }
         public string Description { get; }
         public string Objectives { get; }
         public string? Scope { get; }
@@ -12,10 +14,12 @@ namespace UniThesis.Domain.Aggregates.EvaluationAggregate.ValueObjects
         public string? ExpectedResults { get; }
         public DateTime CapturedAt { get; }
 
-        private ProjectSnapshot(string nameVi, string description, string objectives,
+        private ProjectSnapshot(string nameVi, string nameEn, string nameAbbr, string description, string objectives,
             string? scope, string? technologies, string? expectedResults, DateTime capturedAt)
         {
             NameVi = nameVi;
+            NameEn = nameEn;
+            NameAbbr = nameAbbr;
             Description = description;
             Objectives = objectives;
             Scope = scope;
@@ -24,15 +28,17 @@ namespace UniThesis.Domain.Aggregates.EvaluationAggregate.ValueObjects
             CapturedAt = capturedAt;
         }
 
-        public static ProjectSnapshot Capture(string nameVi, string description, string objectives,
-            string? scope, string? technologies, string? expectedResults)
+        public static ProjectSnapshot Capture(string nameVi, string nameEn, string nameAbbr, string description, string objectives,
+            string? scope, string? technologies, string? expectedResults, DateTime capturedAt)
         {
-            return new ProjectSnapshot(nameVi, description, objectives, scope, technologies, expectedResults, DateTime.UtcNow);
+            return new ProjectSnapshot(nameVi, nameEn, nameAbbr, description, objectives, scope, technologies, expectedResults, capturedAt);
         }
 
         protected override IEnumerable<object?> GetEqualityComponents()
         {
             yield return NameVi;
+            yield return NameEn;
+            yield return NameAbbr;
             yield return Description;
             yield return Objectives;
             yield return Scope;

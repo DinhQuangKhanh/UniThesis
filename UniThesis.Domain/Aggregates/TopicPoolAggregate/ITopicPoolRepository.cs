@@ -1,15 +1,35 @@
-﻿using UniThesis.Domain.Aggregates.TopicPoolAggregate.ValueObjects;
+﻿using UniThesis.Domain.Common.Interfaces;
 
-namespace UniThesis.Domain.Aggregates.TopicPoolAggregate
+namespace UniThesis.Domain.Aggregates.TopicPoolAggregate;
+
+/// <summary>
+/// Repository interface for TopicPool aggregate.
+/// </summary>
+public interface ITopicPoolRepository : IRepository<TopicPool, Guid>
 {
-    public interface ITopicPoolRepository
-    {
-        Task<TopicPool?> GetByCodeAsync(TopicCode code, CancellationToken cancellationToken = default);
-        Task<IEnumerable<TopicPool>> GetAvailableAsync(CancellationToken cancellationToken = default);
-        Task<IEnumerable<TopicPool>> GetByMajorIdAsync(int majorId, CancellationToken cancellationToken = default);
-        Task<IEnumerable<TopicPool>> GetByProposedByAsync(Guid mentorId, CancellationToken cancellationToken = default);
-        Task<IEnumerable<TopicPool>> GetExpiringAsync(int currentSemesterId, CancellationToken cancellationToken = default);
-        Task<bool> ExistsCodeAsync(TopicCode code, CancellationToken cancellationToken = default);
-        Task<int> GetNextSequenceAsync(int year, CancellationToken cancellationToken = default);
-    }
+    /// <summary>
+    /// Gets a topic pool by its code.
+    /// </summary>
+    Task<TopicPool?> GetByCodeAsync(string code, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the topic pool for a specific major.
+    /// Each major has exactly one permanent pool.
+    /// </summary>
+    Task<TopicPool?> GetByMajorIdAsync(int majorId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all active topic pools.
+    /// </summary>
+    Task<IEnumerable<TopicPool>> GetActivePoolsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks if a topic pool code already exists.
+    /// </summary>
+    Task<bool> ExistsCodeAsync(string code, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks if a topic pool already exists for a major.
+    /// </summary>
+    Task<bool> ExistsForMajorAsync(int majorId, CancellationToken cancellationToken = default);
 }

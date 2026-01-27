@@ -77,14 +77,14 @@ namespace UniThesis.Domain.Aggregates.MeetingAggregate
             RaiseDomainEvent(new MeetingRejectedEvent(Id, reason));
         }
 
-        public void Complete()
+        public void Complete(Guid projectId)
         {
             if (Status != MeetingStatus.Approved)
                 throw new BusinessRuleValidationException("Only approved meetings can be completed.");
 
             Status = MeetingStatus.Completed;
             UpdatedAt = DateTime.UtcNow;
-            RaiseDomainEvent(new MeetingCompletedEvent(Id));
+            RaiseDomainEvent(new MeetingCompletedEvent(Id, projectId));
         }
 
         public void Cancel()

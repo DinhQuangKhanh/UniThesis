@@ -24,6 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\UniThesis.Infrastructure\UniThesis.Infrastructure.csproj" />
     <ProjectReference Include="..\UniThesis.Persistence\UniThesis.Persistence.csproj" />
   </ItemGroup>
 

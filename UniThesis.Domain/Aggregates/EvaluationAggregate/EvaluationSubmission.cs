@@ -46,7 +46,7 @@ namespace UniThesis.Domain.Aggregates.EvaluationAggregate
             return submission;
         }
 
-        public void AssignEvaluator(Guid evaluatorId, Guid assignedBy)
+        public void AssignEvaluator(Guid evaluatorId, Guid assignedBy, Guid projectId)
         {
             if (AssignedEvaluatorId.HasValue)
                 throw new BusinessRuleValidationException("Evaluator is already assigned. Use ReassignEvaluator instead.");
@@ -54,17 +54,19 @@ namespace UniThesis.Domain.Aggregates.EvaluationAggregate
             AssignedEvaluatorId = evaluatorId;
             AssignedAt = DateTime.UtcNow;
             AssignedBy = assignedBy;
+            ProjectId = projectId;
             Status = SubmissionStatus.InReview;
-            RaiseDomainEvent(new EvaluatorAssignedEvent(Id, evaluatorId, assignedBy));
+            RaiseDomainEvent(new EvaluatorAssignedEvent(Id, evaluatorId, assignedBy, projectId));
         }
 
-        public void ReassignEvaluator(Guid newEvaluatorId, Guid reassignedBy)
+        public void ReassignEvaluator(Guid newEvaluatorId, Guid reassignedBy, Guid projectId)
         {
             var previousEvaluatorId = AssignedEvaluatorId;
             AssignedEvaluatorId = newEvaluatorId;
             AssignedAt = DateTime.UtcNow;
             AssignedBy = reassignedBy;
-            RaiseDomainEvent(new EvaluatorReassignedEvent(Id, previousEvaluatorId, newEvaluatorId, reassignedBy));
+            ProjectId = projectId;
+            RaiseDomainEvent(new EvaluatorReassignedEvent(Id, previousEvaluatorId, newEvaluatorId, reassignedBy, projectId));
         }
 
         public void Complete(EvaluationResult result)
@@ -73,7 +75,7 @@ namespace UniThesis.Domain.Aggregates.EvaluationAggregate
             Status = SubmissionStatus.Completed;
             Result = result;
             EvaluatedAt = DateTime.UtcNow;
-            RaiseDomainEvent(new EvaluationCompletedEvent(Id, ProjectId, result));
+            RaiseDomainEvent(new EvaluationCompletedEvent(Id, ProjectId, AssignedEvaluatorId, result));
         }
 
         public void Cancel()

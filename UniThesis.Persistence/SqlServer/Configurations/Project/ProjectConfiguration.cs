@@ -66,7 +66,13 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Project
 
             builder.Property(p => p.LastEvaluationResult)
                 .HasConversion<int?>();
+            builder.Property(p => p.PoolStatus)
+                .HasConversion<string>()
+                .HasMaxLength(20);
 
+            builder.Property(p => p.CreatedInSemesterId);
+
+            builder.Property(p => p.ExpirationSemesterId);
             // Relationships
             builder.HasMany(p => p.Mentors)
                 .WithOne()
@@ -87,12 +93,17 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Project
             builder.HasIndex(p => p.TopicPoolId);
             builder.HasIndex(p => p.CreatedAt);
             builder.HasIndex(p => p.SubmittedAt);
+            builder.HasIndex(p => p.PoolStatus)
+                .HasFilter("[SourceType] = 'FromPool'")
+                .HasDatabaseName("IX_Projects_PoolStatus");
+
+            builder.HasIndex(p => p.ExpirationSemesterId)
+                .HasFilter("[SourceType] = 'FromPool'")
+                .HasDatabaseName("IX_Projects_ExpirationSemesterId");
 
             // Ignore domain events collection
             builder.Ignore(p => p.DomainEvents);
             builder.Ignore(p => p.ActiveMentors);
-            builder.Ignore(p => p.PrimaryMentor);
-            builder.Ignore(p => p.SecondaryMentor);
         }
     }
 }
