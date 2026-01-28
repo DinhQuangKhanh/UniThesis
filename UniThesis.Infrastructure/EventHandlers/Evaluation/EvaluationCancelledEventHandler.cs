@@ -1,6 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using MediatR;
+using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Aggregates.EvaluationAggregate.Events;
-using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Domain.Enums.Evaluation;
 using UniThesis.Infrastructure.Services.Notification;
 using UniThesis.Persistence.MongoDB.Documents;
@@ -11,7 +11,7 @@ namespace UniThesis.Infrastructure.EventHandlers.Evaluation
     /// <summary>
     /// Handler for EvaluationCancelledEvent.
     /// </summary>
-    public class EvaluationCancelledEventHandler : IDomainEventHandler<EvaluationCancelledEvent>
+    public class EvaluationCancelledEventHandler : INotificationHandler<EvaluationCancelledEvent>
     {
         private readonly INotificationService _notificationService;
         private readonly IEvaluationLogRepository _evaluationLogRepository;
@@ -27,18 +27,18 @@ namespace UniThesis.Infrastructure.EventHandlers.Evaluation
             _logger = logger;
         }
 
-        public async Task HandleAsync(EvaluationCancelledEvent @event, CancellationToken cancellationToken = default)
+        public async Task Handle(EvaluationCancelledEvent notification, CancellationToken cancellationToken)
         {
             _logger.LogInformation(
                 "Evaluation cancelled: SubmissionId={SubmissionId}, ProjectId={ProjectId}",
-                @event.SubmissionId, @event.ProjectId);
+                notification.SubmissionId, notification.ProjectId);
 
             try
             {
                 // Log the cancellation
                 var log = new EvaluationLogDocument
                 {
-                    ProjectId = @event.ProjectId,
+                    ProjectId = notification.ProjectId,
                     Action = EvaluationAction.Cancelled,
                     PerformedAt = DateTime.UtcNow,
                 };
@@ -48,7 +48,7 @@ namespace UniThesis.Infrastructure.EventHandlers.Evaluation
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error handling EvaluationCancelledEvent for submission {SubmissionId}",
-                    @event.SubmissionId);
+                    notification.SubmissionId);
             }
         }
     }

@@ -1,22 +1,14 @@
-﻿
-
-namespace UniThesis.Domain.Common.Interfaces
+﻿namespace UniThesis.Domain.Common.Interfaces
 {
+    /// <summary>
+    /// DEPRECATED: This interface has been moved to UniThesis.Application.Common.Interfaces.
+    /// This alias is kept for backward compatibility. Please use the Application layer version.
+    /// </summary>
+    [Obsolete("Use UniThesis.Application.Common.Interfaces.IDateTimeService instead. This interface will be removed in a future version.")]
     public interface IDateTimeService
     {
-        /// <summary>
-        /// Gets the current UTC date and time.
-        /// </summary>
         DateTime UtcNow { get; }
-
-        /// <summary>
-        /// Gets the current local date and time.
-        /// </summary>
         DateTime Now { get; }
-
-        /// <summary>
-        /// Gets the current date (without time component).
-        /// </summary>
         DateOnly Today { get; }
     }
 }

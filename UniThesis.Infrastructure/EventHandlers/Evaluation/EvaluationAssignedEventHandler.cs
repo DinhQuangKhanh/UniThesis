@@ -1,11 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using MediatR;
+using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Aggregates.EvaluationAggregate.Events;
-using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Domain.Enums.Evaluation;
 using UniThesis.Infrastructure.Services.Notification;
 using UniThesis.Persistence.MongoDB.Documents;
@@ -13,7 +8,7 @@ using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
 
 namespace UniThesis.Infrastructure.EventHandlers.Evaluation
 {
-    public class EvaluationAssignedEventHandler : IDomainEventHandler<EvaluatorAssignedEvent>
+    public class EvaluationAssignedEventHandler : INotificationHandler<EvaluatorAssignedEvent>
     {
         private readonly INotificationService _notificationService;
         private readonly IEvaluationLogRepository _evaluationLogRepository;
@@ -29,18 +24,18 @@ namespace UniThesis.Infrastructure.EventHandlers.Evaluation
             _logger = logger;
         }
 
-        public async Task HandleAsync(EvaluatorAssignedEvent @event, CancellationToken ct = default)
+        public async Task Handle(EvaluatorAssignedEvent notification, CancellationToken cancellationToken)
         {
             await _evaluationLogRepository.AddAsync(new EvaluationLogDocument
             {
-                ProjectId = @event.ProjectId,
-                EvaluationSubmissionId = @event.SubmissionId,
+                ProjectId = notification.ProjectId,
+                EvaluationSubmissionId = notification.SubmissionId,
                 Action = EvaluationAction.Assigned,
-                PerformedBy = @event.AssignedBy,
+                PerformedBy = notification.AssignedBy,
                 PerformedAt = DateTime.UtcNow,
-            }, ct);
+            }, cancellationToken);
 
-            _logger.LogInformation("Evaluator assigned: {EvaluatorId} to project {ProjectId}", @event.EvaluatorId, @event.ProjectId);
+            _logger.LogInformation("Evaluator assigned: {EvaluatorId} to project {ProjectId}", notification.EvaluatorId, notification.ProjectId);
         }
     }
 }

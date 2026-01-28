@@ -1,18 +1,18 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using MediatR;
+using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Aggregates.GroupAggregate.Events;
-using UniThesis.Domain.Common.Interfaces;
 
 namespace UniThesis.Infrastructure.EventHandlers.Group
 {
-    public class GroupCreatedEventHandler : IDomainEventHandler<GroupCreatedEvent>
+    public class GroupCreatedEventHandler : INotificationHandler<GroupCreatedEvent>
     {
         private readonly ILogger<GroupCreatedEventHandler> _logger;
 
         public GroupCreatedEventHandler(ILogger<GroupCreatedEventHandler> logger) => _logger = logger;
 
-        public Task HandleAsync(GroupCreatedEvent @event, CancellationToken ct = default)
+        public Task Handle(GroupCreatedEvent notification, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Group created: {GroupId}, Code: {GroupCode}", @event.GroupId, @event.GroupCode);
+            _logger.LogInformation("Group created: {GroupId}, Code: {GroupCode}", notification.GroupId, notification.GroupCode);
             return Task.CompletedTask;
         }
     }

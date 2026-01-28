@@ -88,10 +88,5 @@ namespace UniThesis.Domain.Aggregates.EvaluationAggregate
         }
 
         public void SetNotes(string? notes) => Notes = notes;
-
-        private void CheckRule(IBusinessRule rule)
-        {
-            if (rule.IsBroken()) throw new BusinessRuleValidationException(rule);
-        }
     }
 }

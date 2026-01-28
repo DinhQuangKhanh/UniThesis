@@ -1,11 +1,11 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using MediatR;
+using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Aggregates.GroupAggregate.Events;
-using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Infrastructure.Services.Notification;
 
 namespace UniThesis.Infrastructure.EventHandlers.Group
 {
-    public class MemberAddedEventHandler : IDomainEventHandler<MemberAddedEvent>
+    public class MemberAddedEventHandler : INotificationHandler<MemberAddedEvent>
     {
         private readonly INotificationService _notificationService;
         private readonly ILogger<MemberAddedEventHandler> _logger;
@@ -16,9 +16,9 @@ namespace UniThesis.Infrastructure.EventHandlers.Group
             _logger = logger;
         }
 
-        public async Task HandleAsync(MemberAddedEvent @event, CancellationToken ct = default)
+        public async Task Handle(MemberAddedEvent notification, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Member added to group: {StudentId} -> {GroupId}", @event.StudentId, @event.GroupId);
+            _logger.LogInformation("Member added to group: {StudentId} -> {GroupId}", notification.StudentId, notification.GroupId);
             await Task.CompletedTask;
         }
     }

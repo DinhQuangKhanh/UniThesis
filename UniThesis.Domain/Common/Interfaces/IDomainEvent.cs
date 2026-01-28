@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using MediatR;
 
 namespace UniThesis.Domain.Common.Interfaces
 {
-    public interface IDomainEvent
+    /// <summary>
+    /// Marker interface for domain events. Inherits from MediatR's INotification for automatic publishing.
+    /// </summary>
+    public interface IDomainEvent : INotification
     {
         /// <summary>
         /// Gets the unique identifier of the event.

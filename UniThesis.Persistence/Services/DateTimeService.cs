@@ -1,4 +1,4 @@
-﻿using UniThesis.Domain.Common.Interfaces;
+﻿using UniThesis.Application.Common.Interfaces;
 
 namespace UniThesis.Persistence.Services
 {

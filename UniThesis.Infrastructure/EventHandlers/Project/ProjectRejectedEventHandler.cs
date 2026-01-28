@@ -1,11 +1,11 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using MediatR;
+using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Aggregates.ProjectAggregate.Events;
-using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Infrastructure.Services.Notification;
 
 namespace UniThesis.Infrastructure.EventHandlers.Project
 {
-    public class ProjectRejectedEventHandler : IDomainEventHandler<ProjectRejectedEvent>
+    public class ProjectRejectedEventHandler : INotificationHandler<ProjectRejectedEvent>
     {
         private readonly INotificationService _notificationService;
         private readonly ILogger<ProjectRejectedEventHandler> _logger;
@@ -16,9 +16,9 @@ namespace UniThesis.Infrastructure.EventHandlers.Project
             _logger = logger;
         }
 
-        public async Task HandleAsync(ProjectRejectedEvent @event, CancellationToken ct = default)
+        public async Task Handle(ProjectRejectedEvent notification, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Project rejected: {ProjectId}", @event.ProjectId);
+            _logger.LogInformation("Project rejected: {ProjectId}", notification.ProjectId);
             await Task.CompletedTask;
         }
     }

@@ -366,10 +366,5 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
 
             return ExpirationSemesterId.HasValue && currentSemesterId > ExpirationSemesterId.Value;
         }
-
-        private void CheckRule(IBusinessRule rule)
-        {
-            if (rule.IsBroken()) throw new BusinessRuleValidationException(rule);
-        }
     }
 }

@@ -1,60 +1,28 @@
-﻿namespace UniThesis.Domain.Common.Exceptions
+﻿// This file is deprecated. Use EntityNotFoundException instead.
+// Kept as an alias for backward compatibility.
+
+namespace UniThesis.Domain.Common.Exceptions
 {
-    public class NotFoundException : DomainException
+    /// <summary>
+    /// DEPRECATED: Use EntityNotFoundException instead.
+    /// This class is kept as an alias for backward compatibility.
+    /// </summary>
+    [Obsolete("Use EntityNotFoundException instead. This class will be removed in a future version.")]
+    public class NotFoundException : EntityNotFoundException
     {
-        /// <summary>
-        /// Gets the type of resource that was not found.
-        /// </summary>
-        public string ResourceType { get; }
-
-        /// <summary>
-        /// Gets the identifier of the resource that was not found.
-        /// </summary>
-        public string? ResourceId { get; }
-
-        /// <summary>
-        /// Initializes a new instance of the NotFoundException class.
-        /// </summary>
-        /// <param name="message">The error message.</param>
         public NotFoundException(string message)
-            : base(message, "NOT_FOUND")
+            : base("Resource", message)
         {
-            ResourceType = "Resource";
         }
 
-        /// <summary>
-        /// Initializes a new instance of the NotFoundException class.
-        /// </summary>
-        /// <param name="resourceType">The type of resource not found.</param>
-        /// <param name="resourceId">The identifier of the resource.</param>
         public NotFoundException(string resourceType, string resourceId)
-            : base($"{resourceType} with identifier '{resourceId}' was not found.", "NOT_FOUND")
+            : base(resourceType, resourceId)
         {
-            ResourceType = resourceType;
-            ResourceId = resourceId;
         }
 
-        /// <summary>
-        /// Initializes a new instance of the NotFoundException class.
-        /// </summary>
-        /// <param name="resourceType">The type of resource not found.</param>
-        /// <param name="resourceId">The identifier of the resource.</param>
         public NotFoundException(string resourceType, object resourceId)
-            : base($"{resourceType} with identifier '{resourceId}' was not found.", "NOT_FOUND")
+            : base(resourceType, resourceId)
         {
-            ResourceType = resourceType;
-            ResourceId = resourceId.ToString();
-        }
-
-        /// <summary>
-        /// Creates a NotFoundException for a specific entity type.
-        /// </summary>
-        /// <typeparam name="T">The entity type.</typeparam>
-        /// <param name="id">The entity identifier.</param>
-        /// <returns>A new NotFoundException instance.</returns>
-        public static NotFoundException For<T>(object id)
-        {
-            return new NotFoundException(typeof(T).Name, id);
         }
     }
 }

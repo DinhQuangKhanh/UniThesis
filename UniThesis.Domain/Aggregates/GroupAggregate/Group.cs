@@ -121,10 +121,5 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
             MaxMembers = maxMembers;
             UpdatedAt = DateTime.UtcNow;
         }
-
-        private void CheckRule(IBusinessRule rule)
-        {
-            if (rule.IsBroken()) throw new BusinessRuleValidationException(rule);
-        }
     }
 }

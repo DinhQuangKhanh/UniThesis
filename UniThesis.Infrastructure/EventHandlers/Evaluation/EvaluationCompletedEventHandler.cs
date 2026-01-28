@@ -1,6 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using MediatR;
+using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Aggregates.EvaluationAggregate.Events;
-using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Domain.Enums.Evaluation;
 using UniThesis.Infrastructure.Services.Notification;
 using UniThesis.Persistence.MongoDB.Documents;
@@ -8,7 +8,7 @@ using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
 
 namespace UniThesis.Infrastructure.EventHandlers.Evaluation
 {
-    public class EvaluationCompletedEventHandler : IDomainEventHandler<EvaluationCompletedEvent>
+    public class EvaluationCompletedEventHandler : INotificationHandler<EvaluationCompletedEvent>
     {
         private readonly INotificationService _notificationService;
         private readonly IEvaluationLogRepository _evaluationLogRepository;
@@ -24,19 +24,19 @@ namespace UniThesis.Infrastructure.EventHandlers.Evaluation
             _logger = logger;
         }
 
-        public async Task HandleAsync(EvaluationCompletedEvent @event, CancellationToken ct = default)
+        public async Task Handle(EvaluationCompletedEvent notification, CancellationToken cancellationToken)
         {
             await _evaluationLogRepository.AddAsync(new EvaluationLogDocument
             {
-                ProjectId = @event.ProjectId,
-                EvaluationSubmissionId = @event.SubmissionId,
+                ProjectId = notification.ProjectId,
+                EvaluationSubmissionId = notification.SubmissionId,
                 Action = EvaluationAction.Completed,
-                Result = @event.Result,
-                PerformedBy = (Guid)@event.EvaluatorId,
+                Result = notification.Result,
+                PerformedBy = (Guid)notification.EvaluatorId,
                 PerformedAt = DateTime.UtcNow
-            }, ct);
+            }, cancellationToken);
 
-            _logger.LogInformation("Evaluation completed: {ProjectId}, Result: {Result}", @event.ProjectId, @event.Result);
+            _logger.LogInformation("Evaluation completed: {ProjectId}, Result: {Result}", notification.ProjectId, notification.Result);
         }
     }
 }

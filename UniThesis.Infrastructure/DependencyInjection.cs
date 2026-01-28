@@ -7,13 +7,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using UniThesis.Domain.Aggregates.DefenseAggregate.Events;
-using UniThesis.Domain.Aggregates.EvaluationAggregate.Events;
-using UniThesis.Domain.Aggregates.GroupAggregate.Events;
-using UniThesis.Domain.Aggregates.MeetingAggregate.Events;
-using UniThesis.Domain.Aggregates.ProjectAggregate.Events;
-using UniThesis.Domain.Aggregates.TopicPoolAggregate.Events;
-using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Domain.Services;
 using UniThesis.Infrastructure.Authentication;
 using UniThesis.Infrastructure.Authorization;
@@ -22,12 +15,6 @@ using UniThesis.Infrastructure.BackgroundJobs;
 using UniThesis.Infrastructure.BackgroundJobs.Jobs;
 using UniThesis.Infrastructure.BackgroundJobs.Scheduling;
 using UniThesis.Infrastructure.Caching;
-using UniThesis.Infrastructure.EventHandlers.Defense;
-using UniThesis.Infrastructure.EventHandlers.Evaluation;
-using UniThesis.Infrastructure.EventHandlers.Group;
-using UniThesis.Infrastructure.EventHandlers.Meeting;
-using UniThesis.Infrastructure.EventHandlers.Project;
-using UniThesis.Infrastructure.EventHandlers.TopicPool;
 using UniThesis.Infrastructure.HealthChecks;
 using UniThesis.Infrastructure.Middleware;
 using UniThesis.Infrastructure.Services.DomainServices;
@@ -44,6 +31,9 @@ namespace UniThesis.Infrastructure
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
+            // MediatR - Auto-discover all handlers from this assembly
+            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
+
             // JWT Authentication
             services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
             var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()!;
@@ -130,20 +120,6 @@ namespace UniThesis.Infrastructure
             var hangfireConn = configuration.GetConnectionString("HangfireConnection") ?? configuration.GetConnectionString("DefaultConnection");
             services.AddHangfire(c => c.SetDataCompatibilityLevel(CompatibilityLevel.Version_180).UseSimpleAssemblyNameTypeSerializer().UseRecommendedSerializerSettings().UseSqlServerStorage(hangfireConn));
             services.AddHangfireServer();
-
-            // Event Handlers
-            services.AddScoped<IDomainEventHandler<ProjectCreatedEvent>, ProjectCreatedEventHandler>();
-            services.AddScoped<IDomainEventHandler<ProjectSubmittedEvent>, ProjectSubmittedEventHandler>();
-            services.AddScoped<IDomainEventHandler<ProjectApprovedEvent>, ProjectApprovedEventHandler>();
-            services.AddScoped<IDomainEventHandler<ProjectRejectedEvent>, ProjectRejectedEventHandler>();
-            services.AddScoped<IDomainEventHandler<EvaluatorAssignedEvent>, EvaluationAssignedEventHandler>();
-            services.AddScoped<IDomainEventHandler<EvaluationCompletedEvent>, EvaluationCompletedEventHandler>();
-            services.AddScoped<IDomainEventHandler<GroupCreatedEvent>, GroupCreatedEventHandler>();
-            services.AddScoped<IDomainEventHandler<MemberAddedEvent>, MemberAddedEventHandler>();
-            services.AddScoped<IDomainEventHandler<MeetingRequestedEvent>, MeetingRequestedEventHandler>();
-            services.AddScoped<IDomainEventHandler<MeetingApprovedEvent>, MeetingApprovedEventHandler>();
-            services.AddScoped<IDomainEventHandler<DefenseScheduledEvent>, DefenseScheduledEventHandler>();
-            services.AddScoped<IDomainEventHandler<DefenseCompletedEvent>, DefenseCompletedEventHandler>();
 
             // SignalR
             services.AddSignalR();

@@ -1,6 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using MediatR;
+using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Aggregates.ProjectAggregate.Events;
-using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Domain.Enums.Evaluation;
 using UniThesis.Infrastructure.Services.Notification;
 using UniThesis.Persistence.MongoDB.Documents;
@@ -8,7 +8,7 @@ using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
 
 namespace UniThesis.Infrastructure.EventHandlers.Project
 {
-    public class ProjectSubmittedEventHandler : IDomainEventHandler<ProjectSubmittedEvent>
+    public class ProjectSubmittedEventHandler : INotificationHandler<ProjectSubmittedEvent>
     {
         private readonly INotificationService _notificationService;
         private readonly IEvaluationLogRepository _evaluationLogRepository;
@@ -27,26 +27,26 @@ namespace UniThesis.Infrastructure.EventHandlers.Project
             _logger = logger;
         }
 
-        public async Task HandleAsync(ProjectSubmittedEvent @event, CancellationToken ct = default)
+        public async Task Handle(ProjectSubmittedEvent notification, CancellationToken cancellationToken)
         {
             await _evaluationLogRepository.AddAsync(new EvaluationLogDocument
             {
-                ProjectId = @event.ProjectId,
+                ProjectId = notification.ProjectId,
                 Action = EvaluationAction.Submitted,
-                PerformedBy = @event.SubmittedBy,
+                PerformedBy = notification.SubmittedBy,
                 PerformedAt = DateTime.UtcNow,
-            }, ct);
+            }, cancellationToken);
 
             await _activityLogRepository.AddAsync(new UserActivityLogDocument
             {
-                UserId = @event.SubmittedBy,
+                UserId = notification.SubmittedBy,
                 Action = "ProjectSubmitted",
                 EntityType = "Project",
-                EntityId = @event.ProjectId,
+                EntityId = notification.ProjectId,
                 Timestamp = DateTime.UtcNow,
-            }, ct);
+            }, cancellationToken);
 
-            _logger.LogInformation("Project submitted for evaluation: {ProjectId}", @event.ProjectId);
+            _logger.LogInformation("Project submitted for evaluation: {ProjectId}", notification.ProjectId);
         }
     }
 }

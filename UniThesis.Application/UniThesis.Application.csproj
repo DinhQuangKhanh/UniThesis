@@ -7,28 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Common\Interfaces\" />
-    <Folder Include="Common\Behaviors\" />
-    <Folder Include="Common\Mappings\" />
-    <Folder Include="Features\Evaluations\Commands\" />
-    <Folder Include="Features\Evaluations\DTOs\" />
-    <Folder Include="Features\Evaluations\EventHandlers\" />
-    <Folder Include="Features\Evaluations\Queries\" />
-    <Folder Include="Features\Semesters\Commands\" />
-    <Folder Include="Features\Semesters\DTOs\" />
-    <Folder Include="Features\Semesters\Queries\" />
-    <Folder Include="Features\StudentGroups\Commands\" />
-    <Folder Include="Features\StudentGroups\DTOs\" />
-    <Folder Include="Features\StudentGroups\Queries\" />
-    <Folder Include="Features\Topics\Commands\" />
-    <Folder Include="Features\Topics\DTOs\" />
-    <Folder Include="Features\Topics\EventHandlers\" />
-    <Folder Include="Features\Topics\Queries\" />
-    <Folder Include="Features\Users\Commands\" />
-    <Folder Include="Features\Users\DTOs\" />
-    <Folder Include="Features\Users\Queries\" />
-    <Folder Include="BackgroundJobs\" />
-    <Folder Include="Services\" />
+    <PackageReference Include="FluentValidation" Version="11.11.0" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
+    <PackageReference Include="MediatR" Version="12.4.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UniThesis.Domain\UniThesis.Domain.csproj" />
   </ItemGroup>
 
 </Project>

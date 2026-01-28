@@ -1,18 +1,18 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using MediatR;
+using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Aggregates.TopicPoolAggregate.Events;
-using UniThesis.Domain.Common.Interfaces;
 
 namespace UniThesis.Infrastructure.EventHandlers.TopicPool
 {
-    public class TopicPoolActivatedEventHandler : IDomainEventHandler<TopicPoolActivatedEvent>
+    public class TopicPoolActivatedEventHandler : INotificationHandler<TopicPoolActivatedEvent>
     {
         private readonly ILogger<TopicPoolActivatedEventHandler> _logger;
 
         public TopicPoolActivatedEventHandler(ILogger<TopicPoolActivatedEventHandler> logger) => _logger = logger;
 
-        public Task HandleAsync(TopicPoolActivatedEvent @event, CancellationToken cancellationToken = default)
+        public Task Handle(TopicPoolActivatedEvent notification, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Topic pool activated: {PoolId}", @event.TopicPoolId);
+            _logger.LogInformation("Topic pool activated: {PoolId}", notification.TopicPoolId);
             return Task.CompletedTask;
         }
     }

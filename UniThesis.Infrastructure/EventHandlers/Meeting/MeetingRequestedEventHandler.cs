@@ -1,11 +1,11 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using MediatR;
+using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Aggregates.MeetingAggregate.Events;
-using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Infrastructure.Services.Notification;
 
 namespace UniThesis.Infrastructure.EventHandlers.Meeting
 {
-    public class MeetingRequestedEventHandler : IDomainEventHandler<MeetingRequestedEvent>
+    public class MeetingRequestedEventHandler : INotificationHandler<MeetingRequestedEvent>
     {
         private readonly INotificationService _notificationService;
         private readonly ILogger<MeetingRequestedEventHandler> _logger;
@@ -16,9 +16,9 @@ namespace UniThesis.Infrastructure.EventHandlers.Meeting
             _logger = logger;
         }
 
-        public async Task HandleAsync(MeetingRequestedEvent @event, CancellationToken ct = default)
+        public async Task Handle(MeetingRequestedEvent notification, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Meeting requested: {MeetingId} by Group {GroupId}", @event.MeetingId, @event.GroupId);
+            _logger.LogInformation("Meeting requested: {MeetingId} by Group {GroupId}", notification.MeetingId, notification.GroupId);
             await Task.CompletedTask;
         }
     }

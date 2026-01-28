@@ -1,28 +1,27 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.DependencyInjection;
-using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Domain.Common.Primitives;
 
 namespace UniThesis.Persistence.SqlServer.Interceptors
 {
     /// <summary>
-    /// Interceptor for dispatching domain events after save.
+    /// Interceptor for dispatching domain events after save using MediatR.
     /// </summary>
     public class DomainEventInterceptor : SaveChangesInterceptor
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IPublisher _publisher;
 
-        public DomainEventInterceptor(IServiceProvider serviceProvider)
+        public DomainEventInterceptor(IPublisher publisher)
         {
-            _serviceProvider = serviceProvider;
+            _publisher = publisher;
         }
 
         public override int SavedChanges(
             SaveChangesCompletedEventData eventData,
             int result)
         {
-            DispatchDomainEvents(eventData.Context).GetAwaiter().GetResult();
+            DispatchDomainEventsAsync(eventData.Context).GetAwaiter().GetResult();
             return base.SavedChanges(eventData, result);
         }
 
@@ -31,11 +30,11 @@ namespace UniThesis.Persistence.SqlServer.Interceptors
             int result,
             CancellationToken cancellationToken = default)
         {
-            await DispatchDomainEvents(eventData.Context);
+            await DispatchDomainEventsAsync(eventData.Context, cancellationToken);
             return await base.SavedChangesAsync(eventData, result, cancellationToken);
         }
 
-        private async Task DispatchDomainEvents(DbContext? context)
+        private async Task DispatchDomainEventsAsync(DbContext? context, CancellationToken cancellationToken = default)
         {
             if (context is null) return;
 
@@ -51,28 +50,10 @@ namespace UniThesis.Persistence.SqlServer.Interceptors
 
             aggregateRoots.ForEach(ar => ar.ClearDomainEvents());
 
+            // Use MediatR to publish events - much cleaner and type-safe
             foreach (var domainEvent in domainEvents)
             {
-                // Get handler type dynamically
-                var handlerType = typeof(IDomainEventHandler<>).MakeGenericType(domainEvent.GetType());
-
-                // Resolve all handlers for this event type
-                var handlers = _serviceProvider.GetServices(handlerType);
-
-                foreach (var handler in handlers)
-                {
-                    if (handler is null) continue;
-
-                    var method = handlerType.GetMethod("HandleAsync");
-                    if (method is not null)
-                    {
-                        var task = method.Invoke(handler, new object[] { domainEvent, CancellationToken.None }) as Task;
-                        if (task is not null)
-                        {
-                            await task;
-                        }
-                    }
-                }
+                await _publisher.Publish(domainEvent, cancellationToken);
             }
         }
     }

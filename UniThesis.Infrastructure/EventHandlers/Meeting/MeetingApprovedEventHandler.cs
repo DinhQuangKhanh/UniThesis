@@ -1,11 +1,11 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using MediatR;
+using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Aggregates.MeetingAggregate.Events;
-using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Infrastructure.Services.Notification;
 
 namespace UniThesis.Infrastructure.EventHandlers.Meeting
 {
-    public class MeetingApprovedEventHandler : IDomainEventHandler<MeetingApprovedEvent>
+    public class MeetingApprovedEventHandler : INotificationHandler<MeetingApprovedEvent>
     {
         private readonly INotificationService _notificationService;
         private readonly ILogger<MeetingApprovedEventHandler> _logger;
@@ -16,9 +16,9 @@ namespace UniThesis.Infrastructure.EventHandlers.Meeting
             _logger = logger;
         }
 
-        public async Task HandleAsync(MeetingApprovedEvent @event, CancellationToken ct = default)
+        public async Task Handle(MeetingApprovedEvent notification, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Meeting approved: {MeetingId}", @event.MeetingId);
+            _logger.LogInformation("Meeting approved: {MeetingId}", notification.MeetingId);
             await Task.CompletedTask;
         }
     }

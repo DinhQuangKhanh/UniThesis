@@ -1,18 +1,18 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using MediatR;
+using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Aggregates.ProjectAggregate.Events;
-using UniThesis.Domain.Common.Interfaces;
 
 namespace UniThesis.Infrastructure.EventHandlers.Project
 {
-    public class ProjectCreatedEventHandler : IDomainEventHandler<ProjectCreatedEvent>
+    public class ProjectCreatedEventHandler : INotificationHandler<ProjectCreatedEvent>
     {
         private readonly ILogger<ProjectCreatedEventHandler> _logger;
 
         public ProjectCreatedEventHandler(ILogger<ProjectCreatedEventHandler> logger) => _logger = logger;
 
-        public Task HandleAsync(ProjectCreatedEvent @event, CancellationToken ct = default)
+        public Task Handle(ProjectCreatedEvent notification, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Project created: {ProjectId}, Code: {ProjectCode}", @event.ProjectId, @event.ProjectCode);
+            _logger.LogInformation("Project created: {ProjectId}, Code: {ProjectCode}", notification.ProjectId, notification.ProjectCode);
             return Task.CompletedTask;
         }
     }

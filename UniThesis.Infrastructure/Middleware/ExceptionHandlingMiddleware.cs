@@ -34,9 +34,10 @@ namespace UniThesis.Infrastructure.Middleware
         {
             var (statusCode, response) = exception switch
             {
-                
-                NotFoundException notFoundEx => (HttpStatusCode.NotFound, new ErrorResponse("NotFound", notFoundEx.Message)),
+                EntityNotFoundException entityNotFoundEx => (HttpStatusCode.NotFound, new ErrorResponse("NotFound", entityNotFoundEx.Message)),
                 Domain.Common.Exceptions.ValidationException validationEx => (HttpStatusCode.BadRequest, new ErrorResponse("ValidationError", validationEx.Message, validationEx.Errors)),
+                BusinessRuleValidationException businessRuleEx => (HttpStatusCode.BadRequest, new ErrorResponse("BusinessRuleViolation", businessRuleEx.Message)),
+                ConcurrencyException concurrencyEx => (HttpStatusCode.Conflict, new ErrorResponse("ConcurrencyConflict", concurrencyEx.Message)),
                 UnauthorizedAccessException => (HttpStatusCode.Forbidden, new ErrorResponse("Forbidden", "You don't have permission to access this resource.")),
                 DomainException domainEx => (HttpStatusCode.BadRequest, new ErrorResponse("DomainError", domainEx.Message)),
                 _ => (HttpStatusCode.InternalServerError, new ErrorResponse("InternalError", "An unexpected error occurred."))

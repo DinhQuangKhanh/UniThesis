@@ -1,11 +1,11 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using MediatR;
+using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Aggregates.ProjectAggregate.Events;
-using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Infrastructure.Services.Notification;
 
 namespace UniThesis.Infrastructure.EventHandlers.Project
 {
-    public class ProjectApprovedEventHandler : IDomainEventHandler<ProjectApprovedEvent>
+    public class ProjectApprovedEventHandler : INotificationHandler<ProjectApprovedEvent>
     {
         private readonly INotificationService _notificationService;
         private readonly ILogger<ProjectApprovedEventHandler> _logger;
@@ -16,10 +16,10 @@ namespace UniThesis.Infrastructure.EventHandlers.Project
             _logger = logger;
         }
 
-        public async Task HandleAsync(ProjectApprovedEvent @event, CancellationToken ct = default)
+        public async Task Handle(ProjectApprovedEvent notification, CancellationToken cancellationToken)
         {
             // Notification would be sent with project name - simplified here
-            _logger.LogInformation("Project approved: {ProjectId}", @event.ProjectId);
+            _logger.LogInformation("Project approved: {ProjectId}", notification.ProjectId);
             await Task.CompletedTask;
         }
     }

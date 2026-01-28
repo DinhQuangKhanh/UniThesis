@@ -1,7 +1,7 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using MediatR;
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using UniThesis.Domain.Aggregates.GroupAggregate.Events;
-using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Domain.Enums.Notification;
 using UniThesis.Infrastructure.Services.Notification;
 using UniThesis.Persistence.MongoDB.Documents;
@@ -9,7 +9,7 @@ using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
 
 namespace UniThesis.Infrastructure.EventHandlers.Group
 {
-    public class MemberRemovedEventHandler : IDomainEventHandler<MemberRemovedEvent>
+    public class MemberRemovedEventHandler : INotificationHandler<MemberRemovedEvent>
     {
         private readonly INotificationService _notificationService;
         private readonly IUserActivityLogRepository _activityLogRepository;
@@ -25,26 +25,26 @@ namespace UniThesis.Infrastructure.EventHandlers.Group
             _logger = logger;
         }
 
-        public async Task HandleAsync(MemberRemovedEvent @event, CancellationToken cancellationToken = default)
+        public async Task Handle(MemberRemovedEvent notification, CancellationToken cancellationToken)
         {
             _logger.LogInformation(
                 "Member removed from group: GroupId={GroupId}, StudentId={StudentId}, RemovedBy={RemovedBy}",
-                @event.GroupId, @event.StudentId, @event.RemovedBy);
+                notification.GroupId, notification.StudentId, notification.RemovedBy);
 
             try
             {
                 // Log the activity
                 var log = new UserActivityLogDocument
                 {
-                    UserId = @event.RemovedBy,
+                    UserId = notification.RemovedBy,
                     Action = "MemberRemoved",
                     EntityType = "Group",
-                    EntityId = @event.GroupId,
+                    EntityId = notification.GroupId,
                     Timestamp = DateTime.UtcNow,
                     Details = new BsonDocument
                     {
-                        ["GroupId"] = new BsonBinaryData(@event.GroupId.ToByteArray()),
-                        ["RemovedStudentId"] = new BsonBinaryData(@event.StudentId.ToByteArray()),
+                        ["GroupId"] = new BsonBinaryData(notification.GroupId.ToByteArray()),
+                        ["RemovedStudentId"] = new BsonBinaryData(notification.StudentId.ToByteArray()),
                     }
                 };
 
@@ -52,7 +52,7 @@ namespace UniThesis.Infrastructure.EventHandlers.Group
 
                 // Notify the removed student
                 await _notificationService.SendAsync(
-                    @event.StudentId,
+                    notification.StudentId,
                     "Bạn đã bị xóa khỏi nhóm",
                     "Bạn đã bị xóa khỏi nhóm đồ án. Vui lòng liên hệ nhóm trưởng để biết thêm chi tiết.",
                     NotificationType.Warning,
@@ -62,7 +62,7 @@ namespace UniThesis.Infrastructure.EventHandlers.Group
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error handling MemberRemovedEvent for group {GroupId}", @event.GroupId);
+                _logger.LogError(ex, "Error handling MemberRemovedEvent for group {GroupId}", notification.GroupId);
             }
         }
     }

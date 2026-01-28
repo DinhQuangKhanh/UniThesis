@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using UniThesis.Application.Common.Interfaces;
 using UniThesis.Domain.Aggregates.DefenseAggregate;
 using UniThesis.Domain.Aggregates.EvaluationAggregate;
 using UniThesis.Domain.Aggregates.GroupAggregate;
@@ -34,8 +35,8 @@ namespace UniThesis.Persistence
             services.AddHttpContextAccessor();
 
             // Add Core Services
-            services.AddScoped<ICurrentUserService, CurrentUserService>();
-            services.AddSingleton<IDateTimeService, DateTimeService>();
+            services.AddScoped<Application.Common.Interfaces.ICurrentUserService, CurrentUserService>();
+            services.AddSingleton<Application.Common.Interfaces.IDateTimeService, DateTimeService>();
 
             // Add Interceptors
             services.AddScoped<AuditableEntityInterceptor>();

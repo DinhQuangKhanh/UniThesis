@@ -114,10 +114,5 @@ namespace UniThesis.Domain.Aggregates.SemesterAggregate
             EndDate = endDate;
             UpdatedAt = DateTime.UtcNow;
         }
-
-        private void CheckRule(IBusinessRule rule)
-        {
-            if (rule.IsBroken()) throw new BusinessRuleValidationException(rule);
-        }
     }
 }
