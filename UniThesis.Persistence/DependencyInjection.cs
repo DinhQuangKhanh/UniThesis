@@ -87,6 +87,7 @@ namespace UniThesis.Persistence
             services.AddScoped<IDefenseScheduleRepository, DefenseScheduleRepository>();
             services.AddScoped<IMeetingScheduleRepository, MeetingScheduleRepository>();
             services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
+            services.AddScoped<ITopicRegistrationRepository, TopicRegistrationRepository>();
 
             // Add MongoDB Repositories
             services.AddScoped<IEvaluationLogRepository, EvaluationLogRepository>();

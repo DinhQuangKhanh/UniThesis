@@ -1,5 +1,5 @@
 ﻿using UniThesis.Domain.Aggregates.SemesterAggregate;
-using UniThesis.Domain.Common.Interfaces;
+using UniThesis.Application.Common.Interfaces;
 using UniThesis.Domain.Services;
 
 namespace UniThesis.Infrastructure.Services.DomainServices

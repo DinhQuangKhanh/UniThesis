@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using UniThesis.Domain.Common.Interfaces;
+using UniThesis.Application.Common.Interfaces;
 using UniThesis.Domain.Common.Primitives;
 
 namespace UniThesis.Persistence.SqlServer.Interceptors

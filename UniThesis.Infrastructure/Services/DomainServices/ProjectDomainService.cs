@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using UniThesis.Application.Common.Interfaces;
 using UniThesis.Domain.Aggregates.EvaluationAggregate.ValueObjects;
 using UniThesis.Domain.Aggregates.GroupAggregate;
 using UniThesis.Domain.Aggregates.ProjectAggregate;
-using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Domain.Enums.Project;
 using UniThesis.Domain.Services;
 using UniThesis.Persistence.SqlServer;
