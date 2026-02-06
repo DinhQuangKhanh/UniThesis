@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using UniThesis.Domain.Enums.Project;
 using UniThesis.Persistence.ValueConverters;
 
 namespace UniThesis.Persistence.SqlServer.Configurations.Project
@@ -94,12 +95,49 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Project
             builder.HasIndex(p => p.CreatedAt);
             builder.HasIndex(p => p.SubmittedAt);
             builder.HasIndex(p => p.PoolStatus)
-                .HasFilter("[SourceType] = 'FromPool'")
+                .HasFilter($"[SourceType] = {(int)ProjectSourceType.FromPool}")
                 .HasDatabaseName("IX_Projects_PoolStatus");
 
             builder.HasIndex(p => p.ExpirationSemesterId)
-                .HasFilter("[SourceType] = 'FromPool'")
+                .HasFilter($"[SourceType] = {(int)ProjectSourceType.FromPool}")
                 .HasDatabaseName("IX_Projects_ExpirationSemesterId");
+
+
+            // Foreign key to Semester
+            builder.HasOne<Domain.Aggregates.SemesterAggregate.Semester>()
+                .WithMany()
+                .HasForeignKey(p => p.SemesterId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Foreign key to Major
+            builder.HasOne<Domain.Entities.Major>()
+                .WithMany()
+                .HasForeignKey(p => p.MajorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Foreign key to TopicPool (nullable)
+            builder.HasOne<Domain.Aggregates.TopicPoolAggregate.TopicPool>()
+                .WithMany()
+                .HasForeignKey(p => p.TopicPoolId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Foreign key to User (SubmittedBy) - nullable
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(p => p.SubmittedBy)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Foreign key to Semester (CreatedInSemesterId) - nullable
+            builder.HasOne<Domain.Aggregates.SemesterAggregate.Semester>()
+                .WithMany()
+                .HasForeignKey(p => p.CreatedInSemesterId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Foreign key to Semester (ExpirationSemesterId) - nullable
+            builder.HasOne<Domain.Aggregates.SemesterAggregate.Semester>()
+                .WithMany()
+                .HasForeignKey(p => p.ExpirationSemesterId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Ignore domain events collection
             builder.Ignore(p => p.DomainEvents);

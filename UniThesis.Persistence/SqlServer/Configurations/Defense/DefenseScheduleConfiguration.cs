@@ -40,6 +40,12 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Defense
             builder.HasIndex(d => d.Status);
             builder.HasIndex(d => d.ScheduledDate);
 
+            // Foreign key to Group
+            builder.HasOne<Domain.Aggregates.GroupAggregate.Group>()
+                .WithMany()
+                .HasForeignKey(d => d.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // Ignore domain events
             builder.Ignore(d => d.DomainEvents);
         }

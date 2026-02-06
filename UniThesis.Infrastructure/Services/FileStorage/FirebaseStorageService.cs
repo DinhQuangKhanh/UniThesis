@@ -1,0 +1,233 @@
+using Google.Cloud.Storage.V1;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace UniThesis.Infrastructure.Services.FileStorage
+{
+    /// <summary>
+    /// Firebase/Google Cloud Storage service implementation.
+    /// </summary>
+    public class FirebaseStorageService : IFileStorageService
+    {
+        private readonly FileStorageSettings _settings;
+        private readonly ILogger<FirebaseStorageService> _logger;
+        private readonly StorageClient _storageClient;
+
+        public FirebaseStorageService(
+            IOptions<FileStorageSettings> settings,
+            ILogger<FirebaseStorageService> logger)
+        {
+            _settings = settings.Value;
+            _logger = logger;
+            _storageClient = StorageClient.Create();
+        }
+
+        /// <inheritdoc/>
+        public async Task<FileUploadResult> UploadAsync(Stream stream, string fileName, string folder, CancellationToken ct = default)
+        {
+            try
+            {
+                // Validate file
+                var extension = Path.GetExtension(fileName).ToLowerInvariant();
+                if (!_settings.AllowedExtensions.Contains(extension))
+                {
+                    return new FileUploadResult(false, null, null, $"File extension '{extension}' is not allowed.");
+                }
+
+                if (stream.Length > _settings.MaxFileSizeBytes)
+                {
+                    return new FileUploadResult(false, null, null, $"File size exceeds maximum allowed size of {_settings.MaxFileSizeBytes / (1024 * 1024)}MB.");
+                }
+
+                // Generate unique file name
+                var uniqueFileName = $"{Guid.NewGuid()}{extension}";
+                var objectName = string.IsNullOrEmpty(folder)
+                    ? uniqueFileName
+                    : $"{folder.TrimEnd('/')}/{uniqueFileName}";
+
+                // Get content type
+                var contentType = GetContentType(extension);
+
+                // Upload to Firebase Storage
+                var uploadObject = await _storageClient.UploadObjectAsync(
+                    bucket: _settings.BucketName,
+                    objectName: objectName,
+                    contentType: contentType,
+                    source: stream,
+                    cancellationToken: ct);
+
+                // Make public if configured
+                if (_settings.MakePublicByDefault)
+                {
+                    await MakeObjectPublicAsync(objectName, ct);
+                }
+
+                var publicUrl = GetPublicUrl(objectName);
+
+                _logger.LogInformation("File uploaded successfully: {ObjectName}", objectName);
+
+                return new FileUploadResult(true, objectName, publicUrl, null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to upload file: {FileName}", fileName);
+                return new FileUploadResult(false, null, null, $"Upload failed: {ex.Message}");
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<Stream?> DownloadAsync(string filePath, CancellationToken ct = default)
+        {
+            try
+            {
+                var memoryStream = new MemoryStream();
+                await _storageClient.DownloadObjectAsync(
+                    bucket: _settings.BucketName,
+                    objectName: filePath,
+                    destination: memoryStream,
+                    cancellationToken: ct);
+
+                memoryStream.Position = 0;
+                return memoryStream;
+            }
+            catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _logger.LogWarning("File not found: {FilePath}", filePath);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to download file: {FilePath}", filePath);
+                return null;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<bool> DeleteAsync(string filePath, CancellationToken ct = default)
+        {
+            try
+            {
+                await _storageClient.DeleteObjectAsync(
+                    bucket: _settings.BucketName,
+                    objectName: filePath,
+                    cancellationToken: ct);
+
+                _logger.LogInformation("File deleted successfully: {FilePath}", filePath);
+                return true;
+            }
+            catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _logger.LogWarning("File not found for deletion: {FilePath}", filePath);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to delete file: {FilePath}", filePath);
+                return false;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<bool> ExistsAsync(string filePath, CancellationToken ct = default)
+        {
+            try
+            {
+                await _storageClient.GetObjectAsync(
+                    bucket: _settings.BucketName,
+                    objectName: filePath,
+                    cancellationToken: ct);
+
+                return true;
+            }
+            catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to check file existence: {FilePath}", filePath);
+                return false;
+            }
+        }
+
+        /// <inheritdoc/>
+        public string GetPublicUrl(string filePath)
+        {
+            return $"https://storage.googleapis.com/{_settings.BucketName}/{filePath}";
+        }
+
+        /// <inheritdoc/>
+        public async Task<FileInfo?> GetFileInfoAsync(string filePath, CancellationToken ct = default)
+        {
+            try
+            {
+                var obj = await _storageClient.GetObjectAsync(
+                    bucket: _settings.BucketName,
+                    objectName: filePath,
+                    cancellationToken: ct);
+
+                return new FileInfo(
+                    FileName: Path.GetFileName(filePath),
+                    FilePath: filePath,
+                    FileSize: (long)(obj.Size ?? 0),
+                    ContentType: obj.ContentType ?? "application/octet-stream",
+                    UploadedAt: obj.TimeCreatedDateTimeOffset?.DateTime ?? DateTime.UtcNow
+                );
+            }
+            catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _logger.LogWarning("File not found: {FilePath}", filePath);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get file info: {FilePath}", filePath);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Makes an object publicly accessible.
+        /// </summary>
+        private async Task MakeObjectPublicAsync(string objectName, CancellationToken ct = default)
+        {
+            try
+            {
+                var obj = await _storageClient.GetObjectAsync(_settings.BucketName, objectName, cancellationToken: ct);
+                obj.Acl ??= new List<Google.Apis.Storage.v1.Data.ObjectAccessControl>();
+                obj.Acl.Add(new Google.Apis.Storage.v1.Data.ObjectAccessControl
+                {
+                    Entity = "allUsers",
+                    Role = "READER"
+                });
+
+                await _storageClient.UpdateObjectAsync(obj, cancellationToken: ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to make object public: {ObjectName}", objectName);
+            }
+        }
+
+        /// <summary>
+        /// Gets the content type for a file extension.
+        /// </summary>
+        private static string GetContentType(string extension)
+        {
+            return extension.ToLowerInvariant() switch
+            {
+                ".pdf" => "application/pdf",
+                ".doc" => "application/msword",
+                ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ".xls" => "application/vnd.ms-excel",
+                ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                ".png" => "image/png",
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".gif" => "image/gif",
+                ".zip" => "application/zip",
+                ".txt" => "text/plain",
+                _ => "application/octet-stream"
+            };
+        }
+    }
+}

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { AuthProvider } from '@/contexts/AuthContext'
@@ -30,7 +31,23 @@ import {
     StudentMyTopicPage,
 } from '@/pages'
 
+// Helper function to adjust color brightness
+const adjustColor = (color: string, amount: number) => {
+    const hex = color.replace('#', '')
+    const r = Math.max(0, Math.min(255, parseInt(hex.slice(0, 2), 16) + amount))
+    const g = Math.max(0, Math.min(255, parseInt(hex.slice(2, 4), 16) + amount))
+    const b = Math.max(0, Math.min(255, parseInt(hex.slice(4, 6), 16) + amount))
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+}
+
 function App() {
+    // Apply saved theme color on app initialization
+    useEffect(() => {
+        const savedColor = localStorage.getItem('themeColor') || '#2c6090'
+        document.documentElement.style.setProperty('--color-primary', savedColor)
+        document.documentElement.style.setProperty('--color-primary-dark', adjustColor(savedColor, -20))
+        document.documentElement.style.setProperty('--color-primary-light', adjustColor(savedColor, 20))
+    }, [])
     return (
         <AuthProvider>
             <AnimatePresence mode="wait">

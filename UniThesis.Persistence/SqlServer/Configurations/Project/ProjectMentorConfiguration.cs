@@ -27,7 +27,20 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Project
             // Indexes
             builder.HasIndex(pm => pm.ProjectId);
             builder.HasIndex(pm => pm.MentorId);
+            builder.HasIndex(pm => pm.AssignedBy);
             builder.HasIndex(pm => new { pm.ProjectId, pm.MentorId, pm.Status });
+
+            // Foreign key to User (Mentor)
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(pm => pm.MentorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Foreign key to User (AssignedBy)
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(pm => pm.AssignedBy)
+                .OnDelete(DeleteBehavior.SetNull);
 
             // Ignore computed property
             builder.Ignore(pm => pm.IsActive);

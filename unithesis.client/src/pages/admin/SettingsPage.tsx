@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Header } from '@/components/layout'
 
@@ -11,10 +12,92 @@ const item = {
     show: { opacity: 1, y: 0 }
 }
 
+// Predefined color themes
+const colorThemes = [
+    { name: 'Blue (Default)', color: '#2c6090', hoverColor: '#1e4a6e' },
+    { name: 'Crimson', color: '#A64B4B', hoverColor: '#8a3d3d' },
+    { name: 'Forest Green', color: '#5F8F61', hoverColor: '#4d7450' },
+    { name: 'Indigo', color: '#6366f1', hoverColor: '#4f46e5' },
+    { name: 'Purple', color: '#8b5cf6', hoverColor: '#7c3aed' },
+    { name: 'Teal', color: '#14b8a6', hoverColor: '#0d9488' },
+    { name: 'Orange', color: '#f97316', hoverColor: '#ea580c' },
+]
+
 export function SettingsPage() {
+    // Saved color (currently applied to system)
+    const [savedColor, setSavedColor] = useState(() => {
+        return localStorage.getItem('themeColor') || '#2c6090'
+    })
+    // Pending color (selected but not saved yet)
+    const [pendingColor, setPendingColor] = useState(() => {
+        return localStorage.getItem('themeColor') || '#2c6090'
+    })
+    const [showColorPicker, setShowColorPicker] = useState(false)
+    const [customColor, setCustomColor] = useState('#2c6090')
+    const [showSaveSuccess, setShowSaveSuccess] = useState(false)
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+
+    // Apply theme color to CSS variables (only when saved)
+    useEffect(() => {
+        document.documentElement.style.setProperty('--color-primary', savedColor)
+        const hoverColor = adjustColor(savedColor, -20)
+        document.documentElement.style.setProperty('--color-primary-dark', hoverColor)
+        document.documentElement.style.setProperty('--color-primary-light', adjustColor(savedColor, 20))
+    }, [savedColor])
+
+    // Track unsaved changes
+    useEffect(() => {
+        setHasUnsavedChanges(pendingColor !== savedColor)
+    }, [pendingColor, savedColor])
+
+    // Helper function to adjust color brightness
+    const adjustColor = (color: string, amount: number) => {
+        const hex = color.replace('#', '')
+        const r = Math.max(0, Math.min(255, parseInt(hex.slice(0, 2), 16) + amount))
+        const g = Math.max(0, Math.min(255, parseInt(hex.slice(2, 4), 16) + amount))
+        const b = Math.max(0, Math.min(255, parseInt(hex.slice(4, 6), 16) + amount))
+        return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+    }
+
+    const handleColorSelect = (color: string) => {
+        setPendingColor(color)
+    }
+
+    const handleCustomColorApply = () => {
+        setPendingColor(customColor)
+        setShowColorPicker(false)
+    }
+
+    const handleSaveChanges = () => {
+        setSavedColor(pendingColor)
+        localStorage.setItem('themeColor', pendingColor)
+        setShowSaveSuccess(true)
+        setTimeout(() => setShowSaveSuccess(false), 3000)
+    }
+
+    const handleResetDefault = () => {
+        const defaultColor = '#2c6090'
+        setPendingColor(defaultColor)
+        setSavedColor(defaultColor)
+        localStorage.setItem('themeColor', defaultColor)
+    }
+
     return (
         <>
             <Header title="Cấu Hình Hệ Thống" />
+
+            {/* Success Toast */}
+            {showSaveSuccess && (
+                <motion.div
+                    initial={{ opacity: 0, y: -50 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -50 }}
+                    className="fixed top-20 right-6 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2"
+                >
+                    <span className="material-symbols-outlined">check_circle</span>
+                    <span className="font-medium">Đã lưu thay đổi thành công!</span>
+                </motion.div>
+            )}
 
             <div className="flex-1 overflow-y-auto p-8 scrollbar-hide bg-slate-50">
                 <motion.div
@@ -27,13 +110,28 @@ export function SettingsPage() {
                     <motion.div variants={item} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                         <div>
                             <h3 className="text-lg font-bold text-slate-800">Thiết lập chung</h3>
-                            <p className="text-sm text-slate-500">Quản lý các quy tắc, giao diện và thông số vận hành của UniManage</p>
+                            <p className="text-sm text-slate-500">Quản lý các quy tắc, giao diện và thông số vận hành của UniThesis</p>
                         </div>
-                        <div className="flex gap-3">
-                            <button className="px-4 py-2 border border-slate-300 rounded-md text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors">
+                        <div className="flex gap-3 items-center">
+                            {hasUnsavedChanges && (
+                                <span className="text-sm text-amber-600 font-medium flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[16px]">warning</span>
+                                    Có thay đổi chưa lưu
+                                </span>
+                            )}
+                            <button
+                                onClick={handleResetDefault}
+                                className="px-4 py-2 border border-slate-300 rounded-md text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors"
+                            >
                                 Khôi phục mặc định
                             </button>
-                            <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary-light shadow-sm transition-colors">
+                            <button
+                                onClick={handleSaveChanges}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors ${hasUnsavedChanges
+                                    ? 'bg-primary text-white hover:bg-primary-dark animate-pulse'
+                                    : 'bg-primary text-white hover:bg-primary-light'
+                                    }`}
+                            >
                                 <span className="material-symbols-outlined text-[18px]">save</span>
                                 Lưu thay đổi
                             </button>
@@ -88,7 +186,7 @@ export function SettingsPage() {
                                             <label className="block text-sm font-medium text-slate-700 mb-1">Email gửi thông báo (No-reply)</label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">alternate_email</span>
-                                                <input className="w-full bg-white border border-slate-300 text-sm text-slate-800 rounded-md py-2 pl-10 pr-3 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all shadow-sm" type="email" defaultValue="system@unimanage.edu.vn" />
+                                                <input className="w-full bg-white border border-slate-300 text-sm text-slate-800 rounded-md py-2 pl-10 pr-3 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all shadow-sm" type="email" defaultValue="system@unithesis.edu.vn" />
                                             </div>
                                         </div>
                                         <div>
@@ -194,19 +292,79 @@ export function SettingsPage() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-2">Màu chủ đạo</label>
-                                        <div className="flex gap-3">
-                                            <button className="w-8 h-8 rounded-full bg-[#2c6090] ring-2 ring-offset-2 ring-[#2c6090]"></button>
-                                            <button className="w-8 h-8 rounded-full bg-[#A64B4B] hover:ring-2 hover:ring-offset-2 hover:ring-[#A64B4B] transition-all"></button>
-                                            <button className="w-8 h-8 rounded-full bg-[#5F8F61] hover:ring-2 hover:ring-offset-2 hover:ring-[#5F8F61] transition-all"></button>
-                                            <button className="w-8 h-8 rounded-full bg-[#6366f1] hover:ring-2 hover:ring-offset-2 hover:ring-[#6366f1] transition-all"></button>
-                                            <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center cursor-pointer hover:bg-slate-200">
-                                                <span className="material-symbols-outlined text-[16px] text-slate-500">add</span>
-                                            </div>
+                                        <p className="text-xs text-slate-500 mb-3">Chọn màu để thay đổi giao diện toàn hệ thống</p>
+                                        <div className="flex flex-wrap gap-3">
+                                            {colorThemes.map((theme) => (
+                                                <button
+                                                    key={theme.color}
+                                                    onClick={() => handleColorSelect(theme.color)}
+                                                    title={theme.name}
+                                                    className={`w-10 h-10 rounded-full transition-all hover:scale-110 ${pendingColor === theme.color
+                                                        ? 'ring-2 ring-offset-2 scale-110'
+                                                        : 'hover:ring-2 hover:ring-offset-2'
+                                                        }`}
+                                                    style={{
+                                                        backgroundColor: theme.color,
+                                                        '--tw-ring-color': theme.color
+                                                    } as React.CSSProperties}
+                                                >
+                                                    {pendingColor === theme.color && (
+                                                        <span className="material-symbols-outlined text-white text-[18px]">check</span>
+                                                    )}
+                                                </button>
+                                            ))}
+                                            <button
+                                                onClick={() => setShowColorPicker(!showColorPicker)}
+                                                className="w-10 h-10 rounded-full bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center cursor-pointer hover:bg-slate-200 hover:border-slate-400 transition-all"
+                                            >
+                                                <span className="material-symbols-outlined text-[18px] text-slate-500">add</span>
+                                            </button>
+                                        </div>
+
+                                        {/* Custom Color Picker */}
+                                        {showColorPicker && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: -10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200"
+                                            >
+                                                <label className="block text-xs font-medium text-slate-600 mb-2">Màu tùy chỉnh</label>
+                                                <div className="flex items-center gap-3">
+                                                    <input
+                                                        type="color"
+                                                        value={customColor}
+                                                        onChange={(e) => setCustomColor(e.target.value)}
+                                                        className="w-12 h-10 rounded cursor-pointer border-0 p-0"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={customColor}
+                                                        onChange={(e) => setCustomColor(e.target.value)}
+                                                        className="flex-1 bg-white border border-slate-300 text-sm text-slate-800 rounded-md py-2 px-3 uppercase"
+                                                        placeholder="#000000"
+                                                    />
+                                                    <button
+                                                        onClick={handleCustomColorApply}
+                                                        className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-md hover:bg-primary-dark transition-colors"
+                                                    >
+                                                        Áp dụng
+                                                    </button>
+                                                </div>
+                                            </motion.div>
+                                        )}
+
+                                        {/* Current color indicator */}
+                                        <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+                                            <div
+                                                className="w-4 h-4 rounded-full border border-slate-200"
+                                                style={{ backgroundColor: pendingColor }}
+                                            />
+                                            <span>Màu đang chọn: <span className="font-mono font-medium text-slate-700">{pendingColor}</span></span>
                                         </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Tên hiển thị (Header)</label>
-                                        <input className="w-full bg-white border border-slate-300 text-sm text-slate-800 rounded-md py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all shadow-sm" type="text" defaultValue="UniManage" />
+                                        <input className="w-full bg-white border border-slate-300 text-sm text-slate-800 rounded-md py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all shadow-sm" type="text" defaultValue="UniThesis" />
                                     </div>
                                 </div>
                             </motion.div>

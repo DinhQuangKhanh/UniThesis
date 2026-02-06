@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { RegisterTopicModal } from '@/components/mentor/RegisterTopicModal'
+import { NotificationDropdown } from '@/components/layout'
 
 const container = {
     hidden: { opacity: 0 },
@@ -37,16 +38,13 @@ export function MentorTopicsPage() {
     return (
         <>
             {/* Header */}
-            <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 flex-shrink-0 z-10 shadow-sm">
+            <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 flex-shrink-0 z-50 shadow-sm">
                 <nav className="flex text-sm font-medium text-slate-500">
-                    <a href="#" className="hover:text-slate-900">EduPortal</a>
+                    <a href="#" className="hover:text-slate-900">UniThesis</a>
                     <span className="mx-2 text-slate-400">/</span>
                     <span className="text-slate-900 font-bold">Danh sách đề tài</span>
                 </nav>
-                <button className="relative p-2 text-slate-500 hover:text-primary hover:bg-primary/5 rounded-full transition-colors">
-                    <span className="material-symbols-outlined">notifications</span>
-                    <span className="absolute top-2 right-2 size-2 bg-red-500 border-2 border-white rounded-full" />
-                </button>
+                <NotificationDropdown role="mentor" />
             </header>
 
             {/* Content */}

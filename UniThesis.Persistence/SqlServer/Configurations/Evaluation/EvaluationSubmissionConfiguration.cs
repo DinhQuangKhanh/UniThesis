@@ -38,10 +38,36 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Evaluation
             // Indexes
             builder.HasIndex(e => e.ProjectId);
             builder.HasIndex(e => e.AssignedEvaluatorId);
+            builder.HasIndex(e => e.SubmittedBy);
+            builder.HasIndex(e => e.AssignedBy);
             builder.HasIndex(e => e.Status);
             builder.HasIndex(e => e.Result);
             builder.HasIndex(e => e.SubmittedAt);
             builder.HasIndex(e => new { e.ProjectId, e.SubmissionNumber }).IsUnique();
+
+            // Foreign key to Project
+            builder.HasOne<Domain.Aggregates.ProjectAggregate.Project>()
+                .WithMany()
+                .HasForeignKey(e => e.ProjectId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Foreign key to User (AssignedEvaluator)
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(e => e.AssignedEvaluatorId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Foreign key to User (SubmittedBy)
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(e => e.SubmittedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Foreign key to User (AssignedBy)
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(e => e.AssignedBy)
+                .OnDelete(DeleteBehavior.SetNull);
 
             // Ignore domain events
             builder.Ignore(e => e.DomainEvents);

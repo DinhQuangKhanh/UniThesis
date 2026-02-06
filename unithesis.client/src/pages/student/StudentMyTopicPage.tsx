@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { NotificationDropdown } from '@/components/layout'
 
 const container = {
     hidden: { opacity: 0 },
@@ -26,7 +27,7 @@ export function StudentMyTopicPage() {
     return (
         <>
             {/* Header */}
-            <header className="bg-primary h-16 flex items-center justify-between px-8 shrink-0 z-10 sticky top-0 shadow-md">
+            <header className="bg-primary h-16 flex items-center justify-between px-8 shrink-0 z-50 sticky top-0 shadow-md">
                 <div className="flex items-center gap-4 flex-1 max-w-xl">
                     <div className="relative w-full group">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -40,10 +41,7 @@ export function StudentMyTopicPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-6">
-                    <button className="relative text-blue-100 hover:text-white transition-colors p-1">
-                        <span className="material-symbols-outlined">notifications</span>
-                        <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500 border border-primary" />
-                    </button>
+                    <NotificationDropdown role="student" isNavy={true} />
                     <div className="h-8 w-[1px] bg-white/20" />
                     <div className="flex items-center gap-3 text-white">
                         <span className="text-sm font-medium">Hệ thống thẩm định ĐT</span>

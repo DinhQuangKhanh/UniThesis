@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { NotificationDropdown } from '@/components/layout'
 
 const container = {
     hidden: { opacity: 0 },
@@ -52,7 +53,7 @@ export function StudentSchedulePage() {
     return (
         <>
             {/* Header */}
-            <header className="bg-white border-b border-[#e9ecf1] h-16 flex items-center justify-between px-8 shrink-0 z-10 sticky top-0">
+            <header className="bg-white border-b border-[#e9ecf1] h-16 flex items-center justify-between px-8 shrink-0 z-50 sticky top-0">
                 <div className="flex items-center gap-4">
                     <h2 className="text-xl font-bold text-primary">Lịch Trình Chung</h2>
                 </div>
@@ -67,10 +68,7 @@ export function StudentSchedulePage() {
                             Danh sách
                         </button>
                     </div>
-                    <button className="relative text-[#58698d] hover:text-primary transition-colors p-1">
-                        <span className="material-symbols-outlined">notifications</span>
-                        <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500 border border-white" />
-                    </button>
+                    <NotificationDropdown role="student" />
                 </div>
             </header>
 

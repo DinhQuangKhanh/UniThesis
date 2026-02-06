@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { NotificationDropdown } from '@/components/layout'
 
 const container = {
     hidden: { opacity: 0 },
@@ -24,7 +25,7 @@ export function MentorGroupsPage() {
     return (
         <>
             {/* Header */}
-            <header className="h-16 flex items-center justify-between px-8 bg-slate-800 border-b border-slate-700 flex-shrink-0 z-10 shadow-md">
+            <header className="h-16 flex items-center justify-between px-8 bg-slate-800 border-b border-slate-700 flex-shrink-0 z-50 shadow-md">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 text-white">
                         <span className="text-slate-400 font-medium text-sm">Quản lý</span>
@@ -43,10 +44,7 @@ export function MentorGroupsPage() {
                             placeholder="Tìm kiếm nhóm, đề tài..."
                         />
                     </div>
-                    <button className="relative p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-full transition-colors">
-                        <span className="material-symbols-outlined">notifications</span>
-                        <span className="absolute top-2 right-2 size-2 bg-red-500 border-2 border-slate-800 rounded-full" />
-                    </button>
+                    <NotificationDropdown role="mentor" isNavy={true} />
                 </div>
             </header>
 

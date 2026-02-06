@@ -40,6 +40,24 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Group
             builder.HasIndex(g => g.LeaderId);
             builder.HasIndex(g => g.ProjectId);
 
+            // Foreign key to Semester
+            builder.HasOne<Domain.Aggregates.SemesterAggregate.Semester>()
+                .WithMany()
+                .HasForeignKey(g => g.SemesterId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Foreign key to User (Leader)
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(g => g.LeaderId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Foreign key to Project
+            builder.HasOne<Domain.Aggregates.ProjectAggregate.Project>()
+                .WithMany()
+                .HasForeignKey(g => g.ProjectId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             // Ignore domain events and computed properties
             builder.Ignore(g => g.DomainEvents);
             builder.Ignore(g => g.ActiveMembers);

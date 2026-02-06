@@ -28,6 +28,12 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Defense
             builder.HasIndex("DefenseCouncilId");
             builder.HasIndex(m => m.MemberId);
             builder.HasIndex(m => m.Role);
+
+            // Foreign key to User (Member)
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(m => m.MemberId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

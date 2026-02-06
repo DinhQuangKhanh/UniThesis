@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { NotificationDropdown } from '@/components/layout'
 
 const container = {
     hidden: { opacity: 0 },
@@ -30,7 +31,7 @@ export function StudentDashboardPage() {
     return (
         <>
             {/* Header */}
-            <header className="bg-white border-b border-[#e9ecf1] h-16 flex items-center justify-between px-8 shrink-0 z-10 sticky top-0">
+            <header className="bg-white border-b border-[#e9ecf1] h-16 flex items-center justify-between px-8 shrink-0 z-50 sticky top-0">
                 <div className="flex items-center gap-4 flex-1 max-w-xl">
                     <div className="relative w-full group">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -44,10 +45,7 @@ export function StudentDashboardPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-6">
-                    <button className="relative text-[#58698d] hover:text-primary transition-colors p-1">
-                        <span className="material-symbols-outlined">notifications</span>
-                        <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500 border border-white" />
-                    </button>
+                    <NotificationDropdown role="student" />
                     <div className="h-8 w-[1px] bg-[#e9ecf1]" />
                     <button className="text-[#58698d] hover:text-primary transition-colors text-sm font-medium flex items-center gap-1">
                         Trợ giúp
@@ -72,10 +70,10 @@ export function StudentDashboardPage() {
                                 <span className="material-symbols-outlined text-[20px]">add_task</span>
                                 Tạo báo cáo tuần
                             </button>
-                            <button className="px-4 py-2 bg-primary text-white hover:bg-primary-light rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2">
+                            <Link to="/student/topics" className="px-4 py-2 bg-primary text-white hover:bg-primary-light rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2">
                                 Kho tài liệu
                                 <span className="material-symbols-outlined text-[20px]">folder</span>
-                            </button>
+                            </Link>
                         </div>
                     </motion.section>
 

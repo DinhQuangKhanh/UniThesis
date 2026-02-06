@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { RegisterTopicModal } from '@/components/mentor/RegisterTopicModal'
+import { NotificationDropdown } from '@/components/layout'
 
 const container = {
     hidden: { opacity: 0 },
@@ -37,7 +38,7 @@ export function MentorDashboardPage() {
     return (
         <>
             {/* Header */}
-            <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 flex-shrink-0 z-10 shadow-sm">
+            <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 flex-shrink-0 z-50 shadow-sm">
                 <div className="flex items-center gap-4">
                     <h2 className="text-slate-800 text-lg font-bold">Tổng quan</h2>
                 </div>
@@ -52,10 +53,7 @@ export function MentorDashboardPage() {
                             placeholder="Tìm kiếm sinh viên, đề tài..."
                         />
                     </div>
-                    <button className="relative p-2 text-slate-500 hover:text-primary hover:bg-primary/5 rounded-full transition-colors">
-                        <span className="material-symbols-outlined">notifications</span>
-                        <span className="absolute top-2 right-2 size-2 bg-red-500 border-2 border-white rounded-full" />
-                    </button>
+                    <NotificationDropdown role="mentor" />
                 </div>
             </header>
 
@@ -160,10 +158,10 @@ export function MentorDashboardPage() {
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
                                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${project.status === 'approved'
-                                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                                                            : project.status === 'revision'
-                                                                ? 'bg-rose-50 text-rose-700 border border-rose-100'
-                                                                : 'bg-amber-50 text-amber-700 border border-amber-100'
+                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                                        : project.status === 'revision'
+                                                            ? 'bg-rose-50 text-rose-700 border border-rose-100'
+                                                            : 'bg-amber-50 text-amber-700 border border-amber-100'
                                                         }`}>
                                                         {project.status === 'approved' ? 'Đã duyệt' : project.status === 'revision' ? 'Yêu cầu sửa' : 'Chờ thẩm định'}
                                                     </span>

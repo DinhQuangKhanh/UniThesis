@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-primary: #2c6090;
+  --color-primary-light: #4682b4;
+  --color-primary-dark: #1e4a6e;
+}
+
 body {
   font-family: 'Inter', sans-serif;
 }

@@ -30,6 +30,12 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Group
             builder.HasIndex(m => m.Status);
             builder.HasIndex(m => new { m.GroupId, m.StudentId, m.Status });
 
+            // Foreign key to User (Student)
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(m => m.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // Ignore computed properties
             builder.Ignore(m => m.IsActive);
             builder.Ignore(m => m.IsLeader);

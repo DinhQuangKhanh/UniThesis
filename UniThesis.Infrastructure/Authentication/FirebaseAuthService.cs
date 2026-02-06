@@ -1,0 +1,153 @@
+using FirebaseAdmin;
+using FirebaseAdmin.Auth;
+using Google.Apis.Auth.OAuth2;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace UniThesis.Infrastructure.Authentication
+{
+    /// <summary>
+    /// Firebase Authentication service implementation.
+    /// </summary>
+    public class FirebaseAuthService : IFirebaseAuthService
+    {
+        private readonly FirebaseSettings _settings;
+        private readonly ILogger<FirebaseAuthService> _logger;
+        private readonly FirebaseAuth _auth;
+
+        public FirebaseAuthService(
+            IOptions<FirebaseSettings> settings,
+            ILogger<FirebaseAuthService> logger)
+        {
+            _settings = settings.Value;
+            _logger = logger;
+
+            // Initialize Firebase if not already initialized
+            if (FirebaseApp.DefaultInstance == null)
+            {
+                var credential = string.IsNullOrEmpty(_settings.ServiceAccountKeyPath)
+                    ? GoogleCredential.GetApplicationDefault()
+                    : CredentialFactory.FromFile<GoogleCredential>(_settings.ServiceAccountKeyPath);
+
+                FirebaseApp.Create(new AppOptions
+                {
+                    Credential = credential,
+                    ProjectId = _settings.ProjectId
+                });
+            }
+
+            _auth = FirebaseAuth.DefaultInstance;
+        }
+
+        /// <inheritdoc/>
+        public async Task<FirebaseUserInfo?> VerifyIdTokenAsync(string idToken, CancellationToken ct = default)
+        {
+            try
+            {
+                var decodedToken = await _auth.VerifyIdTokenAsync(idToken, ct);
+
+                return new FirebaseUserInfo(
+                    Uid: decodedToken.Uid,
+                    Email: decodedToken.Claims.TryGetValue("email", out var email) ? email?.ToString() ?? string.Empty : string.Empty,
+                    DisplayName: decodedToken.Claims.TryGetValue("name", out var name) ? name?.ToString() : null,
+                    PhotoUrl: decodedToken.Claims.TryGetValue("picture", out var picture) ? picture?.ToString() : null,
+                    EmailVerified: decodedToken.Claims.TryGetValue("email_verified", out var verified) && verified is bool v && v
+                );
+            }
+            catch (FirebaseAuthException ex)
+            {
+                _logger.LogWarning(ex, "Failed to verify Firebase ID token");
+                return null;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<string> CreateCustomTokenAsync(Guid userId, IDictionary<string, object>? claims = null, CancellationToken ct = default)
+        {
+            try
+            {
+                var customClaims = claims ?? new Dictionary<string, object>();
+                customClaims["internalUserId"] = userId.ToString();
+
+                return await _auth.CreateCustomTokenAsync(userId.ToString(), customClaims, ct);
+            }
+            catch (FirebaseAuthException ex)
+            {
+                _logger.LogError(ex, "Failed to create custom token for user {UserId}", userId);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task RevokeRefreshTokensAsync(string firebaseUid, CancellationToken ct = default)
+        {
+            try
+            {
+                await _auth.RevokeRefreshTokensAsync(firebaseUid, ct);
+                _logger.LogInformation("Revoked refresh tokens for Firebase user {FirebaseUid}", firebaseUid);
+            }
+            catch (FirebaseAuthException ex)
+            {
+                _logger.LogError(ex, "Failed to revoke refresh tokens for Firebase user {FirebaseUid}", firebaseUid);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task SetCustomClaimsAsync(string firebaseUid, IReadOnlyDictionary<string, object> claims, CancellationToken ct = default)
+        {
+            try
+            {
+                await _auth.SetCustomUserClaimsAsync(firebaseUid, claims, ct);
+                _logger.LogInformation("Set custom claims for Firebase user {FirebaseUid}", firebaseUid);
+            }
+            catch (FirebaseAuthException ex)
+            {
+                _logger.LogError(ex, "Failed to set custom claims for Firebase user {FirebaseUid}", firebaseUid);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task DisableUserAsync(string firebaseUid, CancellationToken ct = default)
+        {
+            try
+            {
+                var args = new UserRecordArgs
+                {
+                    Uid = firebaseUid,
+                    Disabled = true
+                };
+
+                await _auth.UpdateUserAsync(args, ct);
+                _logger.LogInformation("Disabled Firebase user {FirebaseUid}", firebaseUid);
+            }
+            catch (FirebaseAuthException ex)
+            {
+                _logger.LogError(ex, "Failed to disable Firebase user {FirebaseUid}", firebaseUid);
+                throw;
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task EnableUserAsync(string firebaseUid, CancellationToken ct = default)
+        {
+            try
+            {
+                var args = new UserRecordArgs
+                {
+                    Uid = firebaseUid,
+                    Disabled = false
+                };
+
+                await _auth.UpdateUserAsync(args, ct);
+                _logger.LogInformation("Enabled Firebase user {FirebaseUid}", firebaseUid);
+            }
+            catch (FirebaseAuthException ex)
+            {
+                _logger.LogError(ex, "Failed to enable Firebase user {FirebaseUid}", firebaseUid);
+                throw;
+            }
+        }
+    }
+}

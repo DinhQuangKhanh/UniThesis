@@ -40,6 +40,12 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Common
             builder.HasIndex(a => a.MajorId);
             builder.HasIndex(a => a.AcademicYear);
 
+            // Foreign key to Major
+            builder.HasOne<Domain.Entities.Major>()
+                .WithMany()
+                .HasForeignKey(a => a.MajorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // Full-text search index (if using SQL Server full-text)
             // builder.HasIndex(a => new { a.ProjectName, a.Tags });
         }

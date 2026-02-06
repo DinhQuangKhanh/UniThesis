@@ -1,6 +1,6 @@
 using UniThesis.Application;
 using UniThesis.Infrastructure;
-using UniThesis.Infrastructure.SignalR;
+using UniThesis.Infrastructure.RealTime.Hubs;
 using UniThesis.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -102,7 +102,7 @@ app.UseAuthorization();
 // Health Checks
 app.MapHealthChecks("/health");
 
-// SignalR Hubs
+// Realtime Hubs
 app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapHub<ChatHub>("/hubs/chat");
 

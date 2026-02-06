@@ -48,7 +48,7 @@ namespace UniThesis.Domain.Specifications
             Take = take;
             IsPagingEnabled = true;
         }
-        public static IQueryable<T> ApplyOrdering<T>(
+        public static IQueryable<T> ApplyOrdering(
             IQueryable<T> query,
             ISpecification<T> spec)
         {

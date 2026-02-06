@@ -31,6 +31,25 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Defense
             // Indexes
             builder.HasIndex(c => c.SemesterId);
             builder.HasIndex(c => c.ChairmanId);
+            builder.HasIndex(c => c.SecretaryId);
+
+            // Foreign key to Semester
+            builder.HasOne<Domain.Aggregates.SemesterAggregate.Semester>()
+                .WithMany()
+                .HasForeignKey(c => c.SemesterId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Foreign key to User (Chairman)
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(c => c.ChairmanId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Foreign key to User (Secretary)
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(c => c.SecretaryId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

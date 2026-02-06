@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { NotificationDropdown } from '@/components/layout'
 
 const container = {
     hidden: { opacity: 0 },
@@ -47,7 +48,7 @@ export function MentorSchedulePage() {
     return (
         <>
             {/* Header */}
-            <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 flex-shrink-0 z-10 shadow-sm">
+            <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 flex-shrink-0 z-50 shadow-sm">
                 <h2 className="text-slate-800 text-lg font-bold">Lịch Trình Hướng Dẫn</h2>
                 <div className="flex items-center gap-4">
                     <div className="flex p-1 bg-slate-100 rounded-lg">
@@ -60,10 +61,7 @@ export function MentorSchedulePage() {
                             Danh sách
                         </button>
                     </div>
-                    <button className="relative p-2 text-slate-500 hover:text-primary hover:bg-primary/5 rounded-full transition-colors">
-                        <span className="material-symbols-outlined">notifications</span>
-                        <span className="absolute top-2 right-2 size-2 bg-red-500 border-2 border-white rounded-full" />
-                    </button>
+                    <NotificationDropdown role="mentor" />
                 </div>
             </header>
 
@@ -132,10 +130,10 @@ export function MentorSchedulePage() {
                                     {d.event && (
                                         <div
                                             className={`p-1.5 rounded border-l-2 mb-1 cursor-pointer transition-colors shadow-sm ${d.event.type === 'defense'
-                                                    ? 'bg-red-50 border-red-500 hover:bg-red-100'
-                                                    : d.event.type === 'deadline'
-                                                        ? 'bg-amber-50 border-amber-400 hover:bg-amber-100'
-                                                        : 'bg-indigo-50 border-indigo-900 hover:bg-indigo-100'
+                                                ? 'bg-red-50 border-red-500 hover:bg-red-100'
+                                                : d.event.type === 'deadline'
+                                                    ? 'bg-amber-50 border-amber-400 hover:bg-amber-100'
+                                                    : 'bg-indigo-50 border-indigo-900 hover:bg-indigo-100'
                                                 }`}
                                         >
                                             <p className={`text-[10px] font-bold leading-tight ${d.event.type === 'defense' ? 'text-red-700' : d.event.type === 'deadline' ? 'text-amber-700' : 'text-indigo-900'
@@ -189,10 +187,10 @@ export function MentorSchedulePage() {
                                         </p>
                                         <div className="mt-2 flex items-center gap-1">
                                             <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${event.type === 'defense'
-                                                    ? 'bg-red-100 text-red-700 border-red-200'
-                                                    : event.type === 'deadline'
-                                                        ? 'bg-amber-100 text-amber-700 border-amber-200'
-                                                        : 'bg-indigo-100 text-indigo-700 border-indigo-200'
+                                                ? 'bg-red-100 text-red-700 border-red-200'
+                                                : event.type === 'deadline'
+                                                    ? 'bg-amber-100 text-amber-700 border-amber-200'
+                                                    : 'bg-indigo-100 text-indigo-700 border-indigo-200'
                                                 }`}>
                                                 {event.label}
                                             </span>

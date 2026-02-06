@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { NotificationDropdown } from '@/components/layout'
 
 const container = {
     hidden: { opacity: 0 },
@@ -80,7 +81,7 @@ export function StudentTopicsPage() {
     return (
         <>
             {/* Header */}
-            <header className="bg-white border-b border-[#e9ecf1] h-16 flex items-center justify-between px-8 shrink-0 z-10 sticky top-0">
+            <header className="bg-white border-b border-[#e9ecf1] h-16 flex items-center justify-between px-8 shrink-0 z-50 sticky top-0">
                 <div className="flex items-center gap-4 flex-1 max-w-xl">
                     <div className="relative w-full group">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -94,10 +95,7 @@ export function StudentTopicsPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-6">
-                    <button className="relative text-[#58698d] hover:text-primary transition-colors p-1">
-                        <span className="material-symbols-outlined">notifications</span>
-                        <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500 border border-white" />
-                    </button>
+                    <NotificationDropdown role="student" />
                     <div className="h-8 w-[1px] bg-[#e9ecf1]" />
                     <button className="text-[#58698d] hover:text-primary transition-colors text-sm font-medium flex items-center gap-1">
                         Trợ giúp
@@ -174,8 +172,8 @@ export function StudentTopicsPage() {
                                             {topic.major}
                                         </span>
                                         <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider italic ${topic.status === 'available'
-                                                ? 'bg-green-50 text-green-600 border border-green-100'
-                                                : 'bg-gray-50 text-gray-400 border border-gray-100'
+                                            ? 'bg-green-50 text-green-600 border border-green-100'
+                                            : 'bg-gray-50 text-gray-400 border border-gray-100'
                                             }`}>
                                             {topic.status === 'available' ? 'Còn trống' : 'Đã có nhóm'}
                                         </span>
@@ -202,8 +200,8 @@ export function StudentTopicsPage() {
                                     <button
                                         onClick={() => toggleFavorite(topic.id)}
                                         className={`bg-white border py-2 px-3 rounded-lg transition-colors flex items-center justify-center ${favorites.includes(topic.id)
-                                                ? 'border-red-200 bg-red-50 text-red-500'
-                                                : 'border-[#e9ecf1] text-[#58698d] hover:text-red-500 hover:border-red-200 hover:bg-red-50'
+                                            ? 'border-red-200 bg-red-50 text-red-500'
+                                            : 'border-[#e9ecf1] text-[#58698d] hover:text-red-500 hover:border-red-200 hover:bg-red-50'
                                             }`}
                                         title="Quan tâm"
                                     >

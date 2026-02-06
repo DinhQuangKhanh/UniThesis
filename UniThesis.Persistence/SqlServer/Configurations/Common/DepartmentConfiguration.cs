@@ -33,6 +33,14 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Common
             builder.HasIndex(d => d.Code).IsUnique();
             builder.HasIndex(d => d.IsActive);
 
+            builder.HasIndex(d => d.HeadOfDepartmentId);
+
+            // Foreign key to User (HeadOfDepartment) - nullable
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(d => d.HeadOfDepartmentId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             // Seed data
             builder.HasData(
                 new { Id = 1, Name = "Công nghệ thông tin", Code = "CNTT", Description = "Khoa Công nghệ thông tin", IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },

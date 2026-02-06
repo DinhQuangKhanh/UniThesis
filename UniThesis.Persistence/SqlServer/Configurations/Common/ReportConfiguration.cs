@@ -37,6 +37,25 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Common
             builder.HasIndex(r => r.GeneratedBy);
             builder.HasIndex(r => r.GeneratedAt);
             builder.HasIndex(r => r.SemesterId);
+            builder.HasIndex(r => r.DepartmentId);
+
+            // Foreign key to Semester (nullable)
+            builder.HasOne<Domain.Aggregates.SemesterAggregate.Semester>()
+                .WithMany()
+                .HasForeignKey(r => r.SemesterId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Foreign key to Department (nullable)
+            builder.HasOne<Domain.Entities.Department>()
+                .WithMany()
+                .HasForeignKey(r => r.DepartmentId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Foreign key to User (GeneratedBy)
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(r => r.GeneratedBy)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

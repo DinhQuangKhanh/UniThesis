@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { NotificationDropdown } from '@/components/layout'
 
 const container = {
     hidden: { opacity: 0 },
@@ -43,16 +44,13 @@ export function MentorFeedbackPage() {
     return (
         <>
             {/* Header */}
-            <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 flex-shrink-0 z-10 shadow-sm">
+            <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 flex-shrink-0 z-50 shadow-sm">
                 <nav className="flex text-sm font-medium text-slate-500 items-center">
                     <a href="#" className="hover:text-slate-900">Danh sách đề tài</a>
                     <span className="material-symbols-outlined text-slate-400 text-base mx-1">chevron_right</span>
                     <span className="text-slate-900 font-bold">Chi tiết thẩm định</span>
                 </nav>
-                <button className="relative p-2 text-slate-500 hover:text-primary hover:bg-primary/5 rounded-full transition-colors">
-                    <span className="material-symbols-outlined">notifications</span>
-                    <span className="absolute top-2 right-2 size-2 bg-red-500 border-2 border-white rounded-full" />
-                </button>
+                <NotificationDropdown role="mentor" />
             </header>
 
             {/* Content */}
@@ -218,10 +216,10 @@ export function MentorFeedbackPage() {
                                                             <p className="text-xs text-slate-400">{fb.time}</p>
                                                         </div>
                                                         <span className={`self-start sm:self-auto px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${fb.status === 'revision'
-                                                                ? 'bg-rose-100 text-rose-700 border-rose-200'
-                                                                : fb.status === 'approved'
-                                                                    ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                                                                    : 'bg-slate-100 text-slate-600 border-slate-200'
+                                                            ? 'bg-rose-100 text-rose-700 border-rose-200'
+                                                            : fb.status === 'approved'
+                                                                ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                                                                : 'bg-slate-100 text-slate-600 border-slate-200'
                                                             }`}>
                                                             {fb.status === 'revision' ? 'Yêu cầu sửa' : fb.status === 'approved' ? 'Đã duyệt' : 'Đã gửi'}
                                                         </span>

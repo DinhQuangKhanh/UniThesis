@@ -48,6 +48,18 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Support
             builder.HasIndex(t => t.Priority);
             builder.HasIndex(t => t.CreatedAt);
 
+            // Foreign key to User (Reporter)
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(t => t.ReporterId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Foreign key to User (Assignee)
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(t => t.AssigneeId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             // Ignore domain events
             builder.Ignore(t => t.DomainEvents);
         }

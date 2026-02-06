@@ -7,3 +7,6 @@ export { MentorLayout } from './MentorLayout'
 export { MentorSidebar } from './MentorSidebar'
 export { StudentLayout } from './StudentLayout'
 export { StudentSidebar } from './StudentSidebar'
+export { NotificationDropdown } from './NotificationDropdown'
+export type { UserRole } from './NotificationDropdown'
+

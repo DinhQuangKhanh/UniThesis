@@ -45,10 +45,8 @@ export function StudentSidebar() {
                 {systemItems.map((item) => (
                     <NavItem key={item.path} {...item} active={location.pathname === item.path} />
                 ))}
-                <button
-                    onClick={logout}
-                    className="mt-4 flex items-center gap-3 w-full px-4 py-2 hover:bg-gray-50 rounded-lg transition-colors"
-                >
+                {/* User Profile */}
+                <div className="mt-4 flex items-center gap-3 px-4 py-2">
                     <div
                         className="h-10 w-10 rounded-full bg-gray-200 bg-cover bg-center"
                         style={{
@@ -59,6 +57,14 @@ export function StudentSidebar() {
                         <p className="text-sm font-bold text-[#101319] truncate">{user?.name || 'Nguyễn Văn An'}</p>
                         <p className="text-xs text-[#58698d] truncate">K62 - CNTT</p>
                     </div>
+                </div>
+                {/* Logout Button */}
+                <button
+                    onClick={logout}
+                    className="mt-2 flex items-center gap-3 w-full px-4 py-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors group"
+                >
+                    <span className="material-symbols-outlined text-[20px]">logout</span>
+                    <span className="text-sm font-medium">Đăng xuất</span>
                 </button>
             </div>
         </motion.aside>

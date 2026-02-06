@@ -71,5 +71,17 @@ public class TopicRegistrationConfiguration : IEntityTypeConfiguration<TopicRegi
             .WithMany()
             .HasForeignKey(tr => tr.GroupId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Foreign key to User (RegisteredBy)
+        builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+            .WithMany()
+            .HasForeignKey(tr => tr.RegisteredBy)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Foreign key to User (ProcessedBy) - nullable
+        builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+            .WithMany()
+            .HasForeignKey(tr => tr.ProcessedBy)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

@@ -44,6 +44,31 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Meeting
             builder.HasIndex(m => m.Status);
             builder.HasIndex(m => m.ScheduledDate);
             builder.HasIndex(m => m.RequestedBy);
+            // builder.HasIndex(m => m.ApprovedBy); // Removed, as MeetingSchedule does not have an ApprovedBy property
+
+            // Foreign key to Group
+            builder.HasOne<Domain.Aggregates.GroupAggregate.Group>()
+                .WithMany()
+                .HasForeignKey(m => m.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Foreign key to User (Mentor)
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(m => m.MentorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Foreign key to User (RequestedBy)
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(m => m.RequestedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Foreign key to User (ApprovedBy)
+            //builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+            //    .WithMany()
+            //    .HasForeignKey(m => m.ApprovedBy)
+            //    .OnDelete(DeleteBehavior.SetNull);
 
             // Ignore domain events
             builder.Ignore(m => m.DomainEvents);

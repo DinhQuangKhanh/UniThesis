@@ -1,4 +1,6 @@
-﻿using Hangfire;
+using FirebaseAdmin;
+using Google.Apis.Auth.OAuth2;
+using Hangfire;
 using Hangfire.Dashboard;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -6,7 +8,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using UniThesis.Domain.Services;
 using UniThesis.Infrastructure.Authentication;
 using UniThesis.Infrastructure.Authorization;
@@ -17,13 +18,14 @@ using UniThesis.Infrastructure.BackgroundJobs.Scheduling;
 using UniThesis.Infrastructure.Caching;
 using UniThesis.Infrastructure.HealthChecks;
 using UniThesis.Infrastructure.Middleware;
+using UniThesis.Infrastructure.RealTime.Hubs;
+using UniThesis.Infrastructure.RealTime.Services;
 using UniThesis.Infrastructure.Services.DomainServices;
 using UniThesis.Infrastructure.Services.Email;
 using UniThesis.Infrastructure.Services.Email.Templates;
 using UniThesis.Infrastructure.Services.FileStorage;
 using UniThesis.Infrastructure.Services.Notification;
 using UniThesis.Infrastructure.Services.Reporting;
-using UniThesis.Infrastructure.SignalR;
 
 namespace UniThesis.Infrastructure
 {
@@ -34,26 +36,39 @@ namespace UniThesis.Infrastructure
             // MediatR - Auto-discover all handlers from this assembly
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
 
-            // JWT Authentication
-            services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
-            var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()!;
+            // Firebase Configuration
+            services.Configure<FirebaseSettings>(configuration.GetSection(FirebaseSettings.SectionName));
+            var firebaseSettings = configuration.GetSection(FirebaseSettings.SectionName).Get<FirebaseSettings>();
 
+            // Initialize Firebase Admin SDK
+            if (FirebaseApp.DefaultInstance == null && firebaseSettings != null)
+            {
+                var credential = string.IsNullOrEmpty(firebaseSettings.ServiceAccountKeyPath)
+                    ? GoogleCredential.GetApplicationDefault()
+                    : CredentialFactory.FromFile<GoogleCredential>(firebaseSettings.ServiceAccountKeyPath);
+
+                FirebaseApp.Create(new AppOptions
+                {
+                    Credential = credential,
+                    ProjectId = firebaseSettings.ProjectId
+                });
+            }
+
+            // Firebase Authentication
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             }).AddJwtBearer(options =>
             {
+                options.Authority = $"https://securetoken.google.com/{firebaseSettings?.ProjectId}";
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret)),
                     ValidateIssuer = true,
-                    ValidIssuer = jwtSettings.Issuer,
+                    ValidIssuer = $"https://securetoken.google.com/{firebaseSettings?.ProjectId}",
                     ValidateAudience = true,
-                    ValidAudience = jwtSettings.Audience,
-                    ValidateLifetime = true,
-                    ClockSkew = TimeSpan.Zero
+                    ValidAudience = firebaseSettings?.ProjectId,
+                    ValidateLifetime = true
                 };
                 options.Events = new JwtBearerEvents
                 {
@@ -74,9 +89,8 @@ namespace UniThesis.Infrastructure
             services.AddScoped<IAuthorizationHandler, GroupMemberAuthorizationHandler>();
             services.AddScoped<IAuthorizationHandler, MentorOfProjectAuthorizationHandler>();
 
-            // Token Services
-            services.AddScoped<ITokenService, JwtTokenService>();
-            services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+            // Firebase Auth Service
+            services.AddScoped<IFirebaseAuthService, FirebaseAuthService>();
 
             // Domain Services
             services.AddScoped<IProjectDomainService, ProjectDomainService>();
@@ -90,14 +104,13 @@ namespace UniThesis.Infrastructure
             services.AddScoped<IEmailService, SmtpEmailService>();
             services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 
-            // File Storage
+            // File Storage - Firebase Storage
             services.Configure<FileStorageSettings>(configuration.GetSection(FileStorageSettings.SectionName));
-            services.AddScoped<IFileStorageService, LocalFileStorageService>();
-            services.AddScoped<IFileValidationService, FileValidationService>();
+            services.AddScoped<IFileStorageService, FirebaseStorageService>();
 
-            // Notification
+            // Notification & RealTime
             services.AddScoped<INotificationService, NotificationService>();
-            services.AddScoped<IHubNotificationService, SignalRNotificationService>();
+            services.AddScoped<IRealtimeNotificationService, RealtimeNotificationService>();
 
             // Reporting
             services.AddScoped<IReportGeneratorService, ExcelReportService>();

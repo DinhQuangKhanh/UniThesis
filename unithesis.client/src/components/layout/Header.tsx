@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { NotificationDropdown, UserRole } from './NotificationDropdown'
 
 interface HeaderProps {
     title: string
@@ -8,6 +9,7 @@ interface HeaderProps {
     variant?: 'default' | 'navy'
     breadcrumb?: { label: string; path?: string }[]
     actions?: React.ReactNode
+    role?: UserRole
 }
 
 export function Header({
@@ -18,6 +20,7 @@ export function Header({
     variant = 'default',
     breadcrumb,
     actions,
+    role = 'admin',
 }: HeaderProps) {
     const isNavy = variant === 'navy'
 
@@ -27,8 +30,8 @@ export function Header({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
             className={`flex items-center justify-between px-8 py-4 sticky top-0 z-10 ${isNavy
-                    ? 'bg-navy-header border-b border-blue-900 shadow-sm text-white'
-                    : 'bg-white/90 backdrop-blur-md border-b border-slate-200'
+                ? 'bg-navy-header border-b border-blue-900 shadow-sm text-white'
+                : 'bg-white/90 backdrop-blur-md border-b border-slate-200'
                 }`}
         >
             <div className="flex items-center gap-4 flex-1">
@@ -69,8 +72,8 @@ export function Header({
                         </span>
                         <input
                             className={`w-full text-sm rounded-md py-2 pl-10 pr-4 focus:outline-none transition-all ${isNavy
-                                    ? 'bg-blue-900/40 border border-blue-700 text-white placeholder-blue-300 focus:ring-1 focus:ring-white focus:border-white focus:bg-blue-900/60'
-                                    : 'bg-slate-100 border border-slate-200 text-slate-800 placeholder-slate-400 focus:ring-1 focus:ring-primary focus:border-primary focus:bg-white'
+                                ? 'bg-blue-900/40 border border-blue-700 text-white placeholder-blue-300 focus:ring-1 focus:ring-white focus:border-white focus:bg-blue-900/60'
+                                : 'bg-slate-100 border border-slate-200 text-slate-800 placeholder-slate-400 focus:ring-1 focus:ring-primary focus:border-primary focus:bg-white'
                                 }`}
                             placeholder={searchPlaceholder}
                             type="text"
@@ -78,16 +81,7 @@ export function Header({
                     </div>
                 )}
 
-                <button
-                    className={`relative transition-colors ${isNavy ? 'text-blue-200 hover:text-white' : 'text-slate-500 hover:text-primary'
-                        }`}
-                >
-                    <span className="material-symbols-outlined">notifications</span>
-                    <span
-                        className={`absolute top-0 right-0 w-2 h-2 rounded-full ${isNavy ? 'bg-red-500 border-2 border-navy-header' : 'bg-primary'
-                            }`}
-                    />
-                </button>
+                <NotificationDropdown role={role} isNavy={isNavy} />
             </div>
         </motion.header>
     )

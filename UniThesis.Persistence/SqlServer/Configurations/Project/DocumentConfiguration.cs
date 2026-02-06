@@ -46,6 +46,12 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Project
             builder.HasIndex(d => d.UploadedAt);
             builder.HasIndex(d => d.IsDeleted);
 
+            // Foreign key to User (UploadedBy)
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(d => d.UploadedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // Global query filter for soft delete
             builder.HasQueryFilter(d => !d.IsDeleted);
         }

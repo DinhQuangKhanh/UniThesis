@@ -1,10 +1,8 @@
-﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using UniThesis.Application.Common.Interfaces;
 using UniThesis.Domain.Aggregates.DefenseAggregate;
 using UniThesis.Domain.Aggregates.EvaluationAggregate;
 using UniThesis.Domain.Aggregates.GroupAggregate;
@@ -13,6 +11,7 @@ using UniThesis.Domain.Aggregates.ProjectAggregate;
 using UniThesis.Domain.Aggregates.SemesterAggregate;
 using UniThesis.Domain.Aggregates.SupportAggregate;
 using UniThesis.Domain.Aggregates.TopicPoolAggregate;
+using UniThesis.Domain.Aggregates.UserAggregate;
 using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Persistence.MongoDB;
 using UniThesis.Persistence.MongoDB.Indexes;
@@ -20,8 +19,6 @@ using UniThesis.Persistence.MongoDB.Repositories.Implementation;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
 using UniThesis.Persistence.Services;
 using UniThesis.Persistence.SqlServer;
-using UniThesis.Persistence.SqlServer.Constants;
-using UniThesis.Persistence.SqlServer.Identity;
 using UniThesis.Persistence.SqlServer.Interceptors;
 using UniThesis.Persistence.SqlServer.Repositories;
 
@@ -52,19 +49,6 @@ namespace UniThesis.Persistence
                     sp.GetRequiredService<SoftDeleteInterceptor>(), sp.GetRequiredService<DomainEventInterceptor>());
             });
 
-            // Add Identity
-            services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
-            {
-                options.Password.RequireDigit = true;
-                options.Password.RequireLowercase = true;
-                options.Password.RequireUppercase = true;
-                options.Password.RequireNonAlphanumeric = false;
-                options.Password.RequiredLength = 8;
-                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
-                options.Lockout.MaxFailedAccessAttempts = 5;
-                options.User.RequireUniqueEmail = true;
-            }).AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders();
-
             // Add MongoDB
             services.Configure<MongoDbSettings>(configuration.GetSection("MongoDbSettings"));
             services.AddSingleton<IMongoClient>(sp =>
@@ -79,6 +63,7 @@ namespace UniThesis.Persistence
             services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             // Add SQL Repositories
+            services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IProjectRepository, ProjectRepository>();
             services.AddScoped<ITopicPoolRepository, TopicPoolRepository>();
             services.AddScoped<IGroupRepository, GroupRepository>();
@@ -112,19 +97,14 @@ namespace UniThesis.Persistence
 
         public static async Task SeedDatabaseAsync(this IServiceProvider serviceProvider)
         {
+            // Seeding is now handled differently with Firebase Auth
+            // Admin user should be created in Firebase Console and then synced to the local database
+            // This method is kept for potential future seeding needs
             using var scope = serviceProvider.CreateScope();
-            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-            foreach (var roleName in RoleNames.All)
-                if (!await roleManager.RoleExistsAsync(roleName))
-                    await roleManager.CreateAsync(new ApplicationRole(roleName) { Description = $"System: {roleName}", IsSystemRole = true });
-
-            if (await userManager.FindByEmailAsync("admin@unithesis.edu.vn") is null)
-            {
-                var admin = new ApplicationUser { UserName = "admin@unithesis.edu.vn", Email = "admin@unithesis.edu.vn", EmailConfirmed = true, FullName = "System Admin", EmployeeCode = "ADMIN001", Status = Domain.Enums.User.UserStatus.Active };
-                if ((await userManager.CreateAsync(admin, "Admin@123")).Succeeded) await userManager.AddToRoleAsync(admin, RoleNames.Admin);
-            }
+            // Seed any non-user related data here if needed
+            await Task.CompletedTask;
         }
     }
 }
