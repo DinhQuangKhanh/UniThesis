@@ -40,7 +40,7 @@ namespace UniThesis.Infrastructure.Services.DomainServices
             var project = await _projectRepository.GetWithMentorsAsync(projectId, ct);
 
             if (project is null)
-                return (false, new[] { "Đề tài không tồn tại." });
+                return (false, ["Đề tài không tồn tại."]);
 
             if (project.Status != ProjectStatus.Draft && project.Status != ProjectStatus.NeedsModification)
                 errors.Add("Đề tài chỉ có thể nộp khi ở trạng thái Nháp hoặc Cần chỉnh sửa.");
@@ -82,21 +82,31 @@ namespace UniThesis.Infrastructure.Services.DomainServices
 
         public async Task<ProjectStatistics> GetStatisticsAsync(int semesterId, CancellationToken ct = default)
         {
-            var projects = await _context.Projects
+            var statusCounts = await _context.Projects
                 .Where(p => p.SemesterId == semesterId)
-                .ToListAsync(ct);
+                .GroupBy(p => p.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Status, x => x.Count, ct);
+
+            var sourceCounts = await _context.Projects
+                .Where(p => p.SemesterId == semesterId)
+                .GroupBy(p => p.SourceType)
+                .Select(g => new { Source = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Source, x => x.Count, ct);
+
+            int Count(ProjectStatus s) => statusCounts.GetValueOrDefault(s);
 
             return new ProjectStatistics(
-                TotalProjects: projects.Count,
-                DraftProjects: projects.Count(p => p.Status == ProjectStatus.Draft),
-                PendingEvaluationProjects: projects.Count(p => p.Status == ProjectStatus.PendingEvaluation),
-                ApprovedProjects: projects.Count(p => p.Status == ProjectStatus.Approved),
-                RejectedProjects: projects.Count(p => p.Status == ProjectStatus.Rejected),
-                InProgressProjects: projects.Count(p => p.Status == ProjectStatus.InProgress),
-                CompletedProjects: projects.Count(p => p.Status == ProjectStatus.Completed),
-                CancelledProjects: projects.Count(p => p.Status == ProjectStatus.Cancelled),
-                FromPoolCount: projects.Count(p => p.SourceType == ProjectSourceType.FromPool),
-                DirectRegistrationCount: projects.Count(p => p.SourceType == ProjectSourceType.DirectRegistration)
+                TotalProjects: statusCounts.Values.Sum(),
+                DraftProjects: Count(ProjectStatus.Draft),
+                PendingEvaluationProjects: Count(ProjectStatus.PendingEvaluation),
+                ApprovedProjects: Count(ProjectStatus.Approved),
+                RejectedProjects: Count(ProjectStatus.Rejected),
+                InProgressProjects: Count(ProjectStatus.InProgress),
+                CompletedProjects: Count(ProjectStatus.Completed),
+                CancelledProjects: Count(ProjectStatus.Cancelled),
+                FromPoolCount: sourceCounts.GetValueOrDefault(ProjectSourceType.FromPool),
+                DirectRegistrationCount: sourceCounts.GetValueOrDefault(ProjectSourceType.DirectRegistration)
             );
         }
     }

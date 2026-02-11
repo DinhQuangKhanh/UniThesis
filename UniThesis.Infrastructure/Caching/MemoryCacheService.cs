@@ -4,12 +4,16 @@ using Microsoft.Extensions.Options;
 
 namespace UniThesis.Infrastructure.Caching
 {
+    /// <summary>
+    /// In-memory cache with key tracking for prefix-based invalidation.
+    /// Must be registered as Singleton so the key set persists across scopes.
+    /// </summary>
     public class MemoryCacheService : ICacheService
     {
         private readonly IMemoryCache _cache;
         private readonly CacheSettings _settings;
         private readonly ILogger<MemoryCacheService> _logger;
-        private readonly HashSet<string> _keys = new();
+        private readonly HashSet<string> _keys = [];
         private readonly object _lock = new();
 
         public MemoryCacheService(IMemoryCache cache, IOptions<CacheSettings> settings, ILogger<MemoryCacheService> logger)
@@ -51,13 +55,18 @@ namespace UniThesis.Infrastructure.Caching
         public Task RemoveByPrefixAsync(string prefix, CancellationToken ct = default)
         {
             List<string> keysToRemove;
-            lock (_lock) { keysToRemove = _keys.Where(k => k.StartsWith(prefix)).ToList(); }
 
-            foreach (var key in keysToRemove)
+            // Single lock acquisition: snapshot keys AND remove them from the tracking set atomically
+            lock (_lock)
             {
-                _cache.Remove(key);
-                lock (_lock) { _keys.Remove(key); }
+                keysToRemove = _keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToList();
+                foreach (var key in keysToRemove)
+                    _keys.Remove(key);
             }
+
+            // Cache.Remove is thread-safe and doesn't need our lock
+            foreach (var key in keysToRemove)
+                _cache.Remove(key);
 
             _logger.LogDebug("Cache removed by prefix: {Prefix}, count: {Count}", prefix, keysToRemove.Count);
             return Task.CompletedTask;

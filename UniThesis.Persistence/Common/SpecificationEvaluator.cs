@@ -22,7 +22,7 @@ namespace UniThesis.Persistence.Common
             foreach (var includeStr in spec.IncludeStrings)
                 query = query.Include(includeStr);
 
-            if (spec.OrderExpressions is not null && spec.OrderExpressions.Any())
+            if (spec.OrderExpressions is { Count: > 0 })
             {
                 IOrderedQueryable<T>? ordered = null;
                 foreach (var ord in spec.OrderExpressions)

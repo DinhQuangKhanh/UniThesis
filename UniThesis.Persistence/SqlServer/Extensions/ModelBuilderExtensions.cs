@@ -23,9 +23,11 @@ namespace UniThesis.Persistence.SqlServer.Extensions
 
         public static void SetDefaultStringMaxLength(this ModelBuilder modelBuilder, int maxLength = 256)
         {
-            foreach (var property in modelBuilder.Model.GetEntityTypes().SelectMany(t => t.GetProperties()).Where(p => p.ClrType == typeof(string)))
+            foreach (var property in modelBuilder.Model.GetEntityTypes()
+                .SelectMany(t => t.GetProperties())
+                .Where(p => p.ClrType == typeof(string) && p.GetMaxLength() is null))
             {
-                if (property.GetMaxLength() is null) property.SetMaxLength(maxLength);
+                property.SetMaxLength(maxLength);
             }
         }
     }

@@ -90,13 +90,5 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 
-    /// <summary>
-    /// Override SaveChangesAsync to handle domain events.
-    /// </summary>
-    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        // Domain events can be dispatched here or via interceptor
-        var result = await base.SaveChangesAsync(cancellationToken);
-        return result;
-    }
+    // Domain events are dispatched via DomainEventInterceptor
 }

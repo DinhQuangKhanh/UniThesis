@@ -6,7 +6,7 @@ namespace UniThesis.Domain.Aggregates.DefenseAggregate.Entities
 {
     public class DefenseCouncil : Entity<int>
     {
-        private readonly List<CouncilMember> _members = new();
+        private readonly List<CouncilMember> _members = [];
 
         public string Name { get; private set; } = string.Empty;
         public Guid ChairmanId { get; private set; }

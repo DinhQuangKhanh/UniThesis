@@ -16,10 +16,10 @@ namespace UniThesis.Infrastructure.EventHandlers.Defense
             _logger = logger;
         }
 
-        public async Task Handle(DefenseScheduledEvent notification, CancellationToken cancellationToken)
+        public Task Handle(DefenseScheduledEvent notification, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Defense scheduled: {DefenseId} for group {GroupId}", notification.DefenseId, notification.GroupId);
-            await Task.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 }

@@ -19,7 +19,7 @@ namespace UniThesis.Persistence.MongoDB.Documents
         public string? Name { get; set; }
 
         [BsonRepresentation(BsonType.String)]
-        public List<Guid> ParticipantIds { get; set; } = new();
+        public List<Guid> ParticipantIds { get; set; } = [];
 
         [BsonRepresentation(BsonType.String)]
         public Guid? GroupId { get; set; }

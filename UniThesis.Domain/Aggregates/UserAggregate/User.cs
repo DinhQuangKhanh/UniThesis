@@ -24,7 +24,7 @@ namespace UniThesis.Domain.Aggregates.UserAggregate
         public DateTime? UpdatedAt { get; private set; }
         public DateTime? LastLoginAt { get; private set; }
 
-        private readonly List<UserRole> _roles = new();
+        private readonly List<UserRole> _roles = [];
         public IReadOnlyCollection<UserRole> Roles => _roles.AsReadOnly();
 
         private User() { }

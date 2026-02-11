@@ -20,12 +20,12 @@ namespace UniThesis.Infrastructure.BackgroundJobs.Jobs
             _logger = logger;
         }
 
-        public async Task ExecuteAsync()
+        public Task ExecuteAsync()
         {
             _logger.LogInformation("Starting EvaluationReminderJob");
-            // Implementation: Send reminders for pending evaluations
-            await Task.CompletedTask;
+            // TODO: Implementation: Send reminders for pending evaluations
             _logger.LogInformation("EvaluationReminderJob completed");
+            return Task.CompletedTask;
         }
     }
 }

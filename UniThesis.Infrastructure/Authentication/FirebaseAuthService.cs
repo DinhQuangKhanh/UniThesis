@@ -1,6 +1,5 @@
 using FirebaseAdmin;
 using FirebaseAdmin.Auth;
-using Google.Apis.Auth.OAuth2;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -8,6 +7,7 @@ namespace UniThesis.Infrastructure.Authentication
 {
     /// <summary>
     /// Firebase Authentication service implementation.
+    /// Relies on FirebaseApp being initialized by DependencyInjection.AddInfrastructure().
     /// </summary>
     public class FirebaseAuthService : IFirebaseAuthService
     {
@@ -21,22 +21,9 @@ namespace UniThesis.Infrastructure.Authentication
         {
             _settings = settings.Value;
             _logger = logger;
-
-            // Initialize Firebase if not already initialized
-            if (FirebaseApp.DefaultInstance == null)
-            {
-                var credential = string.IsNullOrEmpty(_settings.ServiceAccountKeyPath)
-                    ? GoogleCredential.GetApplicationDefault()
-                    : CredentialFactory.FromFile<GoogleCredential>(_settings.ServiceAccountKeyPath);
-
-                FirebaseApp.Create(new AppOptions
-                {
-                    Credential = credential,
-                    ProjectId = _settings.ProjectId
-                });
-            }
-
-            _auth = FirebaseAuth.DefaultInstance;
+            _auth = FirebaseAuth.DefaultInstance
+                ?? throw new InvalidOperationException(
+                    "FirebaseApp has not been initialized. Ensure AddInfrastructure() is called before resolving IFirebaseAuthService.");
         }
 
         /// <inheritdoc/>

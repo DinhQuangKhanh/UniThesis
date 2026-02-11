@@ -14,12 +14,12 @@ namespace UniThesis.Infrastructure.BackgroundJobs.Jobs
             _logger = logger;
         }
 
-        public async Task ExecuteAsync()
+        public Task ExecuteAsync()
         {
             _logger.LogInformation("Starting DefenseScheduleReminderJob");
-            // Implementation: Send reminders for upcoming defense schedules
-            await Task.CompletedTask;
+            // TODO: Implementation: Send reminders for upcoming defense schedules
             _logger.LogInformation("DefenseScheduleReminderJob completed");
+            return Task.CompletedTask;
         }
     }
 }

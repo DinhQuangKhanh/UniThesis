@@ -17,11 +17,15 @@ namespace UniThesis.Persistence.SqlServer.Interceptors
             _publisher = publisher;
         }
 
+        /// <remarks>
+        /// Domain events are only dispatched in the async path to avoid sync-over-async deadlocks.
+        /// All EF Core SaveChanges calls in this project use the async overload via UnitOfWork.
+        /// </remarks>
         public override int SavedChanges(
             SaveChangesCompletedEventData eventData,
             int result)
         {
-            DispatchDomainEventsAsync(eventData.Context).GetAwaiter().GetResult();
+
             return base.SavedChanges(eventData, result);
         }
 
@@ -38,19 +42,22 @@ namespace UniThesis.Persistence.SqlServer.Interceptors
         {
             if (context is null) return;
 
+            // Collect aggregates with pending events — snapshot the events before clearing
             var aggregateRoots = context.ChangeTracker
                 .Entries<AggregateRoot<Guid>>()
-                .Where(e => e.Entity.DomainEvents.Any())
                 .Select(e => e.Entity)
+                .Where(ar => ar.DomainEvents.Count > 0)
                 .ToList();
 
+            // Snapshot all events, then clear immediately to prevent re-dispatch
             var domainEvents = aggregateRoots
                 .SelectMany(ar => ar.DomainEvents)
                 .ToList();
 
-            aggregateRoots.ForEach(ar => ar.ClearDomainEvents());
+            foreach (var ar in aggregateRoots)
+                ar.ClearDomainEvents();
 
-            // Use MediatR to publish events - much cleaner and type-safe
+            // Publish each event — handlers may trigger additional SaveChanges
             foreach (var domainEvent in domainEvents)
             {
                 await _publisher.Publish(domainEvent, cancellationToken);

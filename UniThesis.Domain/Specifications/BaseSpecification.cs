@@ -5,11 +5,11 @@ namespace UniThesis.Domain.Specifications
     public abstract class BaseSpecification<T> : ISpecification<T>
     {
         public Expression<Func<T, bool>> Criteria { get; private set; } = _ => true;
-        public List<Expression<Func<T, object>>> Includes { get; } = new();
-        public List<string> IncludeStrings { get; } = new();
+        public List<Expression<Func<T, object>>> Includes { get; } = [];
+        public List<string> IncludeStrings { get; } = [];
         public Expression<Func<T, object>>? OrderBy { get; private set; }
         public Expression<Func<T, object>>? OrderByDescending { get; private set; }
-        public List<OrderExpression<T>> OrderExpressions { get; } = new();
+        public List<OrderExpression<T>> OrderExpressions { get; } = [];
         public int? Take { get; private set; }
         public int? Skip { get; private set; }
         public bool IsPagingEnabled { get; private set; }
@@ -52,7 +52,7 @@ namespace UniThesis.Domain.Specifications
             IQueryable<T> query,
             ISpecification<T> spec)
         {
-            if (!spec.OrderExpressions.Any())
+            if (spec.OrderExpressions.Count == 0)
                 return query;
 
             IOrderedQueryable<T>? orderedQuery = null;

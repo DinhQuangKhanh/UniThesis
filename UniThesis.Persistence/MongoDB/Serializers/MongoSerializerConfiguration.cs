@@ -4,19 +4,20 @@ using MongoDB.Bson.Serialization.Serializers;
 namespace UniThesis.Persistence.MongoDB.Serializers
 {
     /// <summary>
-    /// Serializer configuration for MongoDB.
+    /// Serializer configuration for MongoDB. Thread-safe singleton initialization.
     /// </summary>
     public static class MongoSerializerConfiguration
     {
-        private static bool _configured;
+        private static int _configured;
 
         /// <summary>
         /// Configures global serializers for MongoDB.
         /// Should be called once at application startup.
+        /// Thread-safe: uses Interlocked to prevent double registration.
         /// </summary>
         public static void Configure()
         {
-            if (_configured) return;
+            if (Interlocked.Exchange(ref _configured, 1) == 1) return;
 
             // Register custom serializers
             BsonSerializer.RegisterSerializer(new GuidAsStringSerializer());
@@ -24,8 +25,6 @@ namespace UniThesis.Persistence.MongoDB.Serializers
 
             // Configure DateTime to always use UTC
             BsonSerializer.RegisterSerializer(typeof(DateTime), new DateTimeSerializer(DateTimeKind.Utc));
-
-            _configured = true;
         }
     }
 }

@@ -79,7 +79,7 @@ namespace UniThesis.Persistence.SqlServer.Repositories
         /// </summary>
         public async Task<Semester?> GetSemesterAfterAsync(int semesterId, int count, CancellationToken cancellationToken = default)
         {
-            var currentSemester = await _dbSet.FindAsync(new object[] { semesterId }, cancellationToken);
+            var currentSemester = await _dbSet.FindAsync([semesterId], cancellationToken);
             if (currentSemester == null) return null;
 
             return await _dbSet

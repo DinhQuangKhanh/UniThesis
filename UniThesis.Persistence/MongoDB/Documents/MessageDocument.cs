@@ -30,7 +30,7 @@ namespace UniThesis.Persistence.MongoDB.Documents
         public long? FileSize { get; set; }
 
         [BsonRepresentation(BsonType.String)]
-        public List<Guid> ReadByUserIds { get; set; } = new();
+        public List<Guid> ReadByUserIds { get; set; } = [];
 
         public bool IsDeleted { get; set; }
 

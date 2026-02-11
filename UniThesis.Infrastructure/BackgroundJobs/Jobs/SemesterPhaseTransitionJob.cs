@@ -14,12 +14,12 @@ namespace UniThesis.Infrastructure.BackgroundJobs.Jobs
             _logger = logger;
         }
 
-        public async Task ExecuteAsync()
+        public Task ExecuteAsync()
         {
             _logger.LogInformation("Starting SemesterPhaseTransitionJob");
-            // Implementation: Check and transition semester phases
-            await Task.CompletedTask;
+            // TODO: Implementation: Check and transition semester phases
             _logger.LogInformation("SemesterPhaseTransitionJob completed");
+            return Task.CompletedTask;
         }
     }
 }

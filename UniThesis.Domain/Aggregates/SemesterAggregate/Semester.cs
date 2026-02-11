@@ -4,14 +4,13 @@ using UniThesis.Domain.Aggregates.SemesterAggregate.Rules;
 using UniThesis.Domain.Aggregates.SemesterAggregate.ValueObjects;
 using UniThesis.Domain.Common.Exceptions;
 using UniThesis.Domain.Common.Primitives;
-using UniThesis.Domain.Common.Rules;
 using UniThesis.Domain.Enums.Semester;
 
 namespace UniThesis.Domain.Aggregates.SemesterAggregate
 {
     public class Semester : AggregateRoot<int>
     {
-        private readonly List<SemesterPhase> _phases = new();
+        private readonly List<SemesterPhase> _phases = [];
 
         public string Name { get; private set; } = string.Empty;
         public SemesterCode Code { get; private set; } = null!;

@@ -1,6 +1,6 @@
 using UniThesis.Domain.Aggregates.EvaluationAggregate.Rules;
-using UniThesis.Domain.Common.Exceptions;
 using UniThesis.Domain.Common.Primitives;
+using UniThesis.Domain.Common.Rules;
 using UniThesis.Domain.Enums.Evaluation;
 
 namespace UniThesis.Domain.Aggregates.EvaluationAggregate.Entities
@@ -45,25 +45,12 @@ namespace UniThesis.Domain.Aggregates.EvaluationAggregate.Entities
             IReadOnlyCollection<Guid> allProjectMentorIds,
             int currentActiveEvaluatorCount)
         {
-            // Check conflict of interest - evaluator cannot be a mentor of the project
-            var conflictRule = new EvaluatorCannotEvaluateOwnMentoredProjectRule(evaluatorId, allProjectMentorIds);
-            if (conflictRule.IsBroken())
-            {
-                throw new BusinessRuleValidationException(conflictRule);
-            }
+            BusinessRuleValidator.CheckRules(
+                new EvaluatorCannotEvaluateOwnMentoredProjectRule(evaluatorId, allProjectMentorIds),
+                new ProjectCannotExceedMaxEvaluatorsRule(currentActiveEvaluatorCount));
 
-            // Check max evaluators rule
-            var maxRule = new ProjectCannotExceedMaxEvaluatorsRule(currentActiveEvaluatorCount);
-            if (maxRule.IsBroken())
-            {
-                throw new BusinessRuleValidationException(maxRule);
-            }
-
-            // Validate order
-            if (order < 1 || order > 3)
-            {
+            if (order is < 1 or > 3)
                 throw new ArgumentOutOfRangeException(nameof(order), "Evaluator order must be between 1 and 3.");
-            }
 
             return new ProjectEvaluatorAssignment
             {

@@ -12,5 +12,8 @@ public enum SubmissionStatus
     InReview = 1,
 
     /// <summary>Submission review has been completed.</summary>
-    Completed = 2
+    Completed = 2,
+
+    /// <summary>Submission has been cancelled.</summary>
+    Cancelled = 3
 }

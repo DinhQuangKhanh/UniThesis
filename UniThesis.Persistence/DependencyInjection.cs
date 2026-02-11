@@ -17,6 +17,7 @@ using UniThesis.Persistence.MongoDB;
 using UniThesis.Persistence.MongoDB.Indexes;
 using UniThesis.Persistence.MongoDB.Repositories.Implementation;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
+using UniThesis.Persistence.MongoDB.Serializers;
 using UniThesis.Persistence.Services;
 using UniThesis.Persistence.SqlServer;
 using UniThesis.Persistence.SqlServer.Interceptors;
@@ -28,6 +29,8 @@ namespace UniThesis.Persistence
     {
         public static IServiceCollection AddPersistence(this IServiceCollection services, IConfiguration configuration)
         {
+            // Configure MongoDB serializers (thread-safe, idempotent)
+            MongoSerializerConfiguration.Configure();
             // Add HttpContextAccessor for CurrentUserService
             services.AddHttpContextAccessor();
 
@@ -93,18 +96,6 @@ namespace UniThesis.Persistence
             await dbContext.Database.MigrateAsync();
             var mongoContext = scope.ServiceProvider.GetRequiredService<MongoDbContext>();
             await MongoIndexConfiguration.CreateIndexesAsync(mongoContext);
-        }
-
-        public static async Task SeedDatabaseAsync(this IServiceProvider serviceProvider)
-        {
-            // Seeding is now handled differently with Firebase Auth
-            // Admin user should be created in Firebase Console and then synced to the local database
-            // This method is kept for potential future seeding needs
-            using var scope = serviceProvider.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-            // Seed any non-user related data here if needed
-            await Task.CompletedTask;
         }
     }
 }

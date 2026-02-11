@@ -16,10 +16,10 @@ namespace UniThesis.Infrastructure.EventHandlers.Project
             _logger = logger;
         }
 
-        public async Task Handle(ProjectRejectedEvent notification, CancellationToken cancellationToken)
+        public Task Handle(ProjectRejectedEvent notification, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Project rejected: {ProjectId}", notification.ProjectId);
-            await Task.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 }

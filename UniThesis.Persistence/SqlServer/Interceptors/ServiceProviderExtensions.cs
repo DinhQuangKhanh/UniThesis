@@ -1,15 +1,3 @@
-﻿
-namespace UniThesis.Persistence.SqlServer.Interceptors
-{
-    /// <summary>
-    /// Helper extensions for IServiceProvider.
-    /// </summary>
-    internal static class ServiceProviderExtensions
-    {
-        public static IEnumerable<object?> GetServices(this IServiceProvider provider, Type serviceType)
-        {
-            var enumerableType = typeof(IEnumerable<>).MakeGenericType(serviceType);
-            return (provider.GetService(enumerableType) as IEnumerable<object>) ?? Enumerable.Empty<object>();
-        }
-    }
-}
+﻿// This file is intentionally left empty. The ServiceProviderExtensions class
+// was removed as dead code — it was never referenced in the codebase.
+// Domain events are dispatched via MediatR's IPublisher in DomainEventInterceptor.

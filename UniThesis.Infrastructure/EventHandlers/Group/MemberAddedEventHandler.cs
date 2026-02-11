@@ -16,10 +16,10 @@ namespace UniThesis.Infrastructure.EventHandlers.Group
             _logger = logger;
         }
 
-        public async Task Handle(MemberAddedEvent notification, CancellationToken cancellationToken)
+        public Task Handle(MemberAddedEvent notification, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Member added to group: {StudentId} -> {GroupId}", notification.StudentId, notification.GroupId);
-            await Task.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 }

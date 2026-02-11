@@ -11,6 +11,6 @@ namespace UniThesis.Persistence.SqlServer.Constants
         public const string Evaluator = "Evaluator";
         public const string DepartmentHead = "DepartmentHead";
 
-        public static readonly string[] All = { Admin, Mentor, Student, Evaluator, DepartmentHead };
+        public static readonly string[] All = [Admin, Mentor, Student, Evaluator, DepartmentHead];
     }
 }

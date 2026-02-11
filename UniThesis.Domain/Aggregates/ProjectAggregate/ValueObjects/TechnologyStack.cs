@@ -33,7 +33,7 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate.ValueObjects
         public static TechnologyStack Create(string value)
         {
             if (string.IsNullOrWhiteSpace(value))
-                return new TechnologyStack(string.Empty, Array.Empty<string>());
+                return new TechnologyStack(string.Empty, []);
 
             if (value.Length > MaxLength)
                 throw new ArgumentException($"Technology stack cannot exceed {MaxLength} characters.", nameof(value));

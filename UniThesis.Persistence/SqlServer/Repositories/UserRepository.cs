@@ -46,10 +46,13 @@ namespace UniThesis.Persistence.SqlServer.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task UpdateAsync(User user, CancellationToken ct = default)
+        /// <remarks>
+        /// Synchronous EF operation. Returns completed task without async state machine overhead.
+        /// </remarks>
+        public Task UpdateAsync(User user, CancellationToken ct = default)
         {
             _dbSet.Update(user);
-            await Task.CompletedTask;
+            return Task.CompletedTask;
         }
 
         /// <inheritdoc/>

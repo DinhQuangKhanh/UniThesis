@@ -16,10 +16,10 @@ namespace UniThesis.Infrastructure.EventHandlers.Meeting
             _logger = logger;
         }
 
-        public async Task Handle(MeetingApprovedEvent notification, CancellationToken cancellationToken)
+        public Task Handle(MeetingApprovedEvent notification, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Meeting approved: {MeetingId}", notification.MeetingId);
-            await Task.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 }

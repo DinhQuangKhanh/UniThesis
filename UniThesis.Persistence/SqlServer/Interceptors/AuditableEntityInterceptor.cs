@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using UniThesis.Application.Common.Interfaces;
 using UniThesis.Domain.Common.Primitives;
@@ -11,14 +12,10 @@ namespace UniThesis.Persistence.SqlServer.Interceptors
     public class AuditableEntityInterceptor : SaveChangesInterceptor
     {
         private readonly ICurrentUserService _currentUserService;
-        private readonly IDateTimeService _dateTimeService;
 
-        public AuditableEntityInterceptor(
-            ICurrentUserService currentUserService,
-            IDateTimeService dateTimeService)
+        public AuditableEntityInterceptor(ICurrentUserService currentUserService)
         {
             _currentUserService = currentUserService;
-            _dateTimeService = dateTimeService;
         }
 
         public override InterceptionResult<int> SavingChanges(
@@ -42,30 +39,30 @@ namespace UniThesis.Persistence.SqlServer.Interceptors
         {
             if (context is null) return;
 
-            var utcNow = _dateTimeService.UtcNow;
             var userId = _currentUserService.UserId;
 
-            foreach (var entry in context.ChangeTracker.Entries<AuditableEntity<Guid>>())
-            {
-                if (entry.State == EntityState.Added)
-                {
-                    entry.Entity.SetCreated(userId);
-                }
-                else if (entry.State == EntityState.Modified)
-                {
-                    entry.Entity.SetUpdated(userId);
-                }
-            }
+            // DRY: one generic helper handles both Guid and int keyed auditable entities
+            SetAuditFields(context.ChangeTracker.Entries<AuditableEntity<Guid>>(), userId);
+            SetAuditFields(context.ChangeTracker.Entries<AuditableEntity<int>>(), userId);
+        }
 
-            foreach (var entry in context.ChangeTracker.Entries<AuditableEntity<int>>())
+        /// <summary>
+        /// Applies Created/Updated audit fields based on entity state.
+        /// </summary>
+        private static void SetAuditFields<TId>(
+            IEnumerable<EntityEntry<AuditableEntity<TId>>> entries, Guid? userId)
+            where TId : notnull
+        {
+            foreach (var entry in entries)
             {
-                if (entry.State == EntityState.Added)
+                switch (entry.State)
                 {
-                    entry.Entity.SetCreated(userId);
-                }
-                else if (entry.State == EntityState.Modified)
-                {
-                    entry.Entity.SetUpdated(userId);
+                    case EntityState.Added:
+                        entry.Entity.SetCreated(userId);
+                        break;
+                    case EntityState.Modified:
+                        entry.Entity.SetUpdated(userId);
+                        break;
                 }
             }
         }

@@ -141,7 +141,7 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Project
 
             // Ignore domain events collection
             builder.Ignore(p => p.DomainEvents);
-            builder.Ignore(p => p.ActiveMentors);
+            builder.Ignore(p => p.ActiveMentorCount);
         }
     }
 }

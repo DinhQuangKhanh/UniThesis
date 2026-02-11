@@ -4,7 +4,6 @@ using UniThesis.Domain.Aggregates.ProjectAggregate.Rules;
 using UniThesis.Domain.Aggregates.ProjectAggregate.ValueObjects;
 using UniThesis.Domain.Common.Exceptions;
 using UniThesis.Domain.Common.Primitives;
-using UniThesis.Domain.Common.Rules;
 using UniThesis.Domain.Enums.Document;
 using UniThesis.Domain.Enums.Evaluation;
 using UniThesis.Domain.Enums.Project;
@@ -13,8 +12,8 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
 {
     public class Project : AggregateRoot<Guid>
     {
-        private readonly List<ProjectMentor> _mentors = new();
-        private readonly List<Document> _documents = new();
+        private readonly List<ProjectMentor> _mentors = [];
+        private readonly List<Document> _documents = [];
 
         #region Properties
 
@@ -51,7 +50,11 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
 
         public IReadOnlyCollection<ProjectMentor> Mentors => _mentors.AsReadOnly();
         public IReadOnlyCollection<Document> Documents => _documents.AsReadOnly();
-        public IReadOnlyCollection<ProjectMentor> ActiveMentors => _mentors.Where(m => m.IsActive).ToList().AsReadOnly();
+
+        /// <summary>
+        /// Gets the count of currently active mentors (avoids materializing a list).
+        /// </summary>
+        public int ActiveMentorCount => _mentors.Count(m => m.IsActive);
 
         #endregion
 
@@ -123,7 +126,7 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
         }
 
         public static Project CreateDirect(ProjectCode code, ProjectName nameVi, ProjectName nameEn, string nameAbbr, string description, string objectives,
-             string? scope, TechnologyStack? technologyStack, string? expectedResults, int majorId, int semesterId, int maxStudents, ProjectSourceType sourceType)
+             string? scope, TechnologyStack? technologyStack, string? expectedResults, int majorId, int semesterId, int maxStudents)
         {
             var project = new Project(Guid.NewGuid(), code, nameVi, nameEn, nameAbbr, description, objectives, scope, technologyStack, expectedResults, majorId, semesterId, maxStudents, ProjectSourceType.DirectRegistration);
             project.RaiseDomainEvent(new ProjectCreatedEvent(project.Id, project.Code.Value, ProjectSourceType.DirectRegistration));
@@ -148,7 +151,7 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
 
         public void AddMentor(Guid mentorId, Guid assignedBy)
         {
-            CheckRule(new ProjectCannotExceedMaxMentorsRule(ActiveMentors.Count));
+            CheckRule(new ProjectCannotExceedMaxMentorsRule(ActiveMentorCount));
             if (_mentors.Any(m => m.MentorId == mentorId && m.IsActive))
                 throw new BusinessRuleValidationException("Mentor is already assigned to this project.");
 
@@ -299,8 +302,6 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
 
             PoolStatus = PoolTopicStatus.Expired;
             UpdatedAt = DateTime.UtcNow;
-
-            // RaiseDomainEvent(new PoolTopicExpiredEvent(Id, TopicPoolId!.Value, CreatedInSemesterId!.Value, ...));
         }
 
         #endregion
@@ -348,7 +349,7 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
         public void SetPriority(ProjectPriority priority) { Priority = priority; UpdatedAt = DateTime.UtcNow; }
         public void SetMaxStudents(int maxStudents)
         {
-            if (maxStudents < 1 || maxStudents > 5)
+            if (maxStudents is < 1 or > 5)
                 throw new BusinessRuleValidationException("Maximum students must be between 1 and 5.");
             MaxStudents = maxStudents;
             UpdatedAt = DateTime.UtcNow;

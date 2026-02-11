@@ -20,7 +20,7 @@ namespace UniThesis.Infrastructure.Services.FileStorage
         /// <summary>
         /// Allowed file extensions for upload.
         /// </summary>
-        public string[] AllowedExtensions { get; set; } = { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg", ".zip" };
+        public string[] AllowedExtensions { get; set; } = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg", ".zip"];
 
         /// <summary>
         /// Token expiration time for signed URLs in minutes. Default is 60 minutes.

@@ -60,7 +60,7 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Group
 
             // Ignore domain events and computed properties
             builder.Ignore(g => g.DomainEvents);
-            builder.Ignore(g => g.ActiveMembers);
+            builder.Ignore(g => g.ActiveMemberCount);
             builder.Ignore(g => g.Leader);
         }
     }

@@ -2,12 +2,7 @@
 {
     public class EmailTemplateService : IEmailTemplateService
     {
-        private readonly Dictionary<string, string> _templates;
-
-        public EmailTemplateService()
-        {
-            _templates = EmailTemplates.GetAllTemplates();
-        }
+        private readonly IReadOnlyDictionary<string, string> _templates = EmailTemplates.GetAllTemplates();
 
         public string RenderTemplate<T>(string templateName, T model)
         {

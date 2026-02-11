@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace UniThesis.Infrastructure.HealthChecks
+﻿namespace UniThesis.Infrastructure.HealthChecks
 {
+    /// <summary>
+    /// TODO: Implement Redis health check when Redis caching is enabled.
+    /// </summary>
     internal class RedisHealthCheck
     {
     }

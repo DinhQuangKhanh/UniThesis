@@ -44,7 +44,7 @@ public class TopicPoolDomainService : ITopicPoolDomainService
 
     public async Task<string> GeneratePoolCodeAsync(int majorId, CancellationToken cancellationToken = default)
     {
-        var major = await _context.Majors.FindAsync(new object[] { majorId }, cancellationToken)
+        var major = await _context.Majors.FindAsync([majorId], cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Major), majorId);
 
         return TopicPool.GenerateCode(major.Code);
@@ -58,7 +58,7 @@ public class TopicPoolDomainService : ITopicPoolDomainService
             return existingPool;
 
         // Create new pool
-        var major = await _context.Majors.FindAsync(new object[] { majorId }, cancellationToken)
+        var major = await _context.Majors.FindAsync([majorId], cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Major), majorId);
 
         var code = TopicPool.GenerateCode(major.Code);
@@ -232,34 +232,41 @@ public class TopicPoolDomainService : ITopicPoolDomainService
         var pool = await _topicPoolRepository.GetByIdAsync(topicPoolId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(TopicPool), topicPoolId);
 
-        var projects = await _context.Projects
-            .Where(p => p.TopicPoolId == topicPoolId && p.SourceType == ProjectSourceType.FromPool)
-            .ToListAsync(cancellationToken);
+        var poolProjectsQuery = _context.Projects
+            .Where(p => p.TopicPoolId == topicPoolId && p.SourceType == ProjectSourceType.FromPool);
 
-        var projectIds = projects.Select(p => p.Id).ToList();
-        var registrations = await _context.Set<TopicRegistration>()
+        var statusCounts = await poolProjectsQuery
+            .GroupBy(p => p.PoolStatus)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
+
+        var totalTopics = statusCounts.Values.Sum();
+
+        var projectIds = await poolProjectsQuery.Select(p => p.Id).ToListAsync(cancellationToken);
+
+        var registrationCounts = await _context.Set<TopicRegistration>()
             .Where(tr => projectIds.Contains(tr.ProjectId))
-            .ToListAsync(cancellationToken);
+            .GroupBy(tr => tr.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
 
-        // Get mentor topic counts
-        var mentorCounts = await _context.Projects
-            .Where(p => p.TopicPoolId == topicPoolId && p.SourceType == ProjectSourceType.FromPool)
+        var mentorCounts = await poolProjectsQuery
             .SelectMany(p => p.Mentors.Where(m => m.IsActive))
             .GroupBy(m => m.MentorId)
             .Select(g => g.Count())
             .ToListAsync(cancellationToken);
 
         return new TopicPoolStatistics(
-            TotalTopics: projects.Count,
-            AvailableTopics: projects.Count(p => p.PoolStatus == PoolTopicStatus.Available),
-            ReservedTopics: projects.Count(p => p.PoolStatus == PoolTopicStatus.Reserved),
-            AssignedTopics: projects.Count(p => p.PoolStatus == PoolTopicStatus.Assigned),
-            ExpiredTopics: projects.Count(p => p.PoolStatus == PoolTopicStatus.Expired),
-            TotalRegistrations: registrations.Count,
-            PendingRegistrations: registrations.Count(r => r.Status == TopicRegistrationStatus.Pending),
-            ConfirmedRegistrations: registrations.Count(r => r.Status == TopicRegistrationStatus.Confirmed),
-            TopMentorTopicCount: mentorCounts.Any() ? mentorCounts.Max() : 0,
-            AverageTopicsPerMentor: mentorCounts.Any() ? mentorCounts.Average() : 0
+            TotalTopics: totalTopics,
+            AvailableTopics: statusCounts.GetValueOrDefault(PoolTopicStatus.Available),
+            ReservedTopics: statusCounts.GetValueOrDefault(PoolTopicStatus.Reserved),
+            AssignedTopics: statusCounts.GetValueOrDefault(PoolTopicStatus.Assigned),
+            ExpiredTopics: statusCounts.GetValueOrDefault(PoolTopicStatus.Expired),
+            TotalRegistrations: registrationCounts.Values.Sum(),
+            PendingRegistrations: registrationCounts.GetValueOrDefault(TopicRegistrationStatus.Pending),
+            ConfirmedRegistrations: registrationCounts.GetValueOrDefault(TopicRegistrationStatus.Confirmed),
+            TopMentorTopicCount: mentorCounts.Count > 0 ? mentorCounts.Max() : 0,
+            AverageTopicsPerMentor: mentorCounts.Count > 0 ? mentorCounts.Average() : 0
         );
     }
 

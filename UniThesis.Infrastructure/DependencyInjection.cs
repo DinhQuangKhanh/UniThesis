@@ -118,7 +118,7 @@ namespace UniThesis.Infrastructure
             // Caching
             services.Configure<CacheSettings>(configuration.GetSection(CacheSettings.SectionName));
             services.AddMemoryCache();
-            services.AddScoped<ICacheService, MemoryCacheService>();
+            services.AddSingleton<ICacheService, MemoryCacheService>(); // Singleton: key tracking must persist across scopes
             services.AddScoped<ICacheInvalidationService, CacheInvalidationService>();
 
             // Background Jobs
@@ -149,13 +149,16 @@ namespace UniThesis.Infrastructure
             app.UseMiddleware<RequestLoggingMiddleware>();
             app.UseMiddleware<ExceptionHandlingMiddleware>();
             app.UseMiddleware<PerformanceMonitoringMiddleware>();
-            app.UseHangfireDashboard("/hangfire", new DashboardOptions { Authorization = new[] { new HangfireAuthFilter() } });
+            app.UseHangfireDashboard("/hangfire", new DashboardOptions { Authorization = [new HangfireAuthFilter()] });
             RecurringJobsConfiguration.ConfigureRecurringJobs();
             return app;
         }
     }
 
-    public class HangfireAuthFilter : IDashboardAuthorizationFilter
+    /// <summary>
+    /// Hangfire dashboard authorization: only authenticated Admin users may access.
+    /// </summary>
+    public sealed class HangfireAuthFilter : IDashboardAuthorizationFilter
     {
         public bool Authorize(DashboardContext context)
         {

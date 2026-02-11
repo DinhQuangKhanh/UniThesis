@@ -14,7 +14,10 @@
         public const string PasswordReset = "PasswordReset";
         public const string WelcomeEmail = "WelcomeEmail";
 
-        public static Dictionary<string, string> GetAllTemplates() => new()
+        /// <summary>
+        /// Lazily-initialized, thread-safe singleton dictionary. Avoids re-creating on every call.
+        /// </summary>
+        private static readonly Lazy<IReadOnlyDictionary<string, string>> AllTemplates = new(() => new Dictionary<string, string>
         {
             [ProjectSubmitted] = GetProjectSubmittedTemplate(),
             [ProjectApproved] = GetProjectApprovedTemplate(),
@@ -27,7 +30,12 @@
             [TopicExpiring] = GetTopicExpiringTemplate(),
             [PasswordReset] = GetPasswordResetTemplate(),
             [WelcomeEmail] = GetWelcomeEmailTemplate()
-        };
+        });
+
+        /// <summary>
+        /// Returns the cached template dictionary (created once, reused forever).
+        /// </summary>
+        public static IReadOnlyDictionary<string, string> GetAllTemplates() => AllTemplates.Value;
 
         private static string GetBaseTemplate(string title, string content) => $@"
 <!DOCTYPE html>

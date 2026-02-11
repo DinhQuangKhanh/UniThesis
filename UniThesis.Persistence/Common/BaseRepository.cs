@@ -26,7 +26,7 @@ namespace UniThesis.Persistence.Common
 
         public virtual async Task<TEntity?> GetByIdAsync(TId id, CancellationToken cancellationToken = default)
         {
-            return await _dbSet.FindAsync(new object[] { id }, cancellationToken);
+            return await _dbSet.FindAsync([id], cancellationToken);
         }
 
         public virtual async Task<IEnumerable<TEntity>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -49,10 +49,12 @@ namespace UniThesis.Persistence.Common
             _dbSet.Remove(entity);
         }
 
+        /// <remarks>
+        /// Uses AnyAsync instead of FindAsync to avoid loading the entire entity into memory.
+        /// </remarks>
         public virtual async Task<bool> ExistsAsync(TId id, CancellationToken cancellationToken = default)
         {
-            var entity = await _dbSet.FindAsync(new object[] { id }, cancellationToken);
-            return entity is not null;
+            return await _dbSet.AnyAsync(e => e.Id.Equals(id), cancellationToken);
         }
 
         /// <summary>

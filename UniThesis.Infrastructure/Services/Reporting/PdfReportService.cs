@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace UniThesis.Infrastructure.Services.Reporting
+﻿namespace UniThesis.Infrastructure.Services.Reporting
 {
+    /// <summary>
+    /// TODO: Implement dedicated PDF report service if separate from ExcelReportService.
+    /// </summary>
     internal class PdfReportService
     {
     }

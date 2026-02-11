@@ -14,12 +14,12 @@ namespace UniThesis.Infrastructure.BackgroundJobs.Jobs
             _logger = logger;
         }
 
-        public async Task ExecuteAsync()
+        public Task ExecuteAsync()
         {
             _logger.LogInformation("Starting MeetingReminderJob");
-            // Implementation: Send reminders for upcoming meetings
-            await Task.CompletedTask;
+            // TODO: Implementation: Send reminders for upcoming meetings
             _logger.LogInformation("MeetingReminderJob completed");
+            return Task.CompletedTask;
         }
     }
 }

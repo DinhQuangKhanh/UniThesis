@@ -5,7 +5,7 @@
         private string _title = "Report";
         private string? _subtitle;
         private PdfReportMetadata? _metadata;
-        private readonly List<PdfSection> _sections = new();
+        private readonly List<PdfSection> _sections = [];
 
         public PdfReportBuilder WithTitle(string title) { _title = title; return this; }
         public PdfReportBuilder WithSubtitle(string subtitle) { _subtitle = subtitle; return this; }

@@ -16,11 +16,11 @@ namespace UniThesis.Infrastructure.EventHandlers.Project
             _logger = logger;
         }
 
-        public async Task Handle(ProjectApprovedEvent notification, CancellationToken cancellationToken)
+        public Task Handle(ProjectApprovedEvent notification, CancellationToken cancellationToken)
         {
             // Notification would be sent with project name - simplified here
             _logger.LogInformation("Project approved: {ProjectId}", notification.ProjectId);
-            await Task.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 }

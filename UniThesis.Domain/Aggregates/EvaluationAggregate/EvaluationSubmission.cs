@@ -3,7 +3,6 @@ using UniThesis.Domain.Aggregates.EvaluationAggregate.Rules;
 using UniThesis.Domain.Aggregates.EvaluationAggregate.ValueObjects;
 using UniThesis.Domain.Common.Exceptions;
 using UniThesis.Domain.Common.Primitives;
-using UniThesis.Domain.Common.Rules;
 using UniThesis.Domain.Enums.Evaluation;
 
 namespace UniThesis.Domain.Aggregates.EvaluationAggregate
@@ -82,8 +81,8 @@ namespace UniThesis.Domain.Aggregates.EvaluationAggregate
         {
             if (Status == SubmissionStatus.Completed)
                 throw new BusinessRuleValidationException("Completed submissions cannot be cancelled.");
-            Status = SubmissionStatus.Completed;
-            Result = EvaluationResult.Pending;
+
+            Status = SubmissionStatus.Cancelled;
             RaiseDomainEvent(new EvaluationCancelledEvent(Id, ProjectId));
         }
 

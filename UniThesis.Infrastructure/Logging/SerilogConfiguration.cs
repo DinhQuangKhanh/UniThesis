@@ -28,15 +28,18 @@ namespace UniThesis.Infrastructure.Logging
             builder.Host.UseSerilog();
         }
 
-        public static IApplicationBuilder UseSerilogRequestLogging(this IApplicationBuilder app)
+        /// <summary>
+        /// Configures Serilog request logging with host, user-agent, IP and user ID enrichment.
+        /// </summary>
+        public static IApplicationBuilder UseCustomSerilogRequestLogging(this IApplicationBuilder app)
         {
-            return app.UseSerilogRequestLogging(options =>
+            return Serilog.SerilogApplicationBuilderExtensions.UseSerilogRequestLogging(app, options =>
             {
                 options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
                 options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
                 {
                     diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
-                    diagnosticContext.Set("UserAgent", httpContext.Request.Headers["User-Agent"].FirstOrDefault());
+                    diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent.FirstOrDefault());
                     diagnosticContext.Set("ClientIP", httpContext.Connection.RemoteIpAddress);
                 };
             });

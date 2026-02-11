@@ -39,7 +39,7 @@ namespace UniThesis.Persistence.Services
             get
             {
                 var roles = _httpContextAccessor.HttpContext?.User?.FindAll(ClaimTypes.Role);
-                return roles?.Select(r => r.Value) ?? Enumerable.Empty<string>();
+                return roles?.Select(r => r.Value) ?? [];
             }
         }
 

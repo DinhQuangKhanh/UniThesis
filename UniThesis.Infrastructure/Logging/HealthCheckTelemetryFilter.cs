@@ -11,6 +11,19 @@ namespace UniThesis.Infrastructure.Logging
     {
         private readonly ITelemetryProcessor _next;
 
+        /// <summary>
+        /// Static readonly array avoids allocating a new array on every request.
+        /// </summary>
+        private static readonly string[] HealthCheckPaths =
+        [
+            "/health",
+            "/healthz",
+            "/ready",
+            "/live",
+            "/ping",
+            "/api/health"
+        ];
+
         public HealthCheckTelemetryFilter(ITelemetryProcessor next)
         {
             _next = next;
@@ -18,23 +31,11 @@ namespace UniThesis.Infrastructure.Logging
 
         public void Process(ITelemetry item)
         {
-            // Filter out health check requests
-            if (item is RequestTelemetry request)
-            {
-                if (IsHealthCheckRequest(request.Url?.AbsolutePath))
-                {
-                    return; // Don't send this telemetry
-                }
-            }
+            if (item is RequestTelemetry request && IsHealthCheckRequest(request.Url?.AbsolutePath))
+                return;
 
-            // Filter out dependency calls to health endpoints
-            if (item is DependencyTelemetry dependency)
-            {
-                if (IsHealthCheckRequest(dependency.Data))
-                {
-                    return;
-                }
-            }
+            if (item is DependencyTelemetry dependency && IsHealthCheckRequest(dependency.Data))
+                return;
 
             _next.Process(item);
         }
@@ -44,17 +45,7 @@ namespace UniThesis.Infrastructure.Logging
             if (string.IsNullOrEmpty(path))
                 return false;
 
-            var healthCheckPaths = new[]
-            {
-            "/health",
-            "/healthz",
-            "/ready",
-            "/live",
-            "/ping",
-            "/api/health"
-        };
-
-            return healthCheckPaths.Any(hcp => path.Contains(hcp, StringComparison.OrdinalIgnoreCase));
+            return HealthCheckPaths.Any(hcp => path.Contains(hcp, StringComparison.OrdinalIgnoreCase));
         }
     }
 }

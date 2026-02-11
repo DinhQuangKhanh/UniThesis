@@ -75,14 +75,6 @@ namespace UniThesis.Persistence.SqlServer.Extensions
         }
 
         /// <summary>
-        /// Reloads the entity from the database.
-        /// </summary>
-        public static async Task ReloadAsync(this EntityEntry entry, CancellationToken cancellationToken = default)
-        {
-            await entry.ReloadAsync(cancellationToken);
-        }
-
-        /// <summary>
         /// Gets the aggregate root from an entity entry if applicable.
         /// </summary>
         public static AggregateRoot<TId>? GetAggregateRoot<TId>(this EntityEntry entry) where TId : notnull

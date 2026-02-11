@@ -25,7 +25,7 @@ namespace UniThesis.Persistence.MongoDB.Documents
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime ModifiedAt { get; set; } = DateTime.UtcNow;
 
-        public List<FieldChange> FieldsChanged { get; set; } = new();
+        public List<FieldChange> FieldsChanged { get; set; } = [];
         public string? Reason { get; set; }
         public int? RelatedSubmissionNumber { get; set; }
     }

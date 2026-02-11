@@ -109,12 +109,14 @@ namespace UniThesis.Infrastructure.RealTime.Services
         {
             try
             {
+                var excluded = excludedConnectionIds.ToList();
+
                 await _hubContext.Clients
-                    .AllExcept(excludedConnectionIds.ToList())
+                    .AllExcept(excluded)
                     .SendAsync(method, message, ct);
 
                 _logger.LogDebug("Realtime notification sent to all except {Count} connections: {Method}",
-                    excludedConnectionIds.Count(), method);
+                    excluded.Count, method);
             }
             catch (Exception ex)
             {

@@ -1,6 +1,6 @@
 using UniThesis.Domain.Aggregates.UserAggregate.Rules;
-using UniThesis.Domain.Common.Exceptions;
 using UniThesis.Domain.Common.Primitives;
+using UniThesis.Domain.Common.Rules;
 
 namespace UniThesis.Domain.Aggregates.UserAggregate.ValueObjects
 {
@@ -26,12 +26,7 @@ namespace UniThesis.Domain.Aggregates.UserAggregate.ValueObjects
         /// <exception cref="BusinessRuleValidationException">Thrown when the email is not from @fpt.edu.vn domain.</exception>
         public static Email Create(string value)
         {
-            var rule = new EmailMustBeFptDomainRule(value);
-            if (rule.IsBroken())
-            {
-                throw new BusinessRuleValidationException(rule);
-            }
-
+            BusinessRuleValidator.CheckRule(new EmailMustBeFptDomainRule(value));
             return new Email(value);
         }
 

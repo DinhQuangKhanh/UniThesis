@@ -11,12 +11,12 @@ namespace UniThesis.Infrastructure.BackgroundJobs.Jobs
             _logger = logger;
         }
 
-        public async Task ExecuteAsync()
+        public Task ExecuteAsync()
         {
             _logger.LogInformation("Starting DataCleanupJob");
-            // Implementation: Clean up old logs, temporary files, etc.
-            await Task.CompletedTask;
+            // TODO: Implementation: Clean up old logs, temporary files, etc.
             _logger.LogInformation("DataCleanupJob completed");
+            return Task.CompletedTask;
         }
     }
 }

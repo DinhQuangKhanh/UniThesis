@@ -4,14 +4,13 @@ using UniThesis.Domain.Aggregates.GroupAggregate.Rules;
 using UniThesis.Domain.Aggregates.GroupAggregate.ValueObjects;
 using UniThesis.Domain.Common.Exceptions;
 using UniThesis.Domain.Common.Primitives;
-using UniThesis.Domain.Common.Rules;
 using UniThesis.Domain.Enums.Group;
 
 namespace UniThesis.Domain.Aggregates.GroupAggregate
 {
     public class Group : AggregateRoot<Guid>
     {
-        private readonly List<GroupMember> _members = new();
+        private readonly List<GroupMember> _members = [];
         private const int DefaultMaxMembers = 5;
 
         public GroupCode Code { get; private set; } = null!;
@@ -25,8 +24,12 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
         public DateTime? UpdatedAt { get; private set; }
 
         public IReadOnlyCollection<GroupMember> Members => _members.AsReadOnly();
-        public IReadOnlyCollection<GroupMember> ActiveMembers => _members.Where(m => m.IsActive).ToList().AsReadOnly();
         public GroupMember? Leader => _members.FirstOrDefault(m => m.IsLeader);
+
+        /// <summary>
+        /// Gets the count of currently active members (avoids materializing a list).
+        /// </summary>
+        public int ActiveMemberCount => _members.Count(m => m.IsActive);
 
         private Group() { }
 
@@ -53,7 +56,7 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
 
         public void AddMember(Guid studentId)
         {
-            CheckRule(new GroupCannotExceedMaxMembersRule(ActiveMembers.Count, MaxMembers));
+            CheckRule(new GroupCannotExceedMaxMembersRule(ActiveMemberCount, MaxMembers));
             CheckRule(new StudentCannotJoinMultipleGroupsRule(_members.Any(m => m.StudentId == studentId && m.IsActive)));
 
             var member = GroupMember.Create(Id, studentId, GroupMemberRole.Member);
@@ -99,7 +102,7 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
             if (Status != GroupStatus.Active)
                 throw new BusinessRuleValidationException("Only active groups can be disbanded.");
             Status = GroupStatus.Disbanded;
-            foreach (var member in ActiveMembers) member.Leave();
+            foreach (var member in _members.Where(m => m.IsActive)) member.Leave();
             UpdatedAt = DateTime.UtcNow;
             RaiseDomainEvent(new GroupDisbandedEvent(Id));
         }
@@ -116,8 +119,9 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
         public void SetName(string? name) { Name = name; UpdatedAt = DateTime.UtcNow; }
         public void SetMaxMembers(int maxMembers)
         {
-            if (maxMembers < ActiveMembers.Count)
-                throw new BusinessRuleValidationException($"Cannot set max members to {maxMembers} when group has {ActiveMembers.Count} active members.");
+            var activeCount = ActiveMemberCount;
+            if (maxMembers < activeCount)
+                throw new BusinessRuleValidationException($"Cannot set max members to {maxMembers} when group has {activeCount} active members.");
             MaxMembers = maxMembers;
             UpdatedAt = DateTime.UtcNow;
         }

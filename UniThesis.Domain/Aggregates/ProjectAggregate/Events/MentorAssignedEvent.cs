@@ -1,5 +1,4 @@
 ﻿using UniThesis.Domain.Common.Interfaces;
-using UniThesis.Domain.Enums.Mentor;
 
 namespace UniThesis.Domain.Aggregates.ProjectAggregate.Events
 {

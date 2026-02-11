@@ -6,8 +6,9 @@ namespace UniThesis.Persistence
 {
     /// <summary>
     /// Unit of Work implementation for managing transactions.
+    /// Sealed: no inheritance needed — prevents virtual dispatch overhead in Dispose.
     /// </summary>
-    public class UnitOfWork : IUnitOfWork
+    public sealed class UnitOfWork : IUnitOfWork
     {
         private readonly AppDbContext _context;
         private IDbContextTransaction? _transaction;
@@ -15,7 +16,7 @@ namespace UniThesis.Persistence
 
         public UnitOfWork(AppDbContext context)
         {
-            _context = context;
+            _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -66,18 +67,13 @@ namespace UniThesis.Persistence
 
         public void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposed && disposing)
-            {
-                _transaction?.Dispose();
-                _context.Dispose();
-            }
+            if (_disposed) return;
             _disposed = true;
+
+            _transaction?.Dispose();
+            _context.Dispose();
+
+            GC.SuppressFinalize(this);
         }
     }
 }

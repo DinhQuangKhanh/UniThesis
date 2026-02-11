@@ -13,7 +13,7 @@
         public ValidationException()
             : base("One or more validation failures have occurred.", "VALIDATION_ERROR")
         {
-            Errors = new Dictionary<string, string[]>();
+            Errors = new();
         }
 
         /// <summary>
@@ -23,7 +23,7 @@
         public ValidationException(string message)
             : base(message, "VALIDATION_ERROR")
         {
-            Errors = new Dictionary<string, string[]>();
+            Errors = new();
         }
 
         /// <summary>
@@ -45,9 +45,9 @@
             : base($"Validation failed for {propertyName}: {errorMessage}", "VALIDATION_ERROR")
         {
             Errors = new Dictionary<string, string[]>
-        {
-            { propertyName, new[] { errorMessage } }
-        };
+            {
+                { propertyName, [errorMessage] }
+            };
         }
 
         /// <summary>
@@ -59,9 +59,9 @@
             : base($"Validation failed for {propertyName}", "VALIDATION_ERROR")
         {
             Errors = new Dictionary<string, string[]>
-        {
-            { propertyName, errorMessages.ToArray() }
-        };
+            {
+                { propertyName, [.. errorMessages] }
+            };
         }
 
         /// <summary>
