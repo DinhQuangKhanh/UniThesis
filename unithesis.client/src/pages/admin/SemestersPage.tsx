@@ -29,7 +29,7 @@ export function SemestersPage() {
                     variants={container}
                     initial="hidden"
                     animate="show"
-                    className="max-w-7xl mx-auto space-y-6"
+                    className="space-y-6"
                 >
                     {/* Header */}
                     <motion.div variants={item} className="flex flex-col md:flex-row md:items-center justify-between gap-4">

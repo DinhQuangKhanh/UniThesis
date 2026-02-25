@@ -55,7 +55,7 @@ export function MentorTopicDetailPage() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-8 bg-slate-100">
-                <motion.div variants={container} initial="hidden" animate="show" className="max-w-[1400px] mx-auto grid grid-cols-12 gap-8">
+                <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-12 gap-8">
                     {/* Left Column - Topic Details */}
                     <motion.div variants={item} className="col-span-12 lg:col-span-8 space-y-6">
                         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

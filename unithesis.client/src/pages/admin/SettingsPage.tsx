@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Header } from '@/components/layout'
+import { useMaintenance } from '@/contexts/MaintenanceContext'
 
 const container = {
     hidden: { opacity: 0 },
@@ -24,6 +25,7 @@ const colorThemes = [
 ]
 
 export function SettingsPage() {
+    const { isMaintenanceMode, setMaintenanceMode } = useMaintenance()
     // Saved color (currently applied to system)
     const [savedColor, setSavedColor] = useState(() => {
         return localStorage.getItem('themeColor') || '#2c6090'
@@ -104,7 +106,7 @@ export function SettingsPage() {
                     variants={container}
                     initial="hidden"
                     animate="show"
-                    className="max-w-6xl mx-auto space-y-6"
+                    className="space-y-6"
                 >
                     {/* Header Actions */}
                     <motion.div variants={item} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
@@ -378,9 +380,19 @@ export function SettingsPage() {
                                 <div className="p-6">
                                     <p className="text-sm text-slate-600 mb-4">Khi bật chế độ bảo trì, chỉ có Admin mới có thể truy cập hệ thống. Sinh viên và giảng viên sẽ thấy trang thông báo.</p>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm font-bold text-slate-700">Chế độ bảo trì</span>
+                                        <div>
+                                            <span className="text-sm font-bold text-slate-700">Chế độ bảo trì</span>
+                                            {isMaintenanceMode && (
+                                                <span className="ml-2 text-xs font-medium px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full">Đang bật</span>
+                                            )}
+                                        </div>
                                         <label className="relative inline-flex items-center cursor-pointer">
-                                            <input className="sr-only peer" type="checkbox" />
+                                            <input
+                                                className="sr-only peer"
+                                                type="checkbox"
+                                                checked={isMaintenanceMode}
+                                                onChange={(e) => setMaintenanceMode(e.target.checked)}
+                                            />
                                             <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
                                         </label>
                                     </div>

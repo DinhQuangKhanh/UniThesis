@@ -56,7 +56,7 @@ export function StudentDashboardPage() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-8">
-                <motion.div variants={container} initial="hidden" animate="show" className="max-w-[1200px] mx-auto flex flex-col gap-6">
+                <motion.div variants={container} initial="hidden" animate="show" className="flex flex-col gap-6">
                     {/* Welcome Section */}
                     <motion.section variants={item} className="bg-white rounded-xl p-6 border border-[#e9ecf1] shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
                         <div className="flex flex-col gap-2">

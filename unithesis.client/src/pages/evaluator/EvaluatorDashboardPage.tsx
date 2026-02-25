@@ -55,7 +55,7 @@ const pendingProjects = [
 
 export function EvaluatorDashboardPage() {
     return (
-        <div className="max-w-7xl mx-auto p-8 flex flex-col gap-8">
+        <div className="p-8 flex flex-col gap-8">
             {/* Header */}
             <motion.header
                 initial={{ opacity: 0, y: -20 }}
@@ -149,8 +149,8 @@ export function EvaluatorDashboardPage() {
                                             <td className="px-6 py-4 text-right">
                                                 <button
                                                     className={`inline-flex items-center justify-center h-8 px-4 text-xs font-bold rounded-lg transition-all ${project.status === 'Urgent'
-                                                            ? 'bg-primary text-white hover:bg-primary-dark shadow-sm shadow-primary/20'
-                                                            : 'bg-white border border-gray-200 text-slate-900 hover:bg-gray-50 hover:border-primary/50 hover:text-primary'
+                                                        ? 'bg-primary text-white hover:bg-primary-dark shadow-sm shadow-primary/20'
+                                                        : 'bg-white border border-gray-200 text-slate-900 hover:bg-gray-50 hover:border-primary/50 hover:text-primary'
                                                         }`}
                                                 >
                                                     Review

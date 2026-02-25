@@ -21,7 +21,7 @@ export function ProjectsPage() {
                     variants={container}
                     initial="hidden"
                     animate="show"
-                    className="max-w-7xl mx-auto flex flex-col h-full"
+                    className="flex flex-col h-full"
                 >
                     {/* Admin Notice */}
                     <motion.div variants={item} className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6 flex items-start gap-3">

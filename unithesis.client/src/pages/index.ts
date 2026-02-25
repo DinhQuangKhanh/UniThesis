@@ -1,4 +1,5 @@
 export { LoginPage } from './auth/LoginPage'
+export { MaintenancePage } from './MaintenancePage'
 export { DashboardPage } from './admin/DashboardPage'
 export { ReportsPage } from './admin/ReportsPage'
 export { SettingsPage } from './admin/SettingsPage'

@@ -59,7 +59,7 @@ export function MentorDashboardPage() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-8">
-                <motion.div variants={container} initial="hidden" animate="show" className="max-w-[1200px] mx-auto space-y-8">
+                <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
                     {/* Welcome & Action */}
                     <motion.div variants={item} className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                         <div>

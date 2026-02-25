@@ -113,8 +113,8 @@ namespace UniThesis.Persistence.MongoDB.Indexes
             new CreateIndexModel<UserActivityLogDocument>(indexKeys.Descending(x => x.Timestamp)),
             new CreateIndexModel<UserActivityLogDocument>(
                 indexKeys.Descending(x => x.Timestamp),
-                new CreateIndexOptions { ExpireAfter = TimeSpan.FromDays(365) }) // TTL - auto delete after 1 year
-        });
+                new CreateIndexOptions { ExpireAfter = TimeSpan.FromDays(365) })] // TTL - auto delete after 1 year
+        );
         }
 
         private static async Task CreateSystemAuditLogIndexesAsync(MongoDbContext context)

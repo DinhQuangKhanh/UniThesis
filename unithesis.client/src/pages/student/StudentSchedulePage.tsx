@@ -74,7 +74,7 @@ export function StudentSchedulePage() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-8">
-                <motion.div variants={container} initial="hidden" animate="show" className="max-w-[1200px] mx-auto grid grid-cols-1 xl:grid-cols-3 gap-8">
+                <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                     {/* Calendar Section */}
                     <div className="xl:col-span-2 space-y-6">
                         {/* Legend */}
@@ -198,7 +198,7 @@ export function StudentSchedulePage() {
                 </motion.div>
 
                 {/* Footer */}
-                <div className="max-w-[1200px] mx-auto mt-12 pt-6 border-t border-[#e9ecf1] flex flex-col md:flex-row justify-between items-center text-[#58698d] text-sm pb-8">
+                <div className="mt-12 pt-6 border-t border-[#e9ecf1] flex flex-col md:flex-row justify-between items-center text-[#58698d] text-sm pb-8">
                     <p>© 2023 University Thesis Management System.</p>
                     <div className="flex gap-4 mt-2 md:mt-0">
                         <a className="hover:text-primary" href="#">Quy định bảo mật</a>

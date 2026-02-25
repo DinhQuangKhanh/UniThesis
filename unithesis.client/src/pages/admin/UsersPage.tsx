@@ -23,7 +23,7 @@ export function UsersPage() {
                     variants={container}
                     initial="hidden"
                     animate="show"
-                    className="max-w-7xl mx-auto flex flex-col h-full"
+                    className="flex flex-col h-full"
                 >
                     {/* Filters */}
                     <motion.div variants={item} className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">

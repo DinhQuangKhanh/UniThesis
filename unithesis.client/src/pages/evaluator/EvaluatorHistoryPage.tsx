@@ -68,7 +68,7 @@ export function EvaluatorHistoryPage() {
         <>
             {/* Header */}
             <header className="bg-white border-b border-gray-200 px-8 py-6 shrink-0">
-                <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex flex-col gap-1">
                         <h2 className="text-slate-900 text-2xl font-bold tracking-tight flex items-center gap-2">
                             <span className="material-symbols-outlined text-primary">history</span>
@@ -86,7 +86,7 @@ export function EvaluatorHistoryPage() {
             </header>
 
             {/* Main Content */}
-            <div className="max-w-7xl mx-auto w-full p-6 md:p-8 flex flex-col gap-6 flex-1">
+            <div className="w-full p-6 md:p-8 flex flex-col gap-6 flex-1">
                 <motion.div variants={container} initial="hidden" animate="show" className="flex flex-col gap-6">
                     {/* Stats */}
                     <motion.div variants={item} className="grid grid-cols-2 md:grid-cols-4 gap-4">

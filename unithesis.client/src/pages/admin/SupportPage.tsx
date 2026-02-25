@@ -54,7 +54,7 @@ export function SupportPage() {
                     variants={container}
                     initial="hidden"
                     animate="show"
-                    className="max-w-7xl mx-auto flex flex-col h-full"
+                    className="flex flex-col h-full"
                 >
                     {/* Stats */}
                     <motion.div variants={item} className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 shrink-0">
@@ -104,10 +104,10 @@ export function SupportPage() {
                                                 <div className="flex items-center justify-between mt-2">
                                                     <span className="text-[10px] text-slate-400">{ticket.time}</span>
                                                     <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${ticket.status === 'Chưa đọc'
-                                                            ? 'bg-error/10 text-error'
-                                                            : ticket.status === 'Đang xử lý'
-                                                                ? 'bg-blue-50 text-blue-600'
-                                                                : 'bg-success/10 text-success'
+                                                        ? 'bg-error/10 text-error'
+                                                        : ticket.status === 'Đang xử lý'
+                                                            ? 'bg-blue-50 text-blue-600'
+                                                            : 'bg-success/10 text-success'
                                                         }`}>
                                                         {ticket.status}
                                                     </span>

@@ -80,7 +80,7 @@ export function EvaluatorProjectsPage() {
         <>
             {/* Header */}
             <header className="bg-primary px-8 py-6 shrink-0 shadow-lg z-10">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 max-w-7xl mx-auto w-full">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
                     <div className="flex flex-col gap-1">
                         <h2 className="text-white text-2xl font-bold tracking-tight flex items-center gap-2">
                             <span className="material-symbols-outlined">folder_shared</span>
@@ -102,7 +102,7 @@ export function EvaluatorProjectsPage() {
             </header>
 
             {/* Main Content */}
-            <div className="max-w-7xl mx-auto w-full p-6 md:p-8 flex flex-col gap-6 flex-1">
+            <div className="w-full p-6 md:p-8 flex flex-col gap-6 flex-1">
                 <motion.div variants={container} initial="hidden" animate="show" className="flex flex-col gap-6">
                     {/* Filters */}
                     <motion.div variants={item} className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
@@ -238,10 +238,10 @@ export function EvaluatorProjectsPage() {
                                                 <button
                                                     disabled={project.disabled}
                                                     className={`inline-flex items-center justify-center h-8 px-4 text-xs font-bold rounded-lg transition-all ${project.disabled
-                                                            ? 'bg-gray-50 text-gray-400 cursor-not-allowed border border-gray-100'
-                                                            : project.status === 'Chờ duyệt'
-                                                                ? 'bg-primary text-white hover:bg-primary-dark shadow-sm shadow-primary/20 hover:shadow-md hover:-translate-y-0.5'
-                                                                : 'bg-white border border-gray-200 text-slate-900 hover:bg-gray-50 hover:border-primary/50 hover:text-primary'
+                                                        ? 'bg-gray-50 text-gray-400 cursor-not-allowed border border-gray-100'
+                                                        : project.status === 'Chờ duyệt'
+                                                            ? 'bg-primary text-white hover:bg-primary-dark shadow-sm shadow-primary/20 hover:shadow-md hover:-translate-y-0.5'
+                                                            : 'bg-white border border-gray-200 text-slate-900 hover:bg-gray-50 hover:border-primary/50 hover:text-primary'
                                                         }`}
                                                 >
                                                     {project.status === 'Chờ duyệt' ? 'Thẩm định' : project.disabled ? 'Thẩm định' : project.status === 'Đã duyệt' ? 'Xem lại' : 'Chi tiết'}

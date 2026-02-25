@@ -26,7 +26,7 @@ export function DashboardPage() {
                     variants={container}
                     initial="hidden"
                     animate="show"
-                    className="max-w-7xl mx-auto space-y-6"
+                    className="space-y-6"
                 >
                     {/* Stats Cards */}
                     <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -255,10 +255,10 @@ function TimelineStep({
         <div className={`flex flex-col items-center gap-2 group cursor-pointer ${isPending ? 'opacity-50' : ''}`}>
             <div
                 className={`rounded-full flex items-center justify-center ${isCurrent
-                        ? 'w-10 h-10 bg-primary text-white shadow-lg shadow-primary/20 ring-4 ring-white'
-                        : status === 'completed'
-                            ? 'w-8 h-8 bg-white border-2 border-primary text-primary shadow-sm'
-                            : 'w-8 h-8 bg-white border-2 border-slate-300 text-slate-400'
+                    ? 'w-10 h-10 bg-primary text-white shadow-lg shadow-primary/20 ring-4 ring-white'
+                    : status === 'completed'
+                        ? 'w-8 h-8 bg-white border-2 border-primary text-primary shadow-sm'
+                        : 'w-8 h-8 bg-white border-2 border-slate-300 text-slate-400'
                     }`}
             >
                 <span className={`material-symbols-outlined ${isCurrent ? 'text-[20px]' : 'text-[16px]'}`}>{icon}</span>

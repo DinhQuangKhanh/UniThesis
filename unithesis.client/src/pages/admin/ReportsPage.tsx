@@ -42,7 +42,7 @@ export function ReportsPage() {
                     variants={container}
                     initial="hidden"
                     animate="show"
-                    className="max-w-7xl mx-auto space-y-6"
+                    className="space-y-6"
                 >
                     {/* Filter Bar */}
                     <motion.div variants={item} className="bento-card p-4 rounded-md flex flex-wrap gap-4 items-center justify-between">

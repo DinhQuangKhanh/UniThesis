@@ -50,7 +50,7 @@ export function MentorGroupsPage() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-8 bg-slate-100">
-                <motion.div variants={container} initial="hidden" animate="show" className="max-w-[1200px] mx-auto space-y-8">
+                <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
                     {/* Title */}
                     <motion.div variants={item} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
