@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
-import { AuthProvider } from '@/contexts/AuthContext'
+import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { MaintenanceProvider } from '@/contexts/MaintenanceContext'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { AdminLayout, EvaluatorLayout, MentorLayout, StudentLayout } from '@/components/layout'
@@ -32,6 +32,7 @@ import {
     StudentMyTopicPage,
     MaintenancePage,
 } from '@/pages'
+import { NotFoundPage, AccessDeniedPage } from '@/pages/errors'
 
 // Helper function to adjust color brightness
 const adjustColor = (color: string, amount: number) => {
@@ -40,6 +41,26 @@ const adjustColor = (color: string, amount: number) => {
     const g = Math.max(0, Math.min(255, parseInt(hex.slice(2, 4), 16) + amount))
     const b = Math.max(0, Math.min(255, parseInt(hex.slice(4, 6), 16) + amount))
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+}
+
+const roleHomeMap: Record<string, string> = {
+    admin: '/admin',
+    mentor: '/mentor',
+    evaluator: '/evaluator',
+    student: '/student',
+}
+
+/** Redirects authenticated users to their role-based home page, or to /login if not logged in. */
+function RoleBasedRedirect() {
+    const { user, isAuthenticated, isLoading } = useAuth()
+
+    if (isLoading) return null
+
+    if (!isAuthenticated || !user) {
+        return <Navigate to="/login" replace />
+    }
+
+    return <Navigate to={roleHomeMap[user.role] ?? '/login'} replace />
 }
 
 function App() {
@@ -58,12 +79,13 @@ function App() {
                         {/* Public Routes */}
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/maintenance" element={<MaintenancePage />} />
+                        <Route path="/403" element={<AccessDeniedPage />} />
 
                         {/* Protected Admin Routes */}
                         <Route
                             path="/admin"
                             element={
-                                <ProtectedRoute>
+                                <ProtectedRoute allowedRoles={['admin']}>
                                     <AdminLayout />
                                 </ProtectedRoute>
                             }
@@ -81,7 +103,7 @@ function App() {
                         <Route
                             path="/evaluator"
                             element={
-                                <ProtectedRoute>
+                                <ProtectedRoute allowedRoles={['evaluator']}>
                                     <EvaluatorLayout />
                                 </ProtectedRoute>
                             }
@@ -99,7 +121,7 @@ function App() {
                         <Route
                             path="/mentor"
                             element={
-                                <ProtectedRoute>
+                                <ProtectedRoute allowedRoles={['mentor']}>
                                     <MentorLayout />
                                 </ProtectedRoute>
                             }
@@ -116,7 +138,7 @@ function App() {
                         <Route
                             path="/student"
                             element={
-                                <ProtectedRoute>
+                                <ProtectedRoute allowedRoles={['student']}>
                                     <StudentLayout />
                                 </ProtectedRoute>
                             }
@@ -127,11 +149,11 @@ function App() {
                             <Route path="schedule" element={<StudentSchedulePage />} />
                         </Route>
 
-                        {/* Redirect root to admin */}
-                        <Route path="/" element={<Navigate to="/admin" replace />} />
+                        {/* Smart redirect: root goes to role-based home */}
+                        <Route path="/" element={<RoleBasedRedirect />} />
 
-                        {/* Catch all - redirect to admin */}
-                        <Route path="*" element={<Navigate to="/admin" replace />} />
+                        {/* 404 — any unmatched route */}
+                        <Route path="*" element={<NotFoundPage />} />
                     </Routes>
                 </AnimatePresence>
             </AuthProvider>

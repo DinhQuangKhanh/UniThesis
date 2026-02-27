@@ -43,9 +43,18 @@ namespace UniThesis.Infrastructure
             // Initialize Firebase Admin SDK
             if (FirebaseApp.DefaultInstance == null && firebaseSettings != null)
             {
-                var credential = string.IsNullOrEmpty(firebaseSettings.ServiceAccountKeyPath)
-                    ? GoogleCredential.GetApplicationDefault()
-                    : CredentialFactory.FromFile<GoogleCredential>(firebaseSettings.ServiceAccountKeyPath);
+                // When using the Firebase Auth Emulator, set the environment variable
+                // so the Admin SDK routes all requests to the local emulator.
+                if (firebaseSettings.UseEmulator && !string.IsNullOrEmpty(firebaseSettings.EmulatorHost))
+                {
+                    Environment.SetEnvironmentVariable("FIREBASE_AUTH_EMULATOR_HOST", firebaseSettings.EmulatorHost);
+                }
+
+                var credential = firebaseSettings.UseEmulator
+                    ? GoogleCredential.FromAccessToken("emulator-fake-token")
+                    : string.IsNullOrEmpty(firebaseSettings.ServiceAccountKeyPath)
+                        ? GoogleCredential.GetApplicationDefault()
+                        : CredentialFactory.FromFile<GoogleCredential>(firebaseSettings.ServiceAccountKeyPath);
 
                 FirebaseApp.Create(new AppOptions
                 {
@@ -61,15 +70,37 @@ namespace UniThesis.Infrastructure
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             }).AddJwtBearer(options =>
             {
-                options.Authority = $"https://securetoken.google.com/{firebaseSettings?.ProjectId}";
-                options.TokenValidationParameters = new TokenValidationParameters
+                var projectId = firebaseSettings?.ProjectId;
+
+                if (firebaseSettings?.UseEmulator == true)
                 {
-                    ValidateIssuer = true,
-                    ValidIssuer = $"https://securetoken.google.com/{firebaseSettings?.ProjectId}",
-                    ValidateAudience = true,
-                    ValidAudience = firebaseSettings?.ProjectId,
-                    ValidateLifetime = true
-                };
+                    // Firebase Auth Emulator: tokens are self-signed, so we skip
+                    // issuer signing key validation while keeping other checks.
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidIssuer = $"https://securetoken.google.com/{projectId}",
+                        ValidateAudience = true,
+                        ValidAudience = projectId,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = false,
+                        SignatureValidator = (token, _) =>
+                            new Microsoft.IdentityModel.JsonWebTokens.JsonWebToken(token)
+                    };
+                }
+                else
+                {
+                    options.Authority = $"https://securetoken.google.com/{projectId}";
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidIssuer = $"https://securetoken.google.com/{projectId}",
+                        ValidateAudience = true,
+                        ValidAudience = projectId,
+                        ValidateLifetime = true
+                    };
+                }
+
                 options.Events = new JwtBearerEvents
                 {
                     OnMessageReceived = context =>
