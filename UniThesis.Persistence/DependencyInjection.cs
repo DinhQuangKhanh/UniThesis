@@ -18,9 +18,11 @@ using UniThesis.Persistence.MongoDB.Indexes;
 using UniThesis.Persistence.MongoDB.Repositories.Implementation;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
 using UniThesis.Persistence.MongoDB.Serializers;
+using UniThesis.Persistence.Seeds;
 using UniThesis.Persistence.Services;
 using UniThesis.Persistence.SqlServer;
 using UniThesis.Persistence.SqlServer.Interceptors;
+using UniThesis.Persistence.SqlServer.QueryServices;
 using UniThesis.Persistence.SqlServer.Repositories;
 
 namespace UniThesis.Persistence
@@ -77,6 +79,9 @@ namespace UniThesis.Persistence
             services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
             services.AddScoped<ITopicRegistrationRepository, TopicRegistrationRepository>();
 
+            // Add Query Services
+            services.AddScoped<Application.Common.Interfaces.IStudentGroupQueryService, StudentGroupQueryService>();
+
             // Add MongoDB Repositories
             services.AddScoped<IEvaluationLogRepository, EvaluationLogRepository>();
             services.AddScoped<IProjectModificationHistoryRepository, ProjectModificationHistoryRepository>();
@@ -89,11 +94,23 @@ namespace UniThesis.Persistence
             return services;
         }
 
+        /// <summary>
+        /// Initializes the database with migrations and seeding.
+        /// Call this method after building the WebApplication instance.
+        /// </summary>
+        /// <example>
+        /// var app = builder.Build();
+        /// await app.Services.InitializeDatabaseAsync();
+        /// </example>
         public static async Task InitializeDatabaseAsync(this IServiceProvider serviceProvider)
         {
             using var scope = serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             await dbContext.Database.MigrateAsync();
+
+            // Seed development data (idempotent - skips if data already exists)
+            await DevelopmentDataSeeder.SeedAsync(dbContext);
+
             var mongoContext = scope.ServiceProvider.GetRequiredService<MongoDbContext>();
             await MongoIndexConfiguration.CreateIndexesAsync(mongoContext);
         }

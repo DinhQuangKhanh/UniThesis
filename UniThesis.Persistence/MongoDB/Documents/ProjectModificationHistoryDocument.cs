@@ -9,15 +9,12 @@ namespace UniThesis.Persistence.MongoDB.Documents
     public class ProjectModificationHistoryDocument
     {
         [BsonId]
-        [BsonRepresentation(BsonType.String)]
         public Guid Id { get; set; } = Guid.NewGuid();
 
-        [BsonRepresentation(BsonType.String)]
         public Guid ProjectId { get; set; }
 
         public string ProjectCode { get; set; } = string.Empty;
 
-        [BsonRepresentation(BsonType.String)]
         public Guid ModifiedBy { get; set; }
 
         public string ModifiedByName { get; set; } = string.Empty;

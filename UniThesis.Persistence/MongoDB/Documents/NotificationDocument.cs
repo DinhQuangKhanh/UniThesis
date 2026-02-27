@@ -10,10 +10,8 @@ namespace UniThesis.Persistence.MongoDB.Documents
     public class NotificationDocument
     {
         [BsonId]
-        [BsonRepresentation(BsonType.String)]
         public Guid Id { get; set; } = Guid.NewGuid();
 
-        [BsonRepresentation(BsonType.String)]
         public Guid UserId { get; set; }
 
         public string Title { get; set; } = string.Empty;
@@ -27,7 +25,6 @@ namespace UniThesis.Persistence.MongoDB.Documents
 
         public string? TargetUrl { get; set; }
 
-        [BsonRepresentation(BsonType.String)]
         public Guid? RelatedEntityId { get; set; }
 
         public string? RelatedEntityType { get; set; }

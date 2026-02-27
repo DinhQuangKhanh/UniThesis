@@ -10,15 +10,12 @@ namespace UniThesis.Persistence.MongoDB.Documents
     public class EvaluationLogDocument
     {
         [BsonId]
-        [BsonRepresentation(BsonType.String)]
         public Guid Id { get; set; } = Guid.NewGuid();
 
-        [BsonRepresentation(BsonType.String)]
         public Guid ProjectId { get; set; }
 
         public string ProjectCode { get; set; } = string.Empty;
 
-        [BsonRepresentation(BsonType.String)]
         public Guid? EvaluationSubmissionId { get; set; }
 
         public int SubmissionNumber { get; set; }
@@ -26,7 +23,6 @@ namespace UniThesis.Persistence.MongoDB.Documents
         [BsonRepresentation(BsonType.String)]
         public EvaluationAction Action { get; set; }
 
-        [BsonRepresentation(BsonType.String)]
         public Guid? PerformedBy { get; set; }
 
         public string PerformedByName { get; set; } = string.Empty;

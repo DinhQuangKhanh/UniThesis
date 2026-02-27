@@ -10,7 +10,6 @@ namespace UniThesis.Persistence.MongoDB.Documents
     public class ConversationDocument
     {
         [BsonId]
-        [BsonRepresentation(BsonType.String)]
         public Guid Id { get; set; } = Guid.NewGuid();
 
         [BsonRepresentation(BsonType.String)]
@@ -18,13 +17,10 @@ namespace UniThesis.Persistence.MongoDB.Documents
 
         public string? Name { get; set; }
 
-        [BsonRepresentation(BsonType.String)]
         public List<Guid> ParticipantIds { get; set; } = [];
 
-        [BsonRepresentation(BsonType.String)]
         public Guid? GroupId { get; set; }
 
-        [BsonRepresentation(BsonType.String)]
         public Guid? LastMessageId { get; set; }
 
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]

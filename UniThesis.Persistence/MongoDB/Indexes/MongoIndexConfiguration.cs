@@ -107,14 +107,17 @@ namespace UniThesis.Persistence.MongoDB.Indexes
             var collection = context.GetCollection<UserActivityLogDocument>(MongoDbContext.Collections.UserActivityLogs);
             var indexKeys = Builders<UserActivityLogDocument>.IndexKeys;
 
+            // Drop old non-TTL Timestamp index if it exists (conflicts with TTL version)
+            try { await collection.Indexes.DropOneAsync("Timestamp_-1"); }
+            catch (MongoCommandException) { /* Index doesn't exist — ignore */ }
+
             await collection.Indexes.CreateManyAsync(
             [
             new CreateIndexModel<UserActivityLogDocument>(indexKeys.Ascending(x => x.UserId)),
-            new CreateIndexModel<UserActivityLogDocument>(indexKeys.Descending(x => x.Timestamp)),
             new CreateIndexModel<UserActivityLogDocument>(
                 indexKeys.Descending(x => x.Timestamp),
-                new CreateIndexOptions { ExpireAfter = TimeSpan.FromDays(365) })] // TTL - auto delete after 1 year
-        );
+                new CreateIndexOptions { ExpireAfter = TimeSpan.FromDays(365) }) // TTL - auto delete after 1 year
+        ]);
         }
 
         private static async Task CreateSystemAuditLogIndexesAsync(MongoDbContext context)

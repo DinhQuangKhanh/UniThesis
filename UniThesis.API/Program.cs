@@ -1,3 +1,4 @@
+using UniThesis.API.Extensions;
 using UniThesis.Application;
 using UniThesis.Infrastructure;
 using UniThesis.Infrastructure.RealTime.Hubs;
@@ -72,7 +73,16 @@ builder.Services.AddInfrastructure(builder.Configuration);  // Infrastructure La
 var app = builder.Build();
 
 // ============================================
-// 2. CONFIGURE THE HTTP REQUEST PIPELINE
+// 2. INITIALIZE DATABASE
+// ============================================
+// Apply migrations and seed initial data (runs only once or as needed)
+if (app.Environment.IsDevelopment())
+{
+    await app.Services.InitializeDatabaseAsync();
+}
+
+// ============================================
+// 3. CONFIGURE THE HTTP REQUEST PIPELINE
 // ============================================
 
 // Development-specific middleware
@@ -108,5 +118,8 @@ app.MapHub<ChatHub>("/hubs/chat");
 
 // Controllers
 app.MapControllers();
+
+// Minimal API Endpoints
+app.MapEndpoints();
 
 app.Run();

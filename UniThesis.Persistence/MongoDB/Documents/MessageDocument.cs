@@ -10,13 +10,10 @@ namespace UniThesis.Persistence.MongoDB.Documents
     public class MessageDocument
     {
         [BsonId]
-        [BsonRepresentation(BsonType.String)]
         public Guid Id { get; set; } = Guid.NewGuid();
 
-        [BsonRepresentation(BsonType.String)]
         public Guid ConversationId { get; set; }
 
-        [BsonRepresentation(BsonType.String)]
         public Guid SenderId { get; set; }
 
         public string SenderName { get; set; } = string.Empty;
@@ -29,7 +26,6 @@ namespace UniThesis.Persistence.MongoDB.Documents
         public string? FileName { get; set; }
         public long? FileSize { get; set; }
 
-        [BsonRepresentation(BsonType.String)]
         public List<Guid> ReadByUserIds { get; set; } = [];
 
         public bool IsDeleted { get; set; }

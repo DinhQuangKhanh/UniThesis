@@ -6,16 +6,13 @@ namespace UniThesis.Persistence.MongoDB.Documents
     public class SystemAuditLogDocument
     {
         [BsonId]
-        [BsonRepresentation(BsonType.String)]
         public Guid Id { get; set; } = Guid.NewGuid();
 
         public string Action { get; set; } = string.Empty;
         public string EntityType { get; set; } = string.Empty;
 
-        [BsonRepresentation(BsonType.String)]
         public Guid? EntityId { get; set; }
 
-        [BsonRepresentation(BsonType.String)]
         public Guid? PerformedBy { get; set; }
 
         public string? PerformedByName { get; set; }

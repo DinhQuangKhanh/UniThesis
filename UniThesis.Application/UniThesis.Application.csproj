@@ -51,9 +51,7 @@
     <Folder Include="Features\Semesters\EventHandlers\" />
     <Folder Include="Features\Semesters\Queries\" />
     <Folder Include="Features\StudentGroups\Commands\" />
-    <Folder Include="Features\StudentGroups\DTOs\" />
     <Folder Include="Features\StudentGroups\EventHandlers\" />
-    <Folder Include="Features\StudentGroups\Queries\" />
     <Folder Include="Features\Projects\Commands\" />
     <Folder Include="Features\Projects\DTOs\" />
     <Folder Include="Features\Projects\EventHandlers\" />
