@@ -83,6 +83,7 @@ namespace UniThesis.Persistence
 
             // Add Query Services
             services.AddScoped<IStudentGroupQueryService, StudentGroupQueryService>();
+            services.AddScoped<IEvaluatorQueryService, EvaluatorQueryService>();
 
             // Add MongoDB Repositories
             services.AddScoped<IEvaluationLogRepository, EvaluationLogRepository>();
@@ -113,7 +114,7 @@ namespace UniThesis.Persistence
             await dbContext.Database.MigrateAsync();
 
             // Seed development data (idempotent - skips if data already exists)
-            //await DevelopmentDataSeeder.SeedAsync(dbContext);
+            await DevelopmentDataSeeder.SeedAsync(dbContext);
 
             // Load-test data: seed 1000 users + relationships when Firebase Emulator is enabled
             var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();

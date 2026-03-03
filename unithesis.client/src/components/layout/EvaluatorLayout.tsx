@@ -1,13 +1,16 @@
-import { Outlet } from 'react-router-dom'
-import { EvaluatorSidebar } from './EvaluatorSidebar'
+import { Outlet } from "react-router-dom";
+import { EvaluatorSidebar } from "./EvaluatorSidebar";
+import { EvaluatorErrorProvider } from "@/contexts/EvaluatorErrorContext";
 
 export function EvaluatorLayout() {
-    return (
-        <div className="flex h-screen overflow-hidden bg-slate-50">
-            <EvaluatorSidebar />
-            <main className="flex-1 h-full overflow-y-auto flex flex-col">
-                <Outlet />
-            </main>
-        </div>
-    )
+  return (
+    <EvaluatorErrorProvider>
+      <div className="flex h-screen overflow-hidden bg-slate-50">
+        <EvaluatorSidebar />
+        <main className="flex-1 h-full overflow-y-auto flex flex-col">
+          <Outlet />
+        </main>
+      </div>
+    </EvaluatorErrorProvider>
+  );
 }

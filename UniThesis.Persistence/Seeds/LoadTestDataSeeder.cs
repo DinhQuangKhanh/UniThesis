@@ -31,16 +31,17 @@ public static class LoadTestDataSeeder
     public static Guid StudentId(int i) => Guid.Parse($"40000000-0000-0000-0000-{i:D12}");
     private static Guid GroupId(int i) => Guid.Parse($"50000000-0000-0000-0000-{i:D12}");
     private static Guid ProjectId(int i) => Guid.Parse($"60000000-0000-0000-0000-{i:D12}");
+    private static Guid AssignmentId(int i) => Guid.Parse($"70000000-0000-0000-0000-{i:D12}");
 
     public static string AdminFirebaseUid(int i) => $"test-admin-{i:D4}";
     public static string EvaluatorFirebaseUid(int i) => $"test-eval-{i:D4}";
     public static string MentorFirebaseUid(int i) => $"test-mentor-{i:D4}";
     public static string StudentFirebaseUid(int i) => $"test-student-{i:D4}";
 
-    public static string AdminEmail(int i) => $"admin{i}@test.unithesis.dev";
-    public static string EvaluatorEmail(int i) => $"evaluator{i}@test.unithesis.dev";
-    public static string MentorEmail(int i) => $"mentor{i}@test.unithesis.dev";
-    public static string StudentEmail(int i) => $"student{i}@test.unithesis.dev";
+    public static string AdminEmail(int i) => $"admin{i}@fpt.edu.vn";
+    public static string EvaluatorEmail(int i) => $"evaluator{i}@fpt.edu.vn";
+    public static string MentorEmail(int i) => $"mentor{i}@fpt.edu.vn";
+    public static string StudentEmail(int i) => $"student{i}@fpt.edu.vn";
 
     public const string DefaultPassword = "Test@123456";
 
@@ -65,6 +66,7 @@ public static class LoadTestDataSeeder
         await SeedGroupMembersAsync(context, logger);
         await SeedProjectsAsync(context, logger);
         await SeedProjectMentorsAsync(context, logger);
+        await SeedProjectEvaluatorAssignmentsAsync(context, logger);
 
         logger?.LogInformation("Load-test data seeding complete.");
     }
@@ -367,5 +369,86 @@ public static class LoadTestDataSeeder
         }
 
         logger?.LogInformation("Seeded {Count} load-test project mentors.", groupCount);
+    }
+
+    // ════════════════════════════════════════════════
+    //  PROJECT EVALUATOR ASSIGNMENTS  (3 evaluators per project, round-robin from 20 evaluators)
+    // ════════════════════════════════════════════════
+    private static async Task SeedProjectEvaluatorAssignmentsAsync(AppDbContext context, ILogger? logger)
+    {
+        var groupCount = (int)Math.Ceiling((double)StudentCount / StudentsPerGroup);
+        var feedbacks = new[]
+        {
+            "Đề tài có tính ứng dụng cao, cần bổ sung phần phân tích.",
+            "Phương pháp luận tốt, triển khai đầy đủ.",
+            "Cần cải thiện phần literature review.",
+            "Kiến trúc hệ thống hợp lý, cần thêm unit tests.",
+            "Đề tài sáng tạo, phần demo ấn tượng."
+        };
+        var assignmentIndex = 0;
+
+        for (var batch = 0; batch < groupCount; batch += BatchSize)
+        {
+            var end = Math.Min(batch + BatchSize, groupCount);
+            var valueClauses = new List<string>();
+            var parameters = new List<object?>();
+            var paramIndex = 0;
+
+            for (var i = batch + 1; i <= end; i++)
+            {
+                // Each project gets 3 evaluators
+                for (var order = 1; order <= 3; order++)
+                {
+                    assignmentIndex++;
+                    var evaluatorIndex = ((i - 1) * 3 + order - 1) % EvaluatorCount + 1;
+
+                    // Ensure evaluator is not the project's mentor
+                    var mentorIndex = ((i - 1) % MentorCount) + 1;
+                    if (EvaluatorId(evaluatorIndex) == MentorId(mentorIndex))
+                        evaluatorIndex = evaluatorIndex % EvaluatorCount + 1;
+
+                    // 50% of assignments have results (completed evaluations)
+                    var hasResult = assignmentIndex % 2 == 0;
+                    var resultValue = hasResult ? (object?)(1 + (assignmentIndex % 3)) : null; // 1=Approved, 2=NeedsModification, 3=Rejected
+                    var evaluatedAt = hasResult ? (object?)SeedDate.AddDays(assignmentIndex % 10 + 1) : null;
+                    var feedback = hasResult ? (object?)feedbacks[assignmentIndex % feedbacks.Length] : null;
+
+                    var pId = $"@p{paramIndex++}";
+                    var pProject = $"@p{paramIndex++}";
+                    var pEvaluator = $"@p{paramIndex++}";
+                    var pOrder = $"@p{paramIndex++}";
+                    var pAssignedAt = $"@p{paramIndex++}";
+                    var pAssignedBy = $"@p{paramIndex++}";
+                    var pIsActive = $"@p{paramIndex++}";
+                    var pResult = $"@p{paramIndex++}";
+                    var pEvaluatedAt = $"@p{paramIndex++}";
+                    var pFeedback = $"@p{paramIndex++}";
+
+                    valueClauses.Add($"({pId}, {pProject}, {pEvaluator}, {pOrder}, {pAssignedAt}, {pAssignedBy}, {pIsActive}, {pResult}, {pEvaluatedAt}, {pFeedback})");
+
+                    parameters.Add(AssignmentId(assignmentIndex));
+                    parameters.Add(ProjectId(i));
+                    parameters.Add(EvaluatorId(evaluatorIndex));
+                    parameters.Add(order);
+                    parameters.Add(SeedDate.AddDays(-assignmentIndex % 14));
+                    parameters.Add(AdminId(1));
+                    parameters.Add(true);
+                    parameters.Add(resultValue);
+                    parameters.Add(evaluatedAt);
+                    parameters.Add(feedback);
+                }
+            }
+
+            if (valueClauses.Count > 0)
+            {
+                var sql = $@"
+                    INSERT INTO ProjectEvaluatorAssignments (Id, ProjectId, EvaluatorId, EvaluatorOrder, AssignedAt, AssignedBy, IsActive, IndividualResult, EvaluatedAt, Feedback)
+                    VALUES {string.Join(",\n                           ", valueClauses)};";
+
+                await context.Database.ExecuteSqlRawAsync(sql, parameters.ToArray()!);
+            }
+        }
+
+        logger?.LogInformation("Seeded {Count} load-test evaluator assignments.", assignmentIndex);
     }
 }

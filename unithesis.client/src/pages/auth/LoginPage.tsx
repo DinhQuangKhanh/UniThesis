@@ -83,7 +83,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="font-display academic-pattern text-slate-800 min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden selection:bg-primary/20 selection:text-primary-dark">
+    <div className="relative flex flex-col items-center justify-center min-h-screen p-4 overflow-hidden font-display academic-pattern text-slate-800 selection:bg-primary/20 selection:text-primary-dark">
       {/* Background decorations */}
       <div className="absolute top-[-10%] left-[-5%] w-[400px] h-[400px] bg-primary/5 rounded-full blur-[80px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-5%] w-[300px] h-[300px] bg-primary/10 rounded-full blur-[60px] pointer-events-none" />
@@ -99,13 +99,13 @@ export function LoginPage() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.4 }}
-          className="pt-10 pb-6 px-8 text-center flex flex-col items-center"
+          className="flex flex-col items-center px-8 pt-10 pb-6 text-center"
         >
-          <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-primary/20 text-primary rounded-xl flex items-center justify-center mb-5 shadow-sm border border-primary/10">
-            <span className="material-symbols-outlined text-4xl">school</span>
+          <div className="flex items-center justify-center w-16 h-16 mb-5 border shadow-sm bg-gradient-to-br from-primary/10 to-primary/20 text-primary rounded-xl border-primary/10">
+            <span className="text-4xl material-symbols-outlined">school</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-800">Chào mừng đến UniThesis</h1>
-          <p className="text-slate-500 text-sm mt-2 font-medium">Hệ thống quản lý thẩm định đề tài tốt nghiệp</p>
+          <p className="mt-2 text-sm font-medium text-slate-500">Hệ thống quản lý thẩm định đề tài tốt nghiệp</p>
           {isEmulatorMode && (
             <span className="mt-2 inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 rounded-full border border-amber-200">
               Emulator Mode
@@ -118,13 +118,13 @@ export function LoginPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3, duration: 0.4 }}
-          className="p-8 pt-2 flex flex-col gap-5"
+          className="flex flex-col gap-5 p-8 pt-2"
         >
           {error && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
-              className="p-3 bg-error/10 border border-error/20 rounded-lg text-error text-sm text-center"
+              className="p-3 text-sm text-center border rounded-lg bg-error/10 border-error/20 text-error"
             >
               {error}
             </motion.div>
@@ -132,12 +132,12 @@ export function LoginPage() {
 
           {/* Info Box / Google Button — swap based on mode */}
           {isEmulatorMode ? (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <div className="p-4 border bg-amber-50 border-amber-200 rounded-xl">
               <div className="flex items-start gap-3">
                 <span className="material-symbols-outlined text-amber-500 text-xl mt-0.5">science</span>
                 <div>
-                  <p className="text-sm text-amber-700 font-medium">Emulator Mode — dùng Email/Password</p>
-                  <p className="text-xs text-amber-600 mt-1">
+                  <p className="text-sm font-medium text-amber-700">Emulator Mode — dùng Email/Password</p>
+                  <p className="mt-1 text-xs text-amber-600">
                     Google Sign-In không khả dụng với tài khoản test. Hãy đăng nhập bằng email &amp; mật khẩu bên dưới.
                   </p>
                 </div>
@@ -145,12 +145,12 @@ export function LoginPage() {
             </div>
           ) : (
             <>
-              <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl">
+              <div className="p-4 border bg-primary/5 border-primary/10 rounded-xl">
                 <div className="flex items-start gap-3">
                   <span className="material-symbols-outlined text-primary text-xl mt-0.5">info</span>
                   <div>
-                    <p className="text-sm text-slate-700 font-medium">Sử dụng tài khoản Google của trường</p>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-sm font-medium text-slate-700">Sử dụng tài khoản Google của trường</p>
+                    <p className="mt-1 text-xs text-slate-500">
                       Đăng nhập bằng email @fpt.edu.vn được cấp bởi nhà trường để truy cập hệ thống.
                     </p>
                   </div>
@@ -202,16 +202,16 @@ export function LoginPage() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   onSubmit={handleEmailLogin}
-                  className="flex flex-col gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl"
+                  className="flex flex-col gap-3 p-4 border bg-amber-50 border-amber-200 rounded-xl"
                 >
-                  <p className="text-xs text-amber-700 font-medium">Firebase Emulator - Test Login</p>
+                  <p className="text-xs font-medium text-amber-700">Firebase Emulator - Test Login</p>
                   <input
                     type="email"
-                    placeholder="Email (vd: student1@test.unithesis.dev)"
+                    placeholder="Email (vd: student1@fpt.edu.vn)"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full h-11 px-4 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+                    className="w-full px-4 text-sm border rounded-lg h-11 border-slate-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
                   />
                   <input
                     type="password"
@@ -219,12 +219,12 @@ export function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full h-11 px-4 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+                    className="w-full px-4 text-sm border rounded-lg h-11 border-slate-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
                   />
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-70"
+                    className="w-full font-semibold text-white transition-colors rounded-lg h-11 bg-amber-500 hover:bg-amber-600 disabled:opacity-70"
                   >
                     {isLoading ? "Đang đăng nhập..." : "Đăng nhập (Emulator)"}
                   </button>
@@ -235,7 +235,7 @@ export function LoginPage() {
           )}
 
           {/* Help text */}
-          <p className="text-center text-xs text-slate-400 mt-2">
+          <p className="mt-2 text-xs text-center text-slate-400">
             Nếu gặp vấn đề đăng nhập, vui lòng liên hệ bộ phận hỗ trợ kỹ thuật
           </p>
         </motion.div>
@@ -249,11 +249,11 @@ export function LoginPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5, duration: 0.4 }}
-        className="mt-8 text-center relative z-10"
+        className="relative z-10 mt-8 text-center"
       >
-        <p className="text-slate-500 text-xs font-medium">
+        <p className="text-xs font-medium text-slate-500">
           Hỗ trợ kỹ thuật:{" "}
-          <a className="underline hover:text-primary transition-colors" href="#">
+          <a className="underline transition-colors hover:text-primary" href="#">
             support@university.edu.vn
           </a>
         </p>
