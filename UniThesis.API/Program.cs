@@ -10,9 +10,6 @@ var builder = WebApplication.CreateBuilder(args);
 // 1. ADD SERVICES TO THE CONTAINER
 // ============================================
 
-// Controllers
-builder.Services.AddControllers();
-
 // Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -99,11 +96,11 @@ if (app.Environment.IsDevelopment())
 // Infrastructure middleware (Correlation ID, Request Logging, Exception Handling, Performance Monitoring)
 app.UseInfrastructure();
 
-// HTTPS Redirection
-app.UseHttpsRedirection();
-
 // CORS
 app.UseCors("AllowFrontend");
+
+// HTTPS Redirection
+app.UseHttpsRedirection();
 
 // Authentication & Authorization
 app.UseAuthentication();
@@ -115,9 +112,6 @@ app.MapHealthChecks("/health");
 // Realtime Hubs
 app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapHub<ChatHub>("/hubs/chat");
-
-// Controllers
-app.MapControllers();
 
 // Minimal API Endpoints
 app.MapEndpoints();

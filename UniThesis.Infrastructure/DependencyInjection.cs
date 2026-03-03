@@ -8,6 +8,9 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
+using UniThesis.Domain.Aggregates.UserAggregate;
+using AppClaimTypes = UniThesis.Application.Common.AppClaimTypes;
 using UniThesis.Domain.Services;
 using UniThesis.Infrastructure.Authentication;
 using UniThesis.Infrastructure.Authorization;
@@ -109,6 +112,24 @@ namespace UniThesis.Infrastructure
                         if (!string.IsNullOrEmpty(accessToken) && context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
                             context.Token = accessToken;
                         return Task.CompletedTask;
+                    },
+
+                    OnTokenValidated = async context =>
+                    {
+                        // Firebase's "sub" claim (ClaimTypes.NameIdentifier) contains the Firebase UID,
+                        // not the database Id. Resolve the database Id here and inject it as a
+                        // separate claim so that CurrentUserService can return the correct Guid.
+                        var firebaseUid = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                        if (string.IsNullOrEmpty(firebaseUid)) return;
+
+                        var userRepo = context.HttpContext.RequestServices
+                            .GetRequiredService<IUserRepository>();
+
+                        var user = await userRepo.GetByFirebaseUidAsync(firebaseUid);
+                        if (user is null) return;
+
+                        var identity = context.Principal!.Identity as ClaimsIdentity;
+                        identity?.AddClaim(new Claim(AppClaimTypes.DbUserId, user.Id.ToString()));
                     }
                 };
             });
