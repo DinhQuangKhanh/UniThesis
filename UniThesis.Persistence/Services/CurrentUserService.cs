@@ -32,6 +32,9 @@ namespace UniThesis.Persistence.Services
         public string? Email => _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.Email);
 
         /// <inheritdoc />
+        public string? FullName => _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.Name);
+
+        /// <inheritdoc />
         public bool IsAuthenticated => _httpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
 
         /// <inheritdoc />

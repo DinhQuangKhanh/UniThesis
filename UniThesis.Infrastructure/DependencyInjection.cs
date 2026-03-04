@@ -130,6 +130,14 @@ namespace UniThesis.Infrastructure
 
                         var identity = context.Principal!.Identity as ClaimsIdentity;
                         identity?.AddClaim(new Claim(AppClaimTypes.DbUserId, user.Id.ToString()));
+
+                        // Inject FullName so CurrentUserService.FullName works
+                        if (!string.IsNullOrWhiteSpace(user.FullName))
+                            identity?.AddClaim(new Claim(ClaimTypes.Name, user.FullName));
+
+                        // Inject active roles so CurrentUserService.Roles works
+                        foreach (var role in user.GetActiveRoles())
+                            identity?.AddClaim(new Claim(ClaimTypes.Role, role));
                     }
                 };
             });
