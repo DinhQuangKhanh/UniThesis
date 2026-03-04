@@ -39,10 +39,13 @@ namespace UniThesis.Infrastructure.EventHandlers.Project
 
             await _activityLogRepository.AddAsync(new UserActivityLogDocument
             {
-                UserId = notification.SubmittedBy,
-                Action = "ProjectSubmitted",
+                UserId   = notification.SubmittedBy,
+                UserRole = "student",
+                Action   = "ProjectSubmitted",
+                Category = "Project",
                 EntityType = "Project",
                 EntityId = notification.ProjectId,
+                Severity = "info",
                 Timestamp = DateTime.UtcNow,
             }, cancellationToken);
 

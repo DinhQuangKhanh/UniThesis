@@ -38,10 +38,14 @@ namespace UniThesis.Infrastructure.EventHandlers.Meeting
                 // Log the activity
                 var log = new UserActivityLogDocument
                 {
-                    UserId = Guid.Empty,
-                    Action = "MeetingCompleted",
+                    UserId   = Guid.Empty,
+                    UserName = "System",
+                    UserRole = "system",
+                    Action   = "MeetingCompleted",
+                    Category = "Meeting",
                     EntityType = "Meeting",
                     EntityId = notification.MeetingId,
+                    Severity = "info",
                     Timestamp = DateTime.UtcNow,
                     Details = new BsonDocument
                     {
