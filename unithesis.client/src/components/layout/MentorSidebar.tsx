@@ -12,7 +12,7 @@ const navItems = [
 
 const systemItems = [
     { label: 'Cài đặt', icon: 'settings', path: '/mentor/settings' },
-    { label: 'Trợ giúp', icon: 'help', path: '/mentor/help' },
+    { label: 'Hỗ trợ', icon: 'support_agent', path: '/mentor/support' },
 ]
 
 export function MentorSidebar() {

@@ -30,6 +30,9 @@ import {
     StudentSchedulePage,
     StudentTopicsPage,
     StudentMyTopicPage,
+    StudentSupportPage,
+    MentorSupportPage,
+    EvaluatorSupportPage,
     MaintenancePage,
 } from '@/pages'
 
@@ -93,6 +96,7 @@ function App() {
                             <Route path="review/:id" element={<EvaluatorReviewPage />} />
                             <Route path="review" element={<EvaluatorReviewPage />} />
                             <Route path="similarity" element={<EvaluatorSimilarityPage />} />
+                            <Route path="support" element={<EvaluatorSupportPage />} />
                         </Route>
 
                         {/* Protected Mentor Routes */}
@@ -110,6 +114,7 @@ function App() {
                             <Route path="topics" element={<MentorTopicsPage />} />
                             <Route path="topics/:id" element={<MentorFeedbackPage />} />
                             <Route path="schedule" element={<MentorSchedulePage />} />
+                            <Route path="support" element={<MentorSupportPage />} />
                         </Route>
 
                         {/* Protected Student Routes */}
@@ -125,6 +130,7 @@ function App() {
                             <Route path="my-topic" element={<StudentMyTopicPage />} />
                             <Route path="topics" element={<StudentTopicsPage />} />
                             <Route path="schedule" element={<StudentSchedulePage />} />
+                            <Route path="support" element={<StudentSupportPage />} />
                         </Route>
 
                         {/* Redirect root to admin */}

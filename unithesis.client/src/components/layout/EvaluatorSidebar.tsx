@@ -12,7 +12,7 @@ const navItems = [
 
 const systemItems = [
     { label: 'Cài đặt', icon: 'settings', path: '/evaluator/settings' },
-    { label: 'Hỗ trợ', icon: 'help', path: '/evaluator/support' },
+    { label: 'Hỗ trợ', icon: 'support_agent', path: '/evaluator/support' },
 ]
 
 export function EvaluatorSidebar() {

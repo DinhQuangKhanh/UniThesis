@@ -41,7 +41,7 @@ body {
 /* Academic pattern for login page */
 .academic-pattern {
   background-color: #f9fafa;
-  background-image: 
+  background-image:
     linear-gradient(rgba(40, 177, 189, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(40, 177, 189, 0.03) 1px, transparent 1px);
   background-size: 40px 40px;

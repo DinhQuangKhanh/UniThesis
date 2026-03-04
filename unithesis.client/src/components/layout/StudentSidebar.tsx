@@ -8,7 +8,7 @@ const navItems = [
     { label: 'Đề tài của tôi', icon: 'book_2', path: '/student/my-topic' },
     { label: 'Kho đề tài đề xuất', icon: 'inventory_2', path: '/student/topics' },
     { label: 'Lịch trình chung', icon: 'calendar_month', path: '/student/schedule' },
-    { label: 'Tin nhắn', icon: 'forum', path: '/student/messages', badge: '2' },
+    { label: 'Hỗ trợ', icon: 'support_agent', path: '/student/support', badge: '1' },
 ]
 
 const systemItems = [
