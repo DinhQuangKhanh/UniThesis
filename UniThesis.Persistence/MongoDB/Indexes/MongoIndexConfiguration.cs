@@ -113,11 +113,19 @@ namespace UniThesis.Persistence.MongoDB.Indexes
 
             await collection.Indexes.CreateManyAsync(
             [
-            new CreateIndexModel<UserActivityLogDocument>(indexKeys.Ascending(x => x.UserId)),
-            new CreateIndexModel<UserActivityLogDocument>(
-                indexKeys.Descending(x => x.Timestamp),
-                new CreateIndexOptions { ExpireAfter = TimeSpan.FromDays(365) }) // TTL - auto delete after 1 year
-        ]);
+                new CreateIndexModel<UserActivityLogDocument>(indexKeys.Ascending(x => x.UserId)),
+                new CreateIndexModel<UserActivityLogDocument>(
+                    indexKeys.Descending(x => x.Timestamp),
+                    new CreateIndexOptions { ExpireAfter = TimeSpan.FromDays(365) }), // TTL - auto delete after 1 year
+                // Compound index for admin log listing: filter by role, sort by time
+                new CreateIndexModel<UserActivityLogDocument>(indexKeys.Combine(
+                    indexKeys.Ascending(x => x.UserRole),
+                    indexKeys.Descending(x => x.Timestamp))),
+                // Index for category filtering
+                new CreateIndexModel<UserActivityLogDocument>(indexKeys.Ascending(x => x.Category)),
+                // Index for severity filtering
+                new CreateIndexModel<UserActivityLogDocument>(indexKeys.Ascending(x => x.Severity)),
+            ]);
         }
 
         private static async Task CreateSystemAuditLogIndexesAsync(MongoDbContext context)
