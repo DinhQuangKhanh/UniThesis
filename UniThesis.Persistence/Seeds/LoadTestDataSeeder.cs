@@ -5,7 +5,14 @@ using UniThesis.Persistence.SqlServer;
 namespace UniThesis.Persistence.Seeds;
 
 /// <summary>
-/// Seeds 1000 load-test users (and related groups, projects, mentors) into the database.
+/// Seeds 3000 load-test users (and related groups, projects, mentors, evaluator assignments)
+/// into the database.
+/// <para>Distribution:</para>
+/// <list type="bullet">
+///   <item>1000 Admins (role: Admin)</item>
+///   <item>1000 Lecturers with dual roles (roles: Mentor + Evaluator)</item>
+///   <item>1000 Students (role: Student)</item>
+/// </list>
 /// Designed to work with the Firebase Auth Emulator — every user has a deterministic
 /// FirebaseUid so <see cref="FirebaseEmulatorSeeder"/> can create the matching accounts.
 /// Uses raw SQL to bypass domain validation. Idempotent.
@@ -13,34 +20,30 @@ namespace UniThesis.Persistence.Seeds;
 public static class LoadTestDataSeeder
 {
     // ────────────────── Distribution ──────────────────
-    private const int AdminCount = 5;
-    private const int EvaluatorCount = 20;
-    private const int MentorCount = 50;
-    private const int StudentCount = 925;
+    private const int AdminCount = 1000;
+    private const int DualRoleCount = 1000; // Users with both Mentor + Evaluator roles
+    private const int StudentCount = 1000;
     private const int StudentsPerGroup = 4;
 
-    private const int SemesterId = 100; // Reuse DevelopmentDataSeeder semester
+    private const int SemesterId = 1; // Reuse DevelopmentDataSeeder semester
     private static readonly DateTime SeedDate = new(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
 
     private const int BatchSize = 50;
 
     // ────────────────── ID helpers ──────────────────
     public static Guid AdminId(int i) => Guid.Parse($"10000000-0000-0000-0000-{i:D12}");
-    public static Guid EvaluatorId(int i) => Guid.Parse($"20000000-0000-0000-0000-{i:D12}");
-    public static Guid MentorId(int i) => Guid.Parse($"30000000-0000-0000-0000-{i:D12}");
+    public static Guid DualRoleId(int i) => Guid.Parse($"20000000-0000-0000-0000-{i:D12}");
     public static Guid StudentId(int i) => Guid.Parse($"40000000-0000-0000-0000-{i:D12}");
     private static Guid GroupId(int i) => Guid.Parse($"50000000-0000-0000-0000-{i:D12}");
     private static Guid ProjectId(int i) => Guid.Parse($"60000000-0000-0000-0000-{i:D12}");
     private static Guid AssignmentId(int i) => Guid.Parse($"70000000-0000-0000-0000-{i:D12}");
 
     public static string AdminFirebaseUid(int i) => $"test-admin-{i:D4}";
-    public static string EvaluatorFirebaseUid(int i) => $"test-eval-{i:D4}";
-    public static string MentorFirebaseUid(int i) => $"test-mentor-{i:D4}";
+    public static string DualRoleFirebaseUid(int i) => $"test-lecturer-{i:D4}";
     public static string StudentFirebaseUid(int i) => $"test-student-{i:D4}";
 
     public static string AdminEmail(int i) => $"admin{i}@fpt.edu.vn";
-    public static string EvaluatorEmail(int i) => $"evaluator{i}@fpt.edu.vn";
-    public static string MentorEmail(int i) => $"mentor{i}@fpt.edu.vn";
+    public static string DualRoleEmail(int i) => $"lecturer{i}@fpt.edu.vn";
     public static string StudentEmail(int i) => $"student{i}@fpt.edu.vn";
 
     public const string DefaultPassword = "Test@123456";
@@ -58,7 +61,7 @@ public static class LoadTestDataSeeder
             return;
         }
 
-        logger?.LogInformation("Seeding 1000 load-test users...");
+        logger?.LogInformation("Seeding 3000 load-test users...");
 
         await SeedUsersAsync(context, logger);
         await SeedUserRolesAsync(context, logger);
@@ -67,6 +70,7 @@ public static class LoadTestDataSeeder
         await SeedProjectsAsync(context, logger);
         await SeedProjectMentorsAsync(context, logger);
         await SeedProjectEvaluatorAssignmentsAsync(context, logger);
+        await SetDepartmentHeadAsync(context, logger);
 
         logger?.LogInformation("Load-test data seeding complete.");
     }
@@ -79,13 +83,10 @@ public static class LoadTestDataSeeder
         var users = new List<(Guid Id, string Email, string FullName, string? StudentCode, string? EmployeeCode, string FirebaseUid)>();
 
         for (var i = 1; i <= AdminCount; i++)
-            users.Add((AdminId(i), AdminEmail(i), $"Admin LoadTest {i}", null, $"LT-EMP-A{i:D3}", AdminFirebaseUid(i)));
+            users.Add((AdminId(i), AdminEmail(i), $"Admin LoadTest {i}", null, $"LT-EMP-A{i:D4}", AdminFirebaseUid(i)));
 
-        for (var i = 1; i <= EvaluatorCount; i++)
-            users.Add((EvaluatorId(i), EvaluatorEmail(i), $"Evaluator LoadTest {i}", null, $"LT-EMP-E{i:D3}", EvaluatorFirebaseUid(i)));
-
-        for (var i = 1; i <= MentorCount; i++)
-            users.Add((MentorId(i), MentorEmail(i), $"Mentor LoadTest {i}", null, $"LT-EMP-M{i:D3}", MentorFirebaseUid(i)));
+        for (var i = 1; i <= DualRoleCount; i++)
+            users.Add((DualRoleId(i), DualRoleEmail(i), $"Lecturer LoadTest {i}", null, $"LT-EMP-L{i:D4}", DualRoleFirebaseUid(i)));
 
         for (var i = 1; i <= StudentCount; i++)
             users.Add((StudentId(i), StudentEmail(i), $"Student LoadTest {i}", $"LT-{i:D6}", null, StudentFirebaseUid(i)));
@@ -113,8 +114,8 @@ public static class LoadTestDataSeeder
                 parameters.Add(u.Id);
                 parameters.Add(u.Email);
                 parameters.Add(u.FullName);
-                parameters.Add((object?)u.StudentCode);  // null sẽ tự convert thành SQL NULL
-                parameters.Add((object?)u.EmployeeCode); // null sẽ tự convert thành SQL NULL
+                parameters.Add((object?)u.StudentCode);
+                parameters.Add((object?)u.EmployeeCode);
                 parameters.Add(u.FirebaseUid);
                 parameters.Add(SeedDate);
             }
@@ -138,10 +139,17 @@ public static class LoadTestDataSeeder
 
         for (var i = 1; i <= AdminCount; i++)
             roles.Add((AdminId(i), "Admin"));
-        for (var i = 1; i <= EvaluatorCount; i++)
-            roles.Add((EvaluatorId(i), "Evaluator"));
-        for (var i = 1; i <= MentorCount; i++)
-            roles.Add((MentorId(i), "Mentor"));
+
+        // DualRole users get BOTH Mentor and Evaluator roles
+        for (var i = 1; i <= DualRoleCount; i++)
+        {
+            roles.Add((DualRoleId(i), "Mentor"));
+            roles.Add((DualRoleId(i), "Evaluator"));
+        }
+
+        // Lecturer 1 is the DepartmentHead for the CNTT department
+        roles.Add((DualRoleId(1), "DepartmentHead"));
+
         for (var i = 1; i <= StudentCount; i++)
             roles.Add((StudentId(i), "Student"));
 
@@ -175,11 +183,11 @@ public static class LoadTestDataSeeder
     }
 
     // ════════════════════════════════════════════════
-    //  GROUPS  (925 students / 4 = 231 full groups + 1 partial)
+    //  GROUPS  (1000 students / 4 = 250 groups)
     // ════════════════════════════════════════════════
     private static async Task SeedGroupsAsync(AppDbContext context, ILogger? logger)
     {
-        var groupCount = (int)Math.Ceiling((double)StudentCount / StudentsPerGroup); // 232
+        var groupCount = (int)Math.Ceiling((double)StudentCount / StudentsPerGroup); // 250
 
         for (var batch = 0; batch < groupCount; batch += BatchSize)
         {
@@ -264,7 +272,7 @@ public static class LoadTestDataSeeder
     }
 
     // ════════════════════════════════════════════════
-    //  PROJECTS  (1 per group, mentor assigned round-robin)
+    //  PROJECTS  (1 per group, mentor assigned round-robin from dual-role users)
     // ════════════════════════════════════════════════
     private static async Task SeedProjectsAsync(AppDbContext context, ILogger? logger)
     {
@@ -285,7 +293,7 @@ public static class LoadTestDataSeeder
                 var pCode = $"@p{paramIndex++}";
                 var pNameVi = $"@p{paramIndex++}";
                 var pNameEn = $"@p{paramIndex++}";
-                var pNameAbbr = $"@p{paramIndex++}";  // ← Add NameAbbr parameter
+                var pNameAbbr = $"@p{paramIndex++}";
                 var pDesc = $"@p{paramIndex++}";
                 var pObj = $"@p{paramIndex++}";
                 var pMajor = $"@p{paramIndex++}";
@@ -303,7 +311,7 @@ public static class LoadTestDataSeeder
                 parameters.Add($"LT-PROJ-{i:D4}");
                 parameters.Add($"Du an load test {i}");
                 parameters.Add($"Load Test Project {i}");
-                parameters.Add($"LT-P{i:D4}");  // ← Add NameAbbr value
+                parameters.Add($"LT-P{i:D4}");
                 parameters.Add($"Mo ta du an load test so {i}");
                 parameters.Add($"Muc tieu du an load test so {i}");
                 parameters.Add(majorId);
@@ -335,7 +343,7 @@ public static class LoadTestDataSeeder
     }
 
     // ════════════════════════════════════════════════
-    //  PROJECT MENTORS  (round-robin from 50 mentors)
+    //  PROJECT MENTORS  (round-robin from 1000 dual-role users)
     // ════════════════════════════════════════════════
     private static async Task SeedProjectMentorsAsync(AppDbContext context, ILogger? logger)
     {
@@ -350,14 +358,14 @@ public static class LoadTestDataSeeder
 
             for (var i = batch + 1; i <= end; i++)
             {
-                var mentorIndex = ((i - 1) % MentorCount) + 1; // round-robin 1..50
+                var mentorIndex = ((i - 1) % DualRoleCount) + 1; // round-robin 1..1000
                 var pProject = $"@p{paramIndex++}";
                 var pMentor = $"@p{paramIndex++}";
                 var pDate = $"@p{paramIndex++}";
 
                 valueClauses.Add($"({pProject}, {pMentor}, 0, {pDate}, NULL, NULL)");
                 parameters.Add(ProjectId(i));
-                parameters.Add(MentorId(mentorIndex));
+                parameters.Add(DualRoleId(mentorIndex));
                 parameters.Add(SeedDate);
             }
 
@@ -372,7 +380,9 @@ public static class LoadTestDataSeeder
     }
 
     // ════════════════════════════════════════════════
-    //  PROJECT EVALUATOR ASSIGNMENTS  (3 evaluators per project, round-robin from 20 evaluators)
+    //  PROJECT EVALUATOR ASSIGNMENTS
+    //  (3 evaluators per project, round-robin from 1000 dual-role users)
+    //  Constraint: evaluator != project's mentor
     // ════════════════════════════════════════════════
     private static async Task SeedProjectEvaluatorAssignmentsAsync(AppDbContext context, ILogger? logger)
     {
@@ -396,16 +406,23 @@ public static class LoadTestDataSeeder
 
             for (var i = batch + 1; i <= end; i++)
             {
+                // Determine mentor for this project (same logic as SeedProjectMentorsAsync)
+                var mentorIndex = ((i - 1) % DualRoleCount) + 1;
+
                 // Each project gets 3 evaluators
+                var evaluatorOffset = 0;
                 for (var order = 1; order <= 3; order++)
                 {
                     assignmentIndex++;
-                    var evaluatorIndex = ((i - 1) * 3 + order - 1) % EvaluatorCount + 1;
 
-                    // Ensure evaluator is not the project's mentor
-                    var mentorIndex = ((i - 1) % MentorCount) + 1;
-                    if (EvaluatorId(evaluatorIndex) == MentorId(mentorIndex))
-                        evaluatorIndex = evaluatorIndex % EvaluatorCount + 1;
+                    // Pick evaluator via round-robin, skipping the project's mentor
+                    int evaluatorIndex;
+                    do
+                    {
+                        evaluatorIndex = ((i - 1) * 3 + order - 1 + evaluatorOffset) % DualRoleCount + 1;
+                        if (evaluatorIndex == mentorIndex)
+                            evaluatorOffset++;
+                    } while (evaluatorIndex == mentorIndex);
 
                     // 50% of assignments have results (completed evaluations)
                     var hasResult = assignmentIndex % 2 == 0;
@@ -428,7 +445,7 @@ public static class LoadTestDataSeeder
 
                     parameters.Add(AssignmentId(assignmentIndex));
                     parameters.Add(ProjectId(i));
-                    parameters.Add(EvaluatorId(evaluatorIndex));
+                    parameters.Add(DualRoleId(evaluatorIndex));
                     parameters.Add(order);
                     parameters.Add(SeedDate.AddDays(-assignmentIndex % 14));
                     parameters.Add(AdminId(1));
@@ -450,5 +467,17 @@ public static class LoadTestDataSeeder
         }
 
         logger?.LogInformation("Seeded {Count} load-test evaluator assignments.", assignmentIndex);
+    }
+
+    // ════════════════════════════════════════════════
+    //  DEPARTMENT HEAD  (Lecturer 1 = CNBM for CNTT department)
+    // ════════════════════════════════════════════════
+    private static async Task SetDepartmentHeadAsync(AppDbContext context, ILogger? logger)
+    {
+        await context.Database.ExecuteSqlRawAsync(
+            "UPDATE Departments SET HeadOfDepartmentId = @p0, UpdatedAt = @p1 WHERE Id = 1;",
+            DualRoleId(1), SeedDate);
+
+        logger?.LogInformation("Set DepartmentHead: Lecturer 1 ({UserId}) for Department CNTT.", DualRoleId(1));
     }
 }

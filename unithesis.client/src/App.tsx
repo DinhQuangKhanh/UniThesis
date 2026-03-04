@@ -49,11 +49,12 @@ const roleHomeMap: Record<string, string> = {
   mentor: "/mentor",
   evaluator: "/evaluator",
   student: "/student",
+  departmenthead: "/department-head",
 };
 
 /** Redirects authenticated users to their role-based home page, or to /login if not logged in. */
 function RoleBasedRedirect() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, activeRole, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) return null;
 
@@ -61,7 +62,7 @@ function RoleBasedRedirect() {
     return <Navigate to="/login" replace />;
   }
 
-  return <Navigate to={roleHomeMap[user.role] ?? "/login"} replace />;
+  return <Navigate to={roleHomeMap[activeRole || user.role] ?? "/login"} replace />;
 }
 
 function App() {
@@ -105,7 +106,7 @@ function App() {
             <Route
               path="/evaluator"
               element={
-                <ProtectedRoute allowedRoles={["evaluator"]}>
+                <ProtectedRoute allowedRoles={["evaluator", "mentor"]}>
                   <EvaluatorLayout />
                 </ProtectedRoute>
               }
@@ -123,7 +124,7 @@ function App() {
             <Route
               path="/mentor"
               element={
-                <ProtectedRoute allowedRoles={["mentor"]}>
+                <ProtectedRoute allowedRoles={["mentor", "evaluator"]}>
                   <MentorLayout />
                 </ProtectedRoute>
               }

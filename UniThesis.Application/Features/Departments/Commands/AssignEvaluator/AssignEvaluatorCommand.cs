@@ -1,0 +1,16 @@
+using UniThesis.Application.Common.Abstractions;
+
+namespace UniThesis.Application.Features.Departments.Commands.AssignEvaluator;
+
+/// <summary>
+/// Command for DepartmentHead (CNBM) to assign an evaluator to a project.
+/// The CNBM can only assign evaluators to projects that belong to their department.
+/// Business rules enforced:
+/// - Evaluator cannot evaluate a project they are mentoring
+/// - Maximum 3 evaluators per project
+/// </summary>
+public record AssignEvaluatorCommand(
+    Guid ProjectId,
+    Guid EvaluatorId,
+    int EvaluatorOrder
+) : ICommand;

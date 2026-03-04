@@ -5,18 +5,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import { RoleSwitcher } from "./RoleSwitcher";
 
 const navItems = [
-  { label: "Tổng quan", icon: "dashboard", path: "/evaluator" },
-  { label: "Tất cả đề tài", icon: "view_kanban", path: "/evaluator/projects" },
-  { label: "Lịch trình", icon: "calendar_month", path: "/evaluator/schedule", badge: "2" },
-  { label: "Lịch sử", icon: "history", path: "/evaluator/history" },
+  { label: "Tổng quan", icon: "dashboard", path: "/department-head" },
+  { label: "Gán thẩm định", icon: "assignment_ind", path: "/department-head/assign-evaluator" },
+  { label: "Đề tài bộ môn", icon: "topic", path: "/department-head/projects" },
 ];
 
 const systemItems = [
-  { label: "Cài đặt", icon: "settings", path: "/evaluator/settings" },
-  { label: "Hỗ trợ", icon: "help", path: "/evaluator/support" },
+  { label: "Cài đặt", icon: "settings", path: "/department-head/settings" },
+  { label: "Hỗ trợ", icon: "help", path: "/department-head/support" },
 ];
 
-export function EvaluatorSidebar() {
+export function DepartmentHeadSidebar() {
   const location = useLocation();
   const { user, logout } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
@@ -71,7 +70,7 @@ export function EvaluatorSidebar() {
             className={`flex flex-col overflow-hidden text-left transition-all duration-300 ${isHovered ? "opacity-100 w-auto" : "opacity-0 w-0"}`}
           >
             <p className="text-sm font-bold text-[#101319] truncate whitespace-nowrap">{user?.name || "Giảng viên"}</p>
-            <p className="text-xs text-[#58698d] truncate whitespace-nowrap">Người thẩm định</p>
+            <p className="text-xs text-[#58698d] truncate whitespace-nowrap">Chủ nhiệm bộ môn</p>
           </div>
         </div>
         {/* Logout Button */}
@@ -96,14 +95,12 @@ function NavItem({
   label,
   icon,
   path,
-  badge,
   active,
   expanded,
 }: {
   label: string;
   icon: string;
   path: string;
-  badge?: string;
   active: boolean;
   expanded: boolean;
 }) {
@@ -120,9 +117,6 @@ function NavItem({
       >
         {label}
       </span>
-      {badge && expanded && (
-        <span className="ml-auto bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">{badge}</span>
-      )}
     </NavLink>
   );
 }

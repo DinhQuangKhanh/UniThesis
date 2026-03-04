@@ -6,6 +6,7 @@ namespace UniThesis.Persistence.Seeds;
 /// <summary>
 /// Creates matching user accounts in the Firebase Auth Emulator so that
 /// every user seeded by <see cref="LoadTestDataSeeder"/> can actually sign in.
+/// Also sets Firebase custom claims (dbUserId, roles) so the JWT token contains role info.
 /// <para>
 /// Requires <c>FIREBASE_AUTH_EMULATOR_HOST</c> to be set (done by Infrastructure DI).
 /// Idempotent — silently skips users that already exist.
@@ -36,6 +37,7 @@ public static class FirebaseEmulatorSeeder
             var batch = users.Skip(i).Take(ConcurrencyLimit);
             var tasks = batch.Select(async u =>
             {
+                var isNew = false;
                 try
                 {
                     await auth.CreateUserAsync(new UserRecordArgs
@@ -46,6 +48,7 @@ public static class FirebaseEmulatorSeeder
                         DisplayName = u.DisplayName,
                         EmailVerified = true
                     });
+                    isNew = true;
                     Interlocked.Increment(ref created);
                 }
                 catch (FirebaseAuthException ex) when (ex.Message.Contains("DUPLICATE_LOCAL_ID") ||
@@ -55,31 +58,69 @@ public static class FirebaseEmulatorSeeder
                 {
                     Interlocked.Increment(ref skipped);
                 }
+
+                // Set custom claims (roles + dbUserId) regardless of whether user is new or existing
+                try
+                {
+                    var claims = new Dictionary<string, object>
+                    {
+                        ["dbUserId"] = u.DbUserId,
+                        ["roles"] = u.Roles
+                    };
+                    await auth.SetCustomUserClaimsAsync(u.FirebaseUid, claims);
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogWarning(ex,
+                        "Failed to set custom claims for {Email} ({FirebaseUid}). User {Status}.",
+                        u.Email, u.FirebaseUid, isNew ? "was created" : "already existed");
+                }
             });
 
             await Task.WhenAll(tasks);
         }
 
         logger?.LogInformation(
-            "Firebase Emulator seeding complete: {Created} created, {Skipped} already existed.",
+            "Firebase Emulator seeding complete: {Created} created, {Skipped} already existed. Custom claims set for all.",
             created, skipped);
     }
 
-    private static List<(string FirebaseUid, string Email, string DisplayName)> BuildUserList()
+    private static List<(string FirebaseUid, string Email, string DisplayName, string DbUserId, string[] Roles)> BuildUserList()
     {
-        var list = new List<(string, string, string)>();
+        var list = new List<(string, string, string, string, string[])>();
 
-        for (var i = 1; i <= 5; i++) // Admins
-            list.Add((LoadTestDataSeeder.AdminFirebaseUid(i), LoadTestDataSeeder.AdminEmail(i), $"Admin LoadTest {i}"));
+        for (var i = 1; i <= 1000; i++) // Admins
+            list.Add((
+                LoadTestDataSeeder.AdminFirebaseUid(i),
+                LoadTestDataSeeder.AdminEmail(i),
+                $"Admin LoadTest {i}",
+                LoadTestDataSeeder.AdminId(i).ToString(),
+                new[] { "Admin" }
+            ));
 
-        for (var i = 1; i <= 20; i++) // Evaluators
-            list.Add((LoadTestDataSeeder.EvaluatorFirebaseUid(i), LoadTestDataSeeder.EvaluatorEmail(i), $"Evaluator LoadTest {i}"));
+        for (var i = 1; i <= 1000; i++) // DualRole (Mentor + Evaluator), lecturer 1 is also DepartmentHead
+        {
+            var roles = i == 1
+                ? new[] { "Mentor", "Evaluator", "DepartmentHead" }
+                : new[] { "Mentor", "Evaluator" };
 
-        for (var i = 1; i <= 50; i++) // Mentors
-            list.Add((LoadTestDataSeeder.MentorFirebaseUid(i), LoadTestDataSeeder.MentorEmail(i), $"Mentor LoadTest {i}"));
+            list.Add((
+                LoadTestDataSeeder.DualRoleFirebaseUid(i),
+                LoadTestDataSeeder.DualRoleEmail(i),
+                $"Lecturer LoadTest {i}",
+                LoadTestDataSeeder.DualRoleId(i).ToString(),
+                roles
+            ));
+        }
 
-        for (var i = 1; i <= 925; i++) // Students
-            list.Add((LoadTestDataSeeder.StudentFirebaseUid(i), LoadTestDataSeeder.StudentEmail(i), $"Student LoadTest {i}"));
+        for (var i = 1; i <= 1000; i++) // Students
+            list.Add((
+                LoadTestDataSeeder.StudentFirebaseUid(i),
+                LoadTestDataSeeder.StudentEmail(i),
+                $"Student LoadTest {i}",
+                LoadTestDataSeeder.StudentId(i).ToString(),
+                new[] { "Student" }
+            ));
 
         return list;
     }

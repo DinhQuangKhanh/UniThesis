@@ -15,6 +15,7 @@ using UniThesis.Domain.Aggregates.SupportAggregate;
 using UniThesis.Domain.Aggregates.TopicPoolAggregate;
 using UniThesis.Domain.Aggregates.UserAggregate;
 using UniThesis.Domain.Common.Interfaces;
+using UniThesis.Domain.Entities;
 using UniThesis.Persistence.MongoDB;
 using UniThesis.Persistence.MongoDB.Indexes;
 using UniThesis.Persistence.MongoDB.Repositories.Implementation;
@@ -80,6 +81,8 @@ namespace UniThesis.Persistence
             services.AddScoped<IMeetingScheduleRepository, MeetingScheduleRepository>();
             services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
             services.AddScoped<ITopicRegistrationRepository, TopicRegistrationRepository>();
+            services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+            services.AddScoped<IProjectEvaluatorAssignmentRepository, ProjectEvaluatorAssignmentRepository>();
 
             // Add Query Services
             services.AddScoped<IStudentGroupQueryService, StudentGroupQueryService>();

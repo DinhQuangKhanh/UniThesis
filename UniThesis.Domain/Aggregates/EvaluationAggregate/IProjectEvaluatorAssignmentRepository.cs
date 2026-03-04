@@ -1,0 +1,25 @@
+using UniThesis.Domain.Aggregates.EvaluationAggregate.Entities;
+
+namespace UniThesis.Domain.Aggregates.EvaluationAggregate
+{
+    /// <summary>
+    /// Repository interface for ProjectEvaluatorAssignment entity.
+    /// </summary>
+    public interface IProjectEvaluatorAssignmentRepository
+    {
+        /// <summary>
+        /// Adds a new evaluator assignment.
+        /// </summary>
+        Task AddAsync(ProjectEvaluatorAssignment assignment, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets the count of active evaluator assignments for a project.
+        /// </summary>
+        Task<int> GetActiveCountByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets all active evaluator assignments for a project.
+        /// </summary>
+        Task<IEnumerable<ProjectEvaluatorAssignment>> GetActiveByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default);
+    }
+}

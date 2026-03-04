@@ -26,12 +26,12 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     }
 
     // If maintenance mode is on and user is not admin, redirect to maintenance page
-    if (isMaintenanceMode && user?.role !== 'admin') {
+    if (isMaintenanceMode && !user?.roles?.includes('admin')) {
         return <Navigate to="/maintenance" replace />
     }
 
-    // Role-based access control: if allowedRoles specified, check user role
-    if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+    // Role-based access control: if allowedRoles specified, check user roles (supports multi-role)
+    if (allowedRoles && user && !allowedRoles.some(r => user.roles?.includes(r))) {
         return <Navigate to="/403" replace />
     }
 
