@@ -12,6 +12,11 @@ public interface ICurrentUserService
     Guid? UserId { get; }
 
     /// <summary>
+    /// Gets the full name of the current user.
+    /// </summary>
+    string? FullName { get; }
+
+    /// <summary>
     /// Gets the email of the current user.
     /// </summary>
     string? Email { get; }

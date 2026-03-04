@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
+using AppClaimTypes = UniThesis.Application.Common.AppClaimTypes;
 
 namespace UniThesis.Infrastructure.RealTime.Hubs
 {
@@ -86,7 +87,7 @@ namespace UniThesis.Infrastructure.RealTime.Hubs
 
         private Guid? GetUserId()
         {
-            var userIdClaim = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userIdClaim = Context.User?.FindFirst(AppClaimTypes.DbUserId)?.Value;
             return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
         }
     }
