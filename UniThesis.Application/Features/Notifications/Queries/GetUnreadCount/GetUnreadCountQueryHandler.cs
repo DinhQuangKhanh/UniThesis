@@ -1,6 +1,5 @@
 using UniThesis.Application.Common.Abstractions;
 using UniThesis.Application.Common.Interfaces;
-using UniThesis.Infrastructure.Services.Notification;
 
 namespace UniThesis.Application.Features.Notifications.Queries.GetUnreadCount;
 

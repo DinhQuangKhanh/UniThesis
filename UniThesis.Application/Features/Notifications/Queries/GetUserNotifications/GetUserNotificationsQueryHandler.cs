@@ -1,7 +1,6 @@
 using UniThesis.Application.Common.Abstractions;
 using UniThesis.Application.Common.Interfaces;
 using UniThesis.Application.Features.Notifications.DTOs;
-using UniThesis.Infrastructure.Services.Notification;
 
 namespace UniThesis.Application.Features.Notifications.Queries.GetUserNotifications;
 
@@ -32,27 +31,15 @@ public class GetUserNotificationsQueryHandler
 
         var userId = _currentUser.UserId.Value;
 
-        var notifications = await _notificationService.GetUserNotificationsAsync(userId, request.Limit, cancellationToken);
+        var items = await _notificationService.GetUserNotificationsAsync(userId, request.Limit, cancellationToken);
         var unreadCount = await _notificationService.GetUnreadCountAsync(userId, cancellationToken);
 
-        var items = notifications.Select(n => new NotificationDto
-        {
-            Id = n.Id,
-            UserId = n.UserId,
-            Title = n.Title,
-            Content = n.Content,
-            Type = n.Type.ToString(),
-            Category = n.Category.ToString(),
-            TargetUrl = n.TargetUrl,
-            IsRead = n.IsRead,
-            ReadAt = n.ReadAt,
-            CreatedAt = n.CreatedAt
-        });
+        var itemList = items.ToList();
 
         return new NotificationListResponseDto
         {
-            Items = items,
-            TotalCount = items.Count(),
+            Items = itemList,
+            TotalCount = itemList.Count,
             UnreadCount = unreadCount
         };
     }

@@ -84,7 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const loginWithEmailPassword = async (email: string, password: string): Promise<boolean> => {
         try {
-            debugger
             const result = await signInWithEmailAndPassword(auth, email, password)
             const token = await result.user.getIdToken()
             const appUser = firebaseUserToUser(result.user, token)
