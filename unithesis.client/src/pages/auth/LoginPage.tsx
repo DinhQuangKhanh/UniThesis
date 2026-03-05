@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -75,12 +75,12 @@ export function LoginPage() {
     }
   };
 
-  // Redirect after login: when user becomes available, navigate to role-based home
-  // This handles both Google and email/password login flows
-  if (user) {
+  // Redirect after login only as a side-effect to avoid state updates during render.
+  useEffect(() => {
+    if (!user) return;
     const dest = getRedirectPath(user.role, from);
     navigate(dest, { replace: true });
-  }
+  }, [user, from, navigate]);
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-screen p-4 overflow-hidden font-display academic-pattern text-slate-800 selection:bg-primary/20 selection:text-primary-dark">

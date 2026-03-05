@@ -4,6 +4,7 @@ using UniThesis.Application;
 using UniThesis.Infrastructure;
 using UniThesis.Infrastructure.RealTime.Hubs;
 using UniThesis.Persistence;
+using System.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,11 +53,19 @@ builder.Services.AddSwaggerGen(options =>
 // CORS
 builder.Services.AddCors(options =>
 {
+    var configuredOrigins = builder.Configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>()?
+        .Where(origin => !string.IsNullOrWhiteSpace(origin))
+        .ToArray();
+
+    var allowedOrigins = (configuredOrigins is { Length: > 0 })
+        ? configuredOrigins
+        : new[] { "http://localhost:3000", "http://localhost:5173", "https://localhost:5173" };
+
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(
-                builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-                ?? new[] { "http://localhost:3000", "http://localhost:5173" })
+        policy.WithOrigins(allowedOrigins)
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials();
