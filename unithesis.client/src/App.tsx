@@ -1,40 +1,40 @@
-import { useEffect } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
-import { AuthProvider, useAuth } from '@/contexts/AuthContext'
-import { MaintenanceProvider } from '@/contexts/MaintenanceContext'
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
-import { AdminLayout, EvaluatorLayout, MentorLayout, StudentLayout, DepartmentHeadLayout } from '@/components/layout'
+import { NotFoundPage, AccessDeniedPage } from "@/pages/errors";
+import { useEffect } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { MaintenanceProvider } from "@/contexts/MaintenanceContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { AdminLayout, EvaluatorLayout, MentorLayout, StudentLayout, DepartmentHeadLayout } from "@/components/layout";
 import {
-    LoginPage,
-    DashboardPage,
-    ReportsPage,
-    SettingsPage,
-    SemestersPage,
-    UsersPage,
-    ProjectsPage,
-    SupportPage,
-    EvaluatorDashboardPage,
-    EvaluatorProjectsPage,
-    EvaluatorHistoryPage,
-    EvaluatorReviewPage,
-    EvaluatorSimilarityPage,
-    EvaluatorSchedulePage,
-    MentorDashboardPage,
-    MentorGroupsPage,
-    MentorTopicsPage,
-    MentorSchedulePage,
-    MentorFeedbackPage,
-    MentorTopicDetailPage,
-    StudentDashboardPage,
-    StudentSchedulePage,
-    StudentTopicsPage,
-    StudentMyTopicPage,
-    MaintenancePage,
-    DepartmentHeadDashboardPage,
-    ActivityLogsPage,
-} from '@/pages'
-import { AccessDeniedPage, NotFoundPage } from './pages/errors'
+  LoginPage,
+  DashboardPage,
+  ReportsPage,
+  SettingsPage,
+  SemestersPage,
+  UsersPage,
+  ProjectsPage,
+  SupportPage,
+  EvaluatorDashboardPage,
+  EvaluatorProjectsPage,
+  EvaluatorHistoryPage,
+  EvaluatorReviewPage,
+  EvaluatorSimilarityPage,
+  EvaluatorSchedulePage,
+  MentorDashboardPage,
+  MentorGroupsPage,
+  MentorTopicsPage,
+  MentorSchedulePage,
+  MentorFeedbackPage,
+  MentorTopicDetailPage,
+  StudentDashboardPage,
+  StudentSchedulePage,
+  StudentTopicsPage,
+  StudentMyTopicPage,
+  MaintenancePage,
+  DepartmentHeadDashboardPage,
+  ActivityLogsPage,
+} from "@/pages";
 
 // Helper function to adjust color brightness
 const adjustColor = (color: string, amount: number) => {
@@ -153,20 +153,22 @@ function App() {
               <Route path="schedule" element={<StudentSchedulePage />} />
             </Route>
 
-                        {/* Protected DepartmentHead Routes */}
-                        <Route
-                            path="/department-head"
-                            element={
-                                <ProtectedRoute>
-                                    <DepartmentHeadLayout />
-                                </ProtectedRoute>
-                            }
-                        >
-                            <Route index element={<DepartmentHeadDashboardPage />} />
-                        </Route>
+            {/* Smart redirect: root goes to role-based home */}
+            <Route path="/" element={<RoleBasedRedirect />} />
+            {/* Protected DepartmentHead Routes */}
+            <Route
+              path="/department-head"
+              element={
+                <ProtectedRoute>
+                  <DepartmentHeadLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<DepartmentHeadDashboardPage />} />
+            </Route>
 
-                        {/* Redirect root to admin */}
-                        <Route path="/" element={<Navigate to="/admin" replace />} />
+            {/* Redirect root to admin */}
+            <Route path="/" element={<Navigate to="/admin" replace />} />
 
             {/* 404 — any unmatched route */}
             <Route path="*" element={<NotFoundPage />} />

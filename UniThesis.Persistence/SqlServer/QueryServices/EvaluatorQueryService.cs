@@ -273,4 +273,196 @@ public class EvaluatorQueryService : IEvaluatorQueryService
             PageSize = pageSize
         };
     }
+
+    public async Task<EvaluatorProjectsDto> GetProjectsAsync(
+        Guid evaluatorId,
+        int page,
+        int pageSize,
+        string? search,
+        int? semesterId,
+        int? majorId,
+        string? result,
+        CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+
+        Console.WriteLine($"[DEBUG] EvaluatorId: {evaluatorId}");
+
+        // Check how many active assignments this evaluator has
+        var assignmentCount = await _context.ProjectEvaluatorAssignments
+            .Where(a => a.EvaluatorId == evaluatorId && a.IsActive)
+            .CountAsync(cancellationToken);
+        Console.WriteLine($"[DEBUG] Active assignments: {assignmentCount}");
+
+        // Base query: all active assignments for this evaluator
+        var query =
+            from a in _context.ProjectEvaluatorAssignments.AsNoTracking()
+            where a.EvaluatorId == evaluatorId && a.IsActive
+            join p in _context.Projects.AsNoTracking() on a.ProjectId equals p.Id
+            join m in _context.Majors.AsNoTracking() on p.MajorId equals m.Id into majors
+            from m in majors.DefaultIfEmpty()
+            join s in _context.Semesters.AsNoTracking() on p.SemesterId equals s.Id into semesters
+            from s in semesters.DefaultIfEmpty()
+            select new { a, p, m, s };
+
+        // Filter by semester
+        if (semesterId.HasValue)
+            query = query.Where(x => x.p.SemesterId == semesterId.Value);
+
+        // Filter by major
+        if (majorId.HasValue)
+            query = query.Where(x => x.p.MajorId == majorId.Value);
+
+        // Filter by result
+        if (!string.IsNullOrEmpty(result))
+        {
+            if (result == "Pending")
+            {
+                query = query.Where(x => x.a.IndividualResult == null || x.a.IndividualResult == EvaluationResult.Pending);
+            }
+            else if (Enum.TryParse<EvaluationResult>(result, true, out var resultEnum))
+            {
+                query = query.Where(x => x.a.IndividualResult == resultEnum);
+            }
+        }
+
+        // Filter by search (project code or name)
+        if (!string.IsNullOrEmpty(search))
+        {
+            query = query.Where(x =>
+                x.p.NameVi.ToString().Contains(search, StringComparison.CurrentCultureIgnoreCase) ||
+                x.p.Code.ToString().Contains(search, StringComparison.CurrentCultureIgnoreCase));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        // Fetch paginated raw items
+        var rawItems = await query
+            .OrderByDescending(x => x.a.IndividualResult == null || x.a.IndividualResult == EvaluationResult.Pending)
+            .ThenBy(x => x.a.AssignedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(x => new
+            {
+                AssignmentId = x.a.Id,
+                x.a.ProjectId,
+                ProjectCode = x.p.Code,
+                ProjectNameVi = x.p.NameVi,
+                MajorName = x.m != null ? x.m.Name : "",
+                x.p.GroupId,
+                x.p.SubmittedAt,
+                x.a.AssignedAt,
+                x.a.IndividualResult,
+            })
+            .ToListAsync(cancellationToken);
+
+        // Fetch group leaders for student info
+        var groupIds = rawItems
+            .Where(x => x.GroupId != null)
+            .Select(x => x.GroupId!.Value)
+            .Distinct()
+            .ToList();
+
+        var groupLeaderMap = new Dictionary<Guid, (string FullName, string? AvatarUrl)>();
+        if (groupIds.Count > 0)
+        {
+            var leaders = await (
+                from gm in _context.GroupMembers.AsNoTracking()
+                where groupIds.Contains(gm.GroupId) && gm.Role == Domain.Enums.Group.GroupMemberRole.Leader
+                join u in _context.Users.AsNoTracking() on gm.StudentId equals u.Id
+                select new { gm.GroupId, u.FullName, u.AvatarUrl }
+            ).ToListAsync(cancellationToken);
+
+            groupLeaderMap = leaders.ToDictionary(x => x.GroupId, x => (x.FullName, x.AvatarUrl));
+        }
+
+        // Fetch mentor names
+        var projectIds = rawItems.Select(x => x.ProjectId).Distinct().ToList();
+
+        var mentorMap = new Dictionary<Guid, string>();
+        if (projectIds.Count > 0)
+        {
+            var mentors = await (
+                from pm in _context.ProjectMentors.AsNoTracking()
+                where projectIds.Contains(pm.ProjectId) && pm.Status == Domain.Enums.Mentor.ProjectMentorStatus.Active
+                join u in _context.Users.AsNoTracking() on pm.MentorId equals u.Id
+                select new { pm.ProjectId, u.FullName }
+            ).ToListAsync(cancellationToken);
+
+            // Take first active mentor per project
+            foreach (var m in mentors)
+            {
+                mentorMap.TryAdd(m.ProjectId, m.FullName);
+            }
+        }
+
+        // Build items
+        var items = rawItems.Select(x =>
+        {
+            var studentName = "";
+            string? studentAvatar = null;
+            if (x.GroupId != null && groupLeaderMap.TryGetValue(x.GroupId.Value, out var leader))
+            {
+                studentName = leader.FullName;
+                studentAvatar = leader.AvatarUrl;
+            }
+
+            mentorMap.TryGetValue(x.ProjectId, out var mentorName);
+
+            var isPending = x.IndividualResult == null || x.IndividualResult == EvaluationResult.Pending;
+
+            return new EvaluatorProjectItemDto
+            {
+                AssignmentId = x.AssignmentId,
+                ProjectId = x.ProjectId,
+                ProjectCode = x.ProjectCode,
+                ProjectNameVi = x.ProjectNameVi,
+                MajorName = x.MajorName,
+                StudentName = studentName,
+                StudentAvatar = studentAvatar,
+                MentorName = mentorName ?? "",
+                SubmittedAt = x.SubmittedAt,
+                AssignedAt = x.AssignedAt,
+                IndividualResult = isPending ? "Pending" : x.IndividualResult!.Value.ToString(),
+                IsUrgent = isPending && (now - x.AssignedAt).TotalDays > 5,
+            };
+        }).ToList();
+
+        // Build available filter options from ALL semesters and majors in the system
+        // (Not just from assigned projects - this allows filtering even before assignments)
+        var availableSemesters = await _context.Semesters
+            .AsNoTracking()
+            .Where(s => s.IsActive)
+            .OrderBy(s => s.Name)
+            .Select(s => new { s.Id, s.Name })
+            .ToListAsync(cancellationToken);
+
+        var availableMajors = await _context.Majors
+            .AsNoTracking()
+            .Where(m => m.IsActive)
+            .OrderBy(m => m.Name)
+            .Select(m => new { m.Id, m.Name })
+            .ToListAsync(cancellationToken);
+
+        Console.WriteLine($"[DEBUG] Available Semesters count: {availableSemesters.Count}");
+        Console.WriteLine($"[DEBUG] Available Majors count: {availableMajors.Count}");
+
+        return new EvaluatorProjectsDto
+        {
+            Items = items,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+            AvailableSemesters = availableSemesters.Select(s => new FilterOptionDto
+            {
+                Value = s.Id.ToString(),
+                Label = s.Name
+            }).ToList(),
+            AvailableMajors = availableMajors.Select(m => new FilterOptionDto
+            {
+                Value = m.Id.ToString(),
+                Label = m.Name
+            }).ToList()
+        };
+    }
 }

@@ -1,14 +1,15 @@
-export { LoginPage } from './auth/LoginPage'
-export { MaintenancePage } from './MaintenancePage'
-export { DashboardPage } from './admin/DashboardPage'
-export { ReportsPage } from './admin/ReportsPage'
-export { SettingsPage } from './admin/SettingsPage'
-export { SemestersPage } from './admin/SemestersPage'
-export { UsersPage } from './admin/UsersPage'
-export { ProjectsPage } from './admin/ProjectsPage'
-export { SupportPage } from './admin/SupportPage'
-export { ActivityLogsPage } from './admin/ActivityLogsPage'
-export * from './evaluator'
-export * from './mentor'
-export * from './student'
-export { DepartmentHeadDashboardPage } from './department-head/DepartmentHeadDashboardPage'
+export { LoginPage } from "./auth/LoginPage";
+export { MaintenancePage } from "./MaintenancePage";
+export { DashboardPage } from "./admin/DashboardPage";
+export { ReportsPage } from "./admin/ReportsPage";
+export { SettingsPage } from "./admin/SettingsPage";
+export { SemestersPage } from "./admin/SemestersPage";
+export { UsersPage } from "./admin/UsersPage";
+export { ProjectsPage } from "./admin/ProjectsPage";
+export { SupportPage } from "./admin/SupportPage";
+export { ActivityLogsPage } from "./admin/ActivityLogsPage";
+export * from "./evaluator";
+export * from "./mentor";
+export * from "./student";
+export * from "./errors";
+export { DepartmentHeadDashboardPage } from "./department-head/DepartmentHeadDashboardPage";

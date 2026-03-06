@@ -6,6 +6,7 @@ using UniThesis.Domain.Common.Exceptions;
 using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Domain.Entities;
 using UniThesis.Domain.Constants;
+using ICurrentUserService = UniThesis.Application.Common.Interfaces.ICurrentUserService;
 
 namespace UniThesis.Application.Features.Departments.Commands.SetDepartmentHead;
 

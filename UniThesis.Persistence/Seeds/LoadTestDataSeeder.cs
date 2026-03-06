@@ -25,7 +25,7 @@ public static class LoadTestDataSeeder
     private const int StudentCount = 1000;
     private const int StudentsPerGroup = 4;
 
-    private const int SemesterId = 1; // Reuse DevelopmentDataSeeder semester
+    private const int SemesterId = 100; // Reuse DevelopmentDataSeeder semester
     private static readonly DateTime SeedDate = new(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
 
     private const int BatchSize = 50;
