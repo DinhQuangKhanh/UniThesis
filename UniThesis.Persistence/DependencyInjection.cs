@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using UniThesis.Application.Common.Interfaces;
 using UniThesis.Domain.Aggregates.DefenseAggregate;
 using UniThesis.Domain.Aggregates.EvaluationAggregate;
 using UniThesis.Domain.Aggregates.GroupAggregate;
@@ -13,6 +15,7 @@ using UniThesis.Domain.Aggregates.SupportAggregate;
 using UniThesis.Domain.Aggregates.TopicPoolAggregate;
 using UniThesis.Domain.Aggregates.UserAggregate;
 using UniThesis.Domain.Common.Interfaces;
+using UniThesis.Domain.Entities;
 using UniThesis.Persistence.MongoDB;
 using UniThesis.Persistence.MongoDB.Indexes;
 using UniThesis.Persistence.MongoDB.Repositories.Implementation;
@@ -78,9 +81,12 @@ namespace UniThesis.Persistence
             services.AddScoped<IMeetingScheduleRepository, MeetingScheduleRepository>();
             services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
             services.AddScoped<ITopicRegistrationRepository, TopicRegistrationRepository>();
+            services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+            services.AddScoped<IProjectEvaluatorAssignmentRepository, ProjectEvaluatorAssignmentRepository>();
 
             // Add Query Services
-            services.AddScoped<Application.Common.Interfaces.IStudentGroupQueryService, StudentGroupQueryService>();
+            services.AddScoped<IStudentGroupQueryService, StudentGroupQueryService>();
+            services.AddScoped<IEvaluatorQueryService, EvaluatorQueryService>();
 
             // Add MongoDB Repositories
             services.AddScoped<IEvaluationLogRepository, EvaluationLogRepository>();
@@ -90,6 +96,9 @@ namespace UniThesis.Persistence
             services.AddScoped<IMessageRepository, MessageRepository>();
             services.AddScoped<IUserActivityLogRepository, UserActivityLogRepository>();
             services.AddScoped<ISystemAuditLogRepository, SystemAuditLogRepository>();
+
+            // Add Log Services
+            services.AddScoped<IRequestLogService, RequestLogService>();
 
             return services;
         }
@@ -106,10 +115,22 @@ namespace UniThesis.Persistence
         {
             using var scope = serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseInit");
+
             await dbContext.Database.MigrateAsync();
 
             // Seed development data (idempotent - skips if data already exists)
             await DevelopmentDataSeeder.SeedAsync(dbContext);
+
+            // Load-test data: seed 1000 users + relationships when Firebase Emulator is enabled
+            var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+            var useEmulator = configuration.GetValue<bool>("Firebase:UseEmulator");
+
+            if (useEmulator)
+            {
+                await LoadTestDataSeeder.SeedAsync(dbContext, logger);
+                await FirebaseEmulatorSeeder.SeedAsync(logger);
+            }
 
             var mongoContext = scope.ServiceProvider.GetRequiredService<MongoDbContext>();
             await MongoIndexConfiguration.CreateIndexesAsync(mongoContext);

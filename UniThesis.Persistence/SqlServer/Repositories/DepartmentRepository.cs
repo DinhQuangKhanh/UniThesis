@@ -6,7 +6,7 @@ namespace UniThesis.Persistence.SqlServer.Repositories
     /// <summary>
     /// Repository for Department entity.
     /// </summary>
-    public class DepartmentRepository
+    public class DepartmentRepository : IDepartmentRepository
     {
         private readonly AppDbContext _context;
         private readonly DbSet<Department> _dbSet;
@@ -69,6 +69,12 @@ namespace UniThesis.Persistence.SqlServer.Repositories
         {
             var maxId = await _dbSet.MaxAsync(d => (int?)d.Id, cancellationToken);
             return (maxId ?? 0) + 1;
+        }
+
+        public async Task<bool> IsMajorInDepartmentAsync(int majorId, int departmentId, CancellationToken cancellationToken = default)
+        {
+            return await _context.Set<Major>()
+                .AnyAsync(m => m.Id == majorId && m.DepartmentId == departmentId, cancellationToken);
         }
     }
 }

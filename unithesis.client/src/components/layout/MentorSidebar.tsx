@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
+import { RoleSwitcher } from './RoleSwitcher'
 
 const navItems = [
     { label: 'Dashboard', icon: 'dashboard', path: '/mentor' },
@@ -12,7 +13,7 @@ const navItems = [
 
 const systemItems = [
     { label: 'Cài đặt', icon: 'settings', path: '/mentor/settings' },
-    { label: 'Trợ giúp', icon: 'help', path: '/mentor/help' },
+    { label: 'Hỗ trợ', icon: 'support_agent', path: '/mentor/support' },
 ]
 
 export function MentorSidebar() {
@@ -53,6 +54,7 @@ export function MentorSidebar() {
 
             {/* Footer */}
             <div className={`p-4 border-t border-[#e9ecf1] ${isHovered ? '' : 'px-2'}`}>
+                <RoleSwitcher expanded={isHovered} />
                 {systemItems.map((item) => (
                     <NavItem key={item.path} {...item} active={isActive(item.path)} expanded={isHovered} />
                 ))}

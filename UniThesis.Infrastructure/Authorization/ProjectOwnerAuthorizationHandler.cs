@@ -5,6 +5,7 @@ using System.Security.Claims;
 using UniThesis.Domain.Aggregates.GroupAggregate;
 using UniThesis.Domain.Aggregates.ProjectAggregate;
 using UniThesis.Infrastructure.Authorization.Requirements;
+using AppClaimTypes = UniThesis.Application.Common.AppClaimTypes;
 
 namespace UniThesis.Infrastructure.Authorization
 {
@@ -59,7 +60,7 @@ namespace UniThesis.Infrastructure.Authorization
 
         private Guid? GetUserId(ClaimsPrincipal user)
         {
-            var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userIdClaim = user.FindFirst(AppClaimTypes.DbUserId)?.Value;
             return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
         }
 

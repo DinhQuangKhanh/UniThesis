@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
+using UniThesis.Application.Common;
 using UniThesis.Application.Common.Interfaces;
 
 namespace UniThesis.Persistence.Services
@@ -22,13 +23,16 @@ namespace UniThesis.Persistence.Services
         {
             get
             {
-                var userId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+                var userId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(AppClaimTypes.DbUserId);
                 return string.IsNullOrEmpty(userId) ? null : Guid.Parse(userId);
             }
         }
 
         /// <inheritdoc />
         public string? Email => _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.Email);
+
+        /// <inheritdoc />
+        public string? FullName => _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.Name);
 
         /// <inheritdoc />
         public bool IsAuthenticated => _httpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;

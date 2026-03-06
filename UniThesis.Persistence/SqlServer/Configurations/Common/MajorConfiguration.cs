@@ -39,15 +39,6 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Common
                 .WithMany()
                 .HasForeignKey(m => m.DepartmentId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            // Seed data
-            builder.HasData(
-                new { Id = 1, DepartmentId = 1, Name = "Kỹ thuật phần mềm", Code = "SE", Description = "Chuyên ngành Kỹ thuật phần mềm", IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-                new { Id = 2, DepartmentId = 1, Name = "An toàn thông tin", Code = "IA", Description = "Chuyên ngành An toàn thông tin", IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-                new { Id = 3, DepartmentId = 1, Name = "Trí tuệ nhân tạo", Code = "AI", Description = "Chuyên ngành Trí tuệ nhân tạo", IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-                new { Id = 4, DepartmentId = 2, Name = "Quản trị kinh doanh", Code = "BA", Description = "Chuyên ngành Quản trị kinh doanh", IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-                new { Id = 5, DepartmentId = 3, Name = "Ngôn ngữ Anh", Code = "ENG", Description = "Chuyên ngành Ngôn ngữ Anh", IsActive = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
-            );
         }
     }
 }

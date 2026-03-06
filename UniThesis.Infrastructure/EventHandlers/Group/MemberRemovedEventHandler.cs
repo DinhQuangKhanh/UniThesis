@@ -37,9 +37,12 @@ namespace UniThesis.Infrastructure.EventHandlers.Group
                 var log = new UserActivityLogDocument
                 {
                     UserId = notification.RemovedBy,
+                    UserRole = "mentor",
                     Action = "MemberRemoved",
+                    Category = "Group",
                     EntityType = "Group",
                     EntityId = notification.GroupId,
+                    Severity = "warning",
                     Timestamp = DateTime.UtcNow,
                     Details = new BsonDocument
                     {

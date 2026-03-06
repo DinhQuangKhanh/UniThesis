@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using UniThesis.API.Extensions;
 using UniThesis.Application;
 using UniThesis.Infrastructure;
@@ -9,9 +10,6 @@ var builder = WebApplication.CreateBuilder(args);
 // ============================================
 // 1. ADD SERVICES TO THE CONTAINER
 // ============================================
-
-// Controllers
-builder.Services.AddControllers();
 
 // Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
@@ -57,7 +55,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy.WithOrigins(
-                builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
+                builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
                 ?? new[] { "http://localhost:3000", "http://localhost:5173" })
             .AllowAnyMethod()
             .AllowAnyHeader()
@@ -69,6 +67,17 @@ builder.Services.AddCors(options =>
 builder.Services.AddApplicationServices();  // Application Layer (MediatR, Validators, Behaviors)
 builder.Services.AddPersistence(builder.Configuration);  // Persistence Layer (EF Core, MongoDB, Repositories)
 builder.Services.AddInfrastructure(builder.Configuration);  // Infrastructure Layer (Auth, Email, Caching, etc.)
+
+// ForwardedHeaders: lets the app read X-Forwarded-For / X-Forwarded-Proto
+// set by reverse proxies (nginx, IIS, Azure, AWS) so RemoteIpAddress returns
+// the real client IP instead of the proxy's IP.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Trust all proxies/networks (adjust in prod to only trust your known proxy CIDRs)
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 var app = builder.Build();
 
@@ -96,14 +105,17 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+// Must be first: extract real client IP from X-Forwarded-For before any middleware reads it
+app.UseForwardedHeaders();
+
 // Infrastructure middleware (Correlation ID, Request Logging, Exception Handling, Performance Monitoring)
 app.UseInfrastructure();
 
-// HTTPS Redirection
-app.UseHttpsRedirection();
-
 // CORS
 app.UseCors("AllowFrontend");
+
+// HTTPS Redirection
+app.UseHttpsRedirection();
 
 // Authentication & Authorization
 app.UseAuthentication();
@@ -115,9 +127,6 @@ app.MapHealthChecks("/health");
 // Realtime Hubs
 app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapHub<ChatHub>("/hubs/chat");
-
-// Controllers
-app.MapControllers();
 
 // Minimal API Endpoints
 app.MapEndpoints();

@@ -1,11 +1,13 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using UniThesis.Application.Common.Interfaces;
 
 namespace UniThesis.Application.Common.Behaviors;
 
 /// <summary>
 /// MediatR pipeline behavior for logging request execution time and details.
+/// Writes structured log entries to both the console (via ILogger) and MongoDB.
 /// </summary>
 /// <typeparam name="TRequest">The request type.</typeparam>
 /// <typeparam name="TResponse">The response type.</typeparam>
@@ -13,14 +15,17 @@ public class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, 
     where TRequest : notnull
 {
     private readonly ILogger<LoggingBehavior<TRequest, TResponse>> _logger;
-    private readonly Interfaces.ICurrentUserService _currentUserService;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IRequestLogService _requestLogService;
 
     public LoggingBehavior(
         ILogger<LoggingBehavior<TRequest, TResponse>> logger,
-        Interfaces.ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IRequestLogService requestLogService)
     {
         _logger = logger;
         _currentUserService = currentUserService;
+        _requestLogService = requestLogService;
     }
 
     public async Task<TResponse> Handle(
@@ -29,8 +34,9 @@ public class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, 
         CancellationToken cancellationToken)
     {
         var requestName = typeof(TRequest).Name;
-        var userId = _currentUserService.UserId?.ToString() ?? "Anonymous";
+        var userId    = _currentUserService.UserId?.ToString() ?? "Anonymous";
         var userEmail = _currentUserService.Email ?? "N/A";
+        var userName  = _currentUserService.FullName ?? userEmail;
 
         _logger.LogInformation(
             "Starting request {RequestName} by User {UserId} ({UserEmail})",
@@ -41,9 +47,9 @@ public class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, 
         try
         {
             var response = await next();
-            
+
             stopwatch.Stop();
-            
+
             _logger.LogInformation(
                 "Completed request {RequestName} in {ElapsedMilliseconds}ms",
                 requestName, stopwatch.ElapsedMilliseconds);
@@ -56,17 +62,45 @@ public class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, 
                     requestName, stopwatch.ElapsedMilliseconds, userId);
             }
 
+            // Persist to MongoDB (fire-and-forget; errors are swallowed inside the service)
+            await _requestLogService.LogAsync(
+                new RequestLogEntry(
+                    RequestName:        requestName,
+                    UserId:             userId,
+                    UserName:           userName,
+                    UserEmail:          userEmail,
+                    UserRole:           _currentUserService.Roles.FirstOrDefault() ?? "anonymous",
+                    IsSuccess:          true,
+                    ElapsedMilliseconds: stopwatch.ElapsedMilliseconds,
+                    Timestamp:          DateTime.UtcNow),
+                cancellationToken);
+
             return response;
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            
+
             _logger.LogError(
                 ex,
                 "Request {RequestName} failed after {ElapsedMilliseconds}ms for User {UserId}",
                 requestName, stopwatch.ElapsedMilliseconds, userId);
-            
+
+            // Persist failure entry to MongoDB
+            await _requestLogService.LogAsync(
+                new RequestLogEntry(
+                    RequestName:        requestName,
+                    UserId:             userId,
+                    UserName:           userName,
+                    UserEmail:          userEmail,
+                    UserRole:           _currentUserService.Roles.FirstOrDefault() ?? "anonymous",
+                    IsSuccess:          false,
+                    ElapsedMilliseconds: stopwatch.ElapsedMilliseconds,
+                    Timestamp:          DateTime.UtcNow,
+                    ErrorMessage:       ex.Message,
+                    ErrorType:          ex.GetType().FullName),
+                cancellationToken);
+
             throw;
         }
     }
