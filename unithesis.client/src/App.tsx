@@ -4,7 +4,7 @@ import { AnimatePresence } from 'framer-motion'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { MaintenanceProvider } from '@/contexts/MaintenanceContext'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
-import { AdminLayout, EvaluatorLayout, MentorLayout, StudentLayout } from '@/components/layout'
+import { AdminLayout, EvaluatorLayout, MentorLayout, StudentLayout, DepartmentHeadLayout } from '@/components/layout'
 import {
     LoginPage,
     DashboardPage,
@@ -31,6 +31,7 @@ import {
     StudentTopicsPage,
     StudentMyTopicPage,
     MaintenancePage,
+    DepartmentHeadDashboardPage,
 } from '@/pages'
 
 // Helper function to adjust color brightness
@@ -125,6 +126,18 @@ function App() {
                             <Route path="my-topic" element={<StudentMyTopicPage />} />
                             <Route path="topics" element={<StudentTopicsPage />} />
                             <Route path="schedule" element={<StudentSchedulePage />} />
+                        </Route>
+
+                        {/* Protected DepartmentHead Routes */}
+                        <Route
+                            path="/department-head"
+                            element={
+                                <ProtectedRoute>
+                                    <DepartmentHeadLayout />
+                                </ProtectedRoute>
+                            }
+                        >
+                            <Route index element={<DepartmentHeadDashboardPage />} />
                         </Route>
 
                         {/* Redirect root to admin */}

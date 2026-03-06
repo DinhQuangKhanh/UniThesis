@@ -7,6 +7,8 @@ export { MentorLayout } from './MentorLayout'
 export { MentorSidebar } from './MentorSidebar'
 export { StudentLayout } from './StudentLayout'
 export { StudentSidebar } from './StudentSidebar'
+export { DepartmentHeadLayout } from './DepartmentHeadLayout'
+export { DepartmentHeadSidebar } from './DepartmentHeadSidebar'
 export { NotificationDropdown } from './NotificationDropdown'
 export type { UserRole } from './NotificationDropdown'
 
