@@ -1,8 +1,5 @@
 using MediatR;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
-using UniThesis.API.Endpoints;
+using UniThesis.Application.Common;
 using UniThesis.Application.Features.Evaluations.DTOs;
 using UniThesis.Application.Features.Evaluations.Queries.GetEvaluatorProjects;
 
@@ -14,6 +11,7 @@ public class GetEvaluatorProjectsEndpoint : IEndpoint
     {
         app.MapGet("/api/evaluator/projects", async (
                 ISender sender,
+                ILogger<GetEvaluatorProjectsEndpoint> logger,
                 int page = 1,
                 int pageSize = 10,
                 string? search = null,
@@ -22,14 +20,26 @@ public class GetEvaluatorProjectsEndpoint : IEndpoint
                 string? result = null,
                 CancellationToken cancellationToken = default) =>
             {
-                var query = new GetEvaluatorProjectsQuery(page, pageSize, search, semesterId, majorId, result);
-                var dto = await sender.Send(query, cancellationToken);
-                return Results.Ok(dto);
+                try
+                {
+                    var query = new GetEvaluatorProjectsQuery(page, pageSize, search, semesterId, majorId, result);
+                    var dto = await sender.Send(query, cancellationToken);
+                    return Results.Ok(ApiResponse.Ok(dto));
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return Results.Json(ApiResponse.Fail("Bạn chưa đăng nhập hoặc phiên đã hết hạn."), statusCode: 401);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Lỗi khi tải danh sách đề tài cần thẩm định");
+                    return Results.Json(ApiResponse.Fail("Không thể tải danh sách đề tài cần thẩm định. Vui lòng thử lại sau."), statusCode: 500);
+                }
             })
             .RequireAuthorization()
             .WithTags("Evaluator")
             .WithName("GetEvaluatorProjects")
-            .Produces<EvaluatorProjectsDto>()
+            .Produces<ApiResponse<EvaluatorProjectsDto>>()
             .Produces(401);
     }
 }

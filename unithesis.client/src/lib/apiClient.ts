@@ -17,6 +17,17 @@ interface ApiErrorBody {
   errors?: Record<string, string[]>;
 }
 
+interface ApiEnvelope<T> {
+  success: boolean;
+  message: string;
+  data?: T;
+  errors?: Record<string, string[]>;
+}
+
+function isApiEnvelope<T>(body: unknown): body is ApiEnvelope<T> {
+  return typeof body === "object" && body !== null && "success" in body && "message" in body;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -46,7 +57,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new Error(message);
   }
 
-  return response.json() as Promise<T>;
+  const body: unknown = await response.json();
+
+  if (isApiEnvelope<T>(body)) {
+    if (!body.success) {
+      throw new Error(body.message || "Đã xảy ra lỗi không xác định.");
+    }
+    return body.data as T;
+  }
+
+  return body as T;
 }
 
 export const apiClient = {

@@ -286,14 +286,6 @@ public class EvaluatorQueryService : IEvaluatorQueryService
     {
         var now = DateTime.UtcNow;
 
-        Console.WriteLine($"[DEBUG] EvaluatorId: {evaluatorId}");
-
-        // Check how many active assignments this evaluator has
-        var assignmentCount = await _context.ProjectEvaluatorAssignments
-            .Where(a => a.EvaluatorId == evaluatorId && a.IsActive)
-            .CountAsync(cancellationToken);
-        Console.WriteLine($"[DEBUG] Active assignments: {assignmentCount}");
-
         // Base query: all active assignments for this evaluator
         var query =
             from a in _context.ProjectEvaluatorAssignments.AsNoTracking()
@@ -428,41 +420,12 @@ public class EvaluatorQueryService : IEvaluatorQueryService
             };
         }).ToList();
 
-        // Build available filter options from ALL semesters and majors in the system
-        // (Not just from assigned projects - this allows filtering even before assignments)
-        var availableSemesters = await _context.Semesters
-            .AsNoTracking()
-            .Where(s => s.IsActive)
-            .OrderBy(s => s.Name)
-            .Select(s => new { s.Id, s.Name })
-            .ToListAsync(cancellationToken);
-
-        var availableMajors = await _context.Majors
-            .AsNoTracking()
-            .Where(m => m.IsActive)
-            .OrderBy(m => m.Name)
-            .Select(m => new { m.Id, m.Name })
-            .ToListAsync(cancellationToken);
-
-        Console.WriteLine($"[DEBUG] Available Semesters count: {availableSemesters.Count}");
-        Console.WriteLine($"[DEBUG] Available Majors count: {availableMajors.Count}");
-
         return new EvaluatorProjectsDto
         {
             Items = items,
             TotalCount = totalCount,
             Page = page,
-            PageSize = pageSize,
-            AvailableSemesters = availableSemesters.Select(s => new FilterOptionDto
-            {
-                Value = s.Id.ToString(),
-                Label = s.Name
-            }).ToList(),
-            AvailableMajors = availableMajors.Select(m => new FilterOptionDto
-            {
-                Value = m.Id.ToString(),
-                Label = m.Name
-            }).ToList()
+            PageSize = pageSize
         };
     }
 }
