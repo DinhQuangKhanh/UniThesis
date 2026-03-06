@@ -24,5 +24,6 @@ public record RequestLogEntry(
     long ElapsedMilliseconds,
     DateTime Timestamp,
     string? ErrorMessage = null,
-    string? ErrorType = null
+    string? ErrorType = null,
+    Dictionary<string, object?>? RequestParameters = null
 );

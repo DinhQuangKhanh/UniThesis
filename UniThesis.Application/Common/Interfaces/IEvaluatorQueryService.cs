@@ -4,6 +4,8 @@ namespace UniThesis.Application.Common.Interfaces;
 
 public interface IEvaluatorQueryService
 {
+    Task<EvaluatorFilterOptionsDto> GetFilterOptionsAsync(CancellationToken cancellationToken = default);
+
     Task<EvaluatorDashboardDto> GetDashboardAsync(Guid evaluatorId, CancellationToken cancellationToken = default);
 
     Task<EvaluatorHistoryDto> GetHistoryAsync(

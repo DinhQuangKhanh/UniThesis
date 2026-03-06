@@ -49,13 +49,7 @@ namespace UniThesis.Persistence.Services
           IpAddress = ipAddress,
           UserAgent = userAgent,
           Timestamp = entry.Timestamp,
-          Details = new BsonDocument
-          {
-            ["IsSuccess"] = entry.IsSuccess,
-            ["ElapsedMilliseconds"] = entry.ElapsedMilliseconds,
-            ["ErrorMessage"] = entry.ErrorMessage ?? BsonNull.Value.ToString(),
-            ["ErrorType"] = entry.ErrorType ?? BsonNull.Value.ToString(),
-          },
+          Details = BuildDetails(entry),
         };
 
         await _activityLogRepository.AddAsync(document, cancellationToken);
@@ -65,6 +59,39 @@ namespace UniThesis.Persistence.Services
         // Never let log persistence failures bubble up and break the request pipeline.
         _logger.LogError(ex, "Failed to persist request log for {RequestName} to MongoDB", entry.RequestName);
       }
+    }
+
+    private static BsonDocument BuildDetails(RequestLogEntry entry)
+    {
+      var details = new BsonDocument
+      {
+        ["IsSuccess"] = entry.IsSuccess,
+        ["ElapsedMilliseconds"] = entry.ElapsedMilliseconds,
+        ["ErrorMessage"] = entry.ErrorMessage ?? BsonNull.Value.ToString(),
+        ["ErrorType"] = entry.ErrorType ?? BsonNull.Value.ToString(),
+      };
+
+      if (entry.RequestParameters is { Count: > 0 })
+      {
+        var paramDoc = new BsonDocument();
+        foreach (var (key, value) in entry.RequestParameters)
+        {
+          paramDoc[key] = value switch
+          {
+            null      => BsonNull.Value,
+            int i     => new BsonInt32(i),
+            long l    => new BsonInt64(l),
+            bool b    => new BsonBoolean(b),
+            double d  => new BsonDouble(d),
+            Guid g    => new BsonString(g.ToString()),
+            DateTime dt => new BsonDateTime(dt),
+            _         => new BsonString(value.ToString() ?? string.Empty),
+          };
+        }
+        details["RequestParameters"] = paramDoc;
+      }
+
+      return details;
     }
   }
 }

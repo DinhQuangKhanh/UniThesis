@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Reflection;
 using UniThesis.Application.Common.Interfaces;
 
 namespace UniThesis.Application.Common.Behaviors;
@@ -65,14 +66,15 @@ public class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, 
             // Persist to MongoDB (fire-and-forget; errors are swallowed inside the service)
             await _requestLogService.LogAsync(
                 new RequestLogEntry(
-                    RequestName:        requestName,
-                    UserId:             userId,
-                    UserName:           userName,
-                    UserEmail:          userEmail,
-                    UserRole:           _currentUserService.Roles.FirstOrDefault() ?? "anonymous",
-                    IsSuccess:          true,
+                    RequestName:         requestName,
+                    UserId:              userId,
+                    UserName:            userName,
+                    UserEmail:           userEmail,
+                    UserRole:            _currentUserService.Roles.FirstOrDefault() ?? "anonymous",
+                    IsSuccess:           true,
                     ElapsedMilliseconds: stopwatch.ElapsedMilliseconds,
-                    Timestamp:          DateTime.UtcNow),
+                    Timestamp:           DateTime.UtcNow,
+                    RequestParameters:   ExtractRequestParameters(request)),
                 cancellationToken);
 
             return response;
@@ -89,19 +91,41 @@ public class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, 
             // Persist failure entry to MongoDB
             await _requestLogService.LogAsync(
                 new RequestLogEntry(
-                    RequestName:        requestName,
-                    UserId:             userId,
-                    UserName:           userName,
-                    UserEmail:          userEmail,
-                    UserRole:           _currentUserService.Roles.FirstOrDefault() ?? "anonymous",
-                    IsSuccess:          false,
+                    RequestName:         requestName,
+                    UserId:              userId,
+                    UserName:            userName,
+                    UserEmail:           userEmail,
+                    UserRole:            _currentUserService.Roles.FirstOrDefault() ?? "anonymous",
+                    IsSuccess:           false,
                     ElapsedMilliseconds: stopwatch.ElapsedMilliseconds,
-                    Timestamp:          DateTime.UtcNow,
-                    ErrorMessage:       ex.Message,
-                    ErrorType:          ex.GetType().FullName),
+                    Timestamp:           DateTime.UtcNow,
+                    ErrorMessage:        ex.Message,
+                    ErrorType:           ex.GetType().FullName,
+                    RequestParameters:   ExtractRequestParameters(request)),
                 cancellationToken);
 
             throw;
         }
+    }
+
+    private static Dictionary<string, object?> ExtractRequestParameters(TRequest request)
+    {
+        var properties = typeof(TRequest).GetProperties(
+            BindingFlags.Public | BindingFlags.Instance);
+
+        var parameters = new Dictionary<string, object?>(properties.Length);
+        foreach (var prop in properties)
+        {
+            try
+            {
+                parameters[prop.Name] = prop.GetValue(request);
+            }
+            catch
+            {
+                parameters[prop.Name] = null;
+            }
+        }
+
+        return parameters;
     }
 }
