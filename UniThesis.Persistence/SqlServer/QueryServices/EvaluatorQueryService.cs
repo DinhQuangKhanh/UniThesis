@@ -15,6 +15,24 @@ public class EvaluatorQueryService : IEvaluatorQueryService
         _context = context;
     }
 
+    public async Task<EvaluatorFilterOptionsDto> GetFilterOptionsAsync(CancellationToken cancellationToken = default)
+    {
+        var semesters = await _context.Semesters
+            .AsNoTracking()
+            .OrderByDescending(s => s.StartDate)
+            .Select(s => new FilterOptionItemDto(s.Id, s.Name))
+            .ToListAsync(cancellationToken);
+
+        var majors = await _context.Majors
+            .AsNoTracking()
+            .Where(m => m.IsActive)
+            .OrderBy(m => m.Name)
+            .Select(m => new FilterOptionItemDto(m.Id, m.Name))
+            .ToListAsync(cancellationToken);
+
+        return new EvaluatorFilterOptionsDto(semesters, majors);
+    }
+
     public async Task<EvaluatorDashboardDto> GetDashboardAsync(Guid evaluatorId, CancellationToken cancellationToken = default)
     {
         // Get all active assignments for this evaluator
