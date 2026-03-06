@@ -119,13 +119,13 @@ namespace UniThesis.Infrastructure.Services.Notification
             _logger.LogInformation("Notification sent to {Count} users: {Title}", userIdList.Count, title);
         }
 
-        public async Task<IEnumerable<NotificationDocument>> GetUserNotificationDocumentsAsync(
+        public async Task<IEnumerable<NotificationDocument>> GetUserNotificationsAsync(
             Guid userId,
             int limit = 50,
             CancellationToken ct = default)
             => await _notificationRepository.GetByUserIdAsync(userId, limit, ct);
 
-        public async Task<IEnumerable<NotificationDocument>> GetUnreadNotificationDocumentsAsync(
+        public async Task<IEnumerable<NotificationDocument>> GetUnreadNotificationsAsync(
             Guid userId,
             CancellationToken ct = default)
             => await _notificationRepository.GetUnreadByUserIdAsync(userId, ct);
