@@ -123,8 +123,11 @@ app.UseInfrastructure();
 // CORS
 app.UseCors("AllowFrontend");
 
-// HTTPS Redirection
-app.UseHttpsRedirection();
+// HTTPS Redirection (skip in development when using HTTP-only profile)
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 // Authentication & Authorization
 app.UseAuthentication();
