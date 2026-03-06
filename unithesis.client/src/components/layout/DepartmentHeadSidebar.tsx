@@ -6,8 +6,7 @@ import { RoleSwitcher } from "./RoleSwitcher";
 
 const navItems = [
   { label: "Tổng quan", icon: "dashboard", path: "/department-head" },
-  { label: "Gán thẩm định", icon: "assignment_ind", path: "/department-head/assign-evaluator" },
-  { label: "Đề tài bộ môn", icon: "topic", path: "/department-head/projects" },
+  { label: "Phân công thẩm định", icon: "assignment_ind", path: "/department-head/assign" },
 ];
 
 const systemItems = [
@@ -108,8 +107,9 @@ function NavItem({
     <NavLink
       to={path}
       title={!expanded ? label : undefined}
-      className={`flex items-center gap-3 ${expanded ? "px-4" : "justify-center px-0"} py-3 rounded-lg font-medium transition-all duration-300 group ${active ? "bg-primary/10 text-primary font-semibold" : "text-[#58698d] hover:bg-gray-50 hover:text-primary"
-        }`}
+      className={`flex items-center gap-3 ${expanded ? "px-4" : "justify-center px-0"} py-3 rounded-lg font-medium transition-all duration-300 group ${
+        active ? "bg-primary/10 text-primary font-semibold" : "text-[#58698d] hover:bg-gray-50 hover:text-primary"
+      }`}
     >
       <span className={`material-symbols-outlined shrink-0 ${active ? "fill-1" : "group-hover:fill-1"}`}>{icon}</span>
       <span

@@ -1,10 +1,12 @@
+import { NotFoundPage, AccessDeniedPage } from "@/pages/errors";
+
 import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { MaintenanceProvider } from "@/contexts/MaintenanceContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { AdminLayout, EvaluatorLayout, MentorLayout, StudentLayout } from "@/components/layout";
+import { AdminLayout, EvaluatorLayout, MentorLayout, StudentLayout, DepartmentHeadLayout } from "@/components/layout";
 import {
   LoginPage,
   DashboardPage,
@@ -14,7 +16,6 @@ import {
   UsersPage,
   ProjectsPage,
   SupportPage,
-  ActivityLogsPage,
   EvaluatorDashboardPage,
   EvaluatorProjectsPage,
   EvaluatorHistoryPage,
@@ -32,8 +33,9 @@ import {
   StudentTopicsPage,
   StudentMyTopicPage,
   MaintenancePage,
+  DepartmentHeadDashboardPage,
+  ActivityLogsPage,
 } from "@/pages";
-import { NotFoundPage, AccessDeniedPage } from "@/pages/errors";
 
 // Helper function to adjust color brightness
 const adjustColor = (color: string, amount: number) => {
@@ -154,6 +156,20 @@ function App() {
 
             {/* Smart redirect: root goes to role-based home */}
             <Route path="/" element={<RoleBasedRedirect />} />
+            {/* Protected DepartmentHead Routes */}
+            <Route
+              path="/department-head"
+              element={
+                <ProtectedRoute>
+                  <DepartmentHeadLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<DepartmentHeadDashboardPage />} />
+            </Route>
+
+            {/* Redirect root to admin */}
+            <Route path="/" element={<Navigate to="/admin" replace />} />
 
             {/* 404 — any unmatched route */}
             <Route path="*" element={<NotFoundPage />} />
