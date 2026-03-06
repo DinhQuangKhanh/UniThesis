@@ -14,4 +14,14 @@ public interface IEvaluatorQueryService
         string? result,
         string? dateRange,
         CancellationToken cancellationToken = default);
+
+    Task<EvaluatorProjectsDto> GetProjectsAsync(
+        Guid evaluatorId,
+        int page,
+        int pageSize,
+        string? search,
+        int? semesterId,
+        int? majorId,
+        string? result,
+        CancellationToken cancellationToken = default);
 }
