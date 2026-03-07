@@ -42,7 +42,7 @@ namespace UniThesis.Persistence.Services
           UserId = userId,
           UserName = entry.UserName ?? entry.UserEmail ?? "Anonymous",
           UserEmail = entry.UserEmail,
-          UserRole = entry.UserRole ?? "anonymous",
+          UserRole = ResolveActiveRole(entry.UserRole),
           Action = entry.RequestName,
           Category = "Request",
           Severity = entry.IsSuccess ? "info" : "error",
@@ -59,6 +59,24 @@ namespace UniThesis.Persistence.Services
         // Never let log persistence failures bubble up and break the request pipeline.
         _logger.LogError(ex, "Failed to persist request log for {RequestName} to MongoDB", entry.RequestName);
       }
+    }
+
+    /// <summary>
+    /// Determines the user's active role based on the HTTP request path.
+    /// Endpoints follow the convention /api/{role}/... so we can extract the role from the path.
+    /// Falls back to the role from JWT claims if the path doesn't match any known role prefix.
+    /// </summary>
+    private string ResolveActiveRole(string? fallbackRole)
+    {
+      var path = _httpContextAccessor.HttpContext?.Request.Path.Value;
+      if (path != null)
+      {
+        if (path.StartsWith("/api/evaluator/", StringComparison.OrdinalIgnoreCase)) return "evaluator";
+        if (path.StartsWith("/api/mentor/", StringComparison.OrdinalIgnoreCase)) return "mentor";
+        if (path.StartsWith("/api/admin/", StringComparison.OrdinalIgnoreCase)) return "admin";
+        if (path.StartsWith("/api/student/", StringComparison.OrdinalIgnoreCase)) return "student";
+      }
+      return fallbackRole ?? "anonymous";
     }
 
     private static BsonDocument BuildDetails(RequestLogEntry entry)
