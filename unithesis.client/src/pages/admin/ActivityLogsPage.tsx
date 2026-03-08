@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Header } from "@/components/layout";
+import { useSystemError } from "@/contexts/SystemErrorContext";
 import {
   activityLogService,
   type GroupedActivityLogItem,
@@ -67,6 +68,7 @@ export function ActivityLogsPage() {
   const [selectedLog, setSelectedLog] = useState<GroupedActivityLogItem | null>(null);
   const [errorDetails, setErrorDetails] = useState<ErrorDetailItem[]>([]);
   const [loadingErrors, setLoadingErrors] = useState(false);
+  const { showError } = useSystemError();
 
   // Debounce search input
   useEffect(() => {
@@ -88,8 +90,8 @@ export function ActivityLogsPage() {
         pageSize: PAGE_SIZE,
       });
       setData(result);
-    } catch {
-      // silently fail
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Đã xảy ra lỗi khi tải dữ liệu nhật ký.");
     } finally {
       setLoading(false);
     }
@@ -345,6 +347,7 @@ export function ActivityLogsPage() {
           />
         )}
       </AnimatePresence>
+
     </>
   );
 }

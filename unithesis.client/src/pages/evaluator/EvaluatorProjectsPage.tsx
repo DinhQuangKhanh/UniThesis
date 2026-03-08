@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { apiClient } from "@/lib/apiClient";
-import { useEvaluatorError } from "@/contexts/EvaluatorErrorContext";
+import { useSystemError } from "@/contexts/SystemErrorContext";
 
 const container = {
   hidden: { opacity: 0 },
@@ -65,7 +65,7 @@ function getInitials(name: string): string {
 
 export function EvaluatorProjectsPage() {
   const navigate = useNavigate();
-  const { showError } = useEvaluatorError();
+  const { showError } = useSystemError();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Đọc giá trị từ URL hoặc dùng giá trị mặc định

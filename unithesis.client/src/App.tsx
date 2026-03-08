@@ -5,6 +5,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { MaintenanceProvider } from "@/contexts/MaintenanceContext";
+import { SystemErrorProvider } from "@/contexts/SystemErrorContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AdminLayout, EvaluatorLayout, MentorLayout, StudentLayout, DepartmentHeadLayout } from "@/components/layout";
 import {
@@ -78,6 +79,7 @@ function App() {
   return (
     <MaintenanceProvider>
       <AuthProvider>
+        <SystemErrorProvider>
         <AnimatePresence mode="wait">
           <Routes>
             {/* Public Routes */}
@@ -175,6 +177,7 @@ function App() {
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </AnimatePresence>
+        </SystemErrorProvider>
       </AuthProvider>
     </MaintenanceProvider>
   );

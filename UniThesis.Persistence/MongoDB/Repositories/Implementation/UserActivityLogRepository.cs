@@ -133,7 +133,7 @@ namespace UniThesis.Persistence.MongoDB.Repositories.Implementation
                     var id = doc["_id"].AsBsonDocument;
                     items.Add(new GroupedActivityLogResult
                     {
-                        UserId = id["userId"].AsGuid,
+                        UserId = SafeParseGuid(id["userId"]),
                         UserRole = id["userRole"].AsString,
                         Action = id["action"].AsString,
                         Category = id["category"].IsBsonNull ? null : id["category"].AsString,
@@ -279,6 +279,13 @@ namespace UniThesis.Persistence.MongoDB.Repositories.Implementation
 
             return filters.Count > 0 ? builder.And(filters) : builder.Empty;
         }
+
+        private static Guid SafeParseGuid(BsonValue value) => value.BsonType switch
+        {
+            BsonType.Binary => value.AsGuid,
+            BsonType.String => Guid.Parse(value.AsString),
+            _ => Guid.Empty,
+        };
 
         /// <summary>
         /// Builds a BsonDocument $match stage for use in aggregation pipelines.

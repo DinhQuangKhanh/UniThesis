@@ -1,13 +1,13 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 import { SystemErrorModal } from "@/components/common/SystemErrorModal";
 
-interface EvaluatorErrorContextValue {
+interface SystemErrorContextValue {
   showError: (message: string) => void;
 }
 
-const EvaluatorErrorContext = createContext<EvaluatorErrorContextValue | null>(null);
+const SystemErrorContext = createContext<SystemErrorContextValue | null>(null);
 
-export function EvaluatorErrorProvider({ children }: { children: ReactNode }) {
+export function SystemErrorProvider({ children }: { children: ReactNode }) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const showError = useCallback((message: string) => {
@@ -19,15 +19,15 @@ export function EvaluatorErrorProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <EvaluatorErrorContext.Provider value={{ showError }}>
+    <SystemErrorContext.Provider value={{ showError }}>
       {children}
       <SystemErrorModal message={errorMessage} onClose={dismiss} />
-    </EvaluatorErrorContext.Provider>
+    </SystemErrorContext.Provider>
   );
 }
 
-export function useEvaluatorError(): EvaluatorErrorContextValue {
-  const ctx = useContext(EvaluatorErrorContext);
-  if (!ctx) throw new Error("useEvaluatorError must be used inside EvaluatorErrorProvider");
+export function useSystemError(): SystemErrorContextValue {
+  const ctx = useContext(SystemErrorContext);
+  if (!ctx) throw new Error("useSystemError must be used inside SystemErrorProvider");
   return ctx;
 }

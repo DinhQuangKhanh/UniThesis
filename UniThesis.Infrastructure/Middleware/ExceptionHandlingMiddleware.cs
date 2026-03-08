@@ -1,9 +1,14 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using System.Net;
+using System.Security.Claims;
 using System.Text.Json;
 using UniThesis.Application.Common;
 using UniThesis.Domain.Common.Exceptions;
+using UniThesis.Persistence.MongoDB.Documents;
+using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
 
 namespace UniThesis.Infrastructure.Middleware
 {
@@ -46,6 +51,7 @@ namespace UniThesis.Infrastructure.Middleware
             if (statusCode == HttpStatusCode.InternalServerError)
             {
                 _logger.LogError(exception, "Unhandled exception occurred: {Message}", exception.Message);
+                await LogExceptionToActivityLogAsync(context, exception);
             }
             else
             {
@@ -57,6 +63,60 @@ namespace UniThesis.Infrastructure.Middleware
 
             var json = JsonSerializer.Serialize(response, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
             await context.Response.WriteAsync(json);
+        }
+
+        private async Task LogExceptionToActivityLogAsync(HttpContext context, Exception exception)
+        {
+            try
+            {
+                var repository = context.RequestServices.GetService<IUserActivityLogRepository>();
+                if (repository is null) return;
+
+                var user = context.User;
+                _ = Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId);
+
+                var path = context.Request.Path.Value ?? "";
+                var role = ResolveRoleFromPath(path);
+
+                var document = new UserActivityLogDocument
+                {
+                    UserId = userId,
+                    UserName = user.FindFirstValue(ClaimTypes.Name)
+                               ?? user.FindFirstValue("name")
+                               ?? "Anonymous",
+                    UserEmail = user.FindFirstValue(ClaimTypes.Email),
+                    UserRole = role,
+                    Action = "UnhandledException",
+                    Category = "System",
+                    Severity = "critical",
+                    IpAddress = context.Connection.RemoteIpAddress?.ToString(),
+                    UserAgent = context.Request.Headers["User-Agent"].ToString(),
+                    Timestamp = DateTime.UtcNow,
+                    Details = new BsonDocument
+                    {
+                        ["ErrorMessage"] = exception.Message,
+                        ["ErrorType"] = exception.GetType().FullName,
+                        ["StackTrace"] = exception.StackTrace ?? string.Empty,
+                        ["RequestPath"] = path,
+                        ["RequestMethod"] = context.Request.Method,
+                    },
+                };
+
+                await repository.AddAsync(document);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to persist unhandled exception to activity log");
+            }
+        }
+
+        private static string ResolveRoleFromPath(string path)
+        {
+            if (path.StartsWith("/api/admin/", StringComparison.OrdinalIgnoreCase)) return "admin";
+            if (path.StartsWith("/api/mentor/", StringComparison.OrdinalIgnoreCase)) return "mentor";
+            if (path.StartsWith("/api/evaluator/", StringComparison.OrdinalIgnoreCase)) return "evaluator";
+            if (path.StartsWith("/api/student/", StringComparison.OrdinalIgnoreCase)) return "student";
+            return "system";
         }
     }
 }
