@@ -26,7 +26,10 @@ public static class DependencyInjection
             cfg.RegisterServicesFromAssembly(assembly);
             
             // Add pipeline behaviors in order of execution
+            // Logging → Caching (short-circuit on hit) → Cache Invalidation → Validation → Handler
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+            cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(CachingBehavior<,>));
+            cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(CacheInvalidationBehavior<,>));
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         });
         

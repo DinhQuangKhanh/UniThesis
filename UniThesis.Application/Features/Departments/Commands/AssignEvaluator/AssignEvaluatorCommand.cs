@@ -13,4 +13,11 @@ public record AssignEvaluatorCommand(
     Guid ProjectId,
     Guid EvaluatorId,
     int EvaluatorOrder
-) : ICommand;
+) : ICacheInvalidatingCommand
+{
+    public IReadOnlyCollection<string> CachePrefixesToInvalidate =>
+    [
+        $"evaluator:{EvaluatorId}:",
+        "evaluator:filter-options"
+    ];
+}

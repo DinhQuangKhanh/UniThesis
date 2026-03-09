@@ -18,6 +18,8 @@ using UniThesis.Infrastructure.Authorization.Policies;
 using UniThesis.Infrastructure.BackgroundJobs;
 using UniThesis.Infrastructure.BackgroundJobs.Jobs;
 using UniThesis.Infrastructure.BackgroundJobs.Scheduling;
+using StackExchange.Redis;
+using UniThesis.Application.Common.Interfaces;
 using UniThesis.Infrastructure.Caching;
 using UniThesis.Infrastructure.HealthChecks;
 using UniThesis.Infrastructure.Middleware;
@@ -175,10 +177,27 @@ namespace UniThesis.Infrastructure
             // Reporting
             services.AddScoped<IReportGeneratorService, ExcelReportService>();
 
-            // Caching
+            // Caching - L1 (Memory) + L2 (Redis) Hybrid
             services.Configure<CacheSettings>(configuration.GetSection(CacheSettings.SectionName));
             services.AddMemoryCache();
-            services.AddSingleton<ICacheService, MemoryCacheService>(); // Singleton: key tracking must persist across scopes
+            services.AddSingleton<MemoryCacheService>(); // L1 - concrete registration for HybridCacheService
+
+            var cacheSettings = configuration.GetSection(CacheSettings.SectionName).Get<CacheSettings>();
+            if (!string.IsNullOrEmpty(cacheSettings?.RedisConnectionString))
+            {
+                // Redis available → register L2 + Hybrid + pub/sub listener
+                services.AddSingleton<IConnectionMultiplexer>(sp =>
+                    ConnectionMultiplexer.Connect(cacheSettings.RedisConnectionString));
+                services.AddSingleton<RedisCacheService>();                          // L2
+                services.AddSingleton<ICacheService, HybridCacheService>();          // Hybrid = L1 + L2
+                services.AddHostedService<RedisCacheInvalidationListener>();         // Cross-instance L1 sync
+            }
+            else
+            {
+                // No Redis → fallback to Memory only (dev environment)
+                services.AddSingleton<ICacheService>(sp => sp.GetRequiredService<MemoryCacheService>());
+            }
+
             services.AddScoped<ICacheInvalidationService, CacheInvalidationService>();
 
             // Background Jobs

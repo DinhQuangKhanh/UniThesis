@@ -9,4 +9,12 @@ public record GetEvaluatorHistoryQuery(
     string? Search = null,
     string? Result = null,
     string? DateRange = null
-) : IQuery<EvaluatorHistoryDto>;
+) : ICachedQuery<EvaluatorHistoryDto>
+{
+    // Skip caching when search is active (unique queries = low hit rate + key explosion)
+    public string? CacheKey => !string.IsNullOrEmpty(Search)
+        ? null
+        : $"evaluator:{{userId}}:history:{Page}:{PageSize}:{Result ?? "_"}:{DateRange ?? "_"}";
+    public TimeSpan? L1Expiration => TimeSpan.FromMinutes(5);
+    public TimeSpan? L2Expiration => TimeSpan.FromMinutes(15);
+}
