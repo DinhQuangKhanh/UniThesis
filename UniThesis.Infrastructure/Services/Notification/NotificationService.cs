@@ -1,17 +1,19 @@
 using Microsoft.Extensions.Logging;
+using UniThesis.Application.Features.Notifications.DTOs;
 using UniThesis.Domain.Aggregates.ProjectAggregate;
 using UniThesis.Domain.Enums.Notification;
 using UniThesis.Infrastructure.RealTime.Models;
 using UniThesis.Infrastructure.RealTime.Services;
 using UniThesis.Persistence.MongoDB.Documents;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
+using IAppNotificationService = UniThesis.Application.Common.Interfaces.INotificationService;
 
 namespace UniThesis.Infrastructure.Services.Notification
 {
     /// <summary>
     /// Notification service that handles both persistence (MongoDB) and real-time delivery (SignalR).
     /// </summary>
-    public class NotificationService : INotificationService
+    public class NotificationService : INotificationService, IAppNotificationService
     {
         private readonly INotificationRepository _notificationRepository;
         private readonly IRealtimeNotificationService? _realtimeService;
@@ -128,6 +130,23 @@ namespace UniThesis.Infrastructure.Services.Notification
             CancellationToken ct = default)
             => await _notificationRepository.GetUnreadByUserIdAsync(userId, ct);
 
+        async Task<IEnumerable<NotificationDto>> IAppNotificationService.GetUserNotificationsAsync(
+            Guid userId,
+            int limit,
+            CancellationToken ct)
+        {
+            var docs = await _notificationRepository.GetByUserIdAsync(userId, limit, ct);
+            return docs.Select(MapToDto);
+        }
+
+        async Task<IEnumerable<NotificationDto>> IAppNotificationService.GetUnreadNotificationsAsync(
+            Guid userId,
+            CancellationToken ct)
+        {
+            var docs = await _notificationRepository.GetUnreadByUserIdAsync(userId, ct);
+            return docs.Select(MapToDto);
+        }
+
         public async Task<long> GetUnreadCountAsync(Guid userId, CancellationToken ct = default)
             => await _notificationRepository.GetUnreadCountAsync(userId, ct);
 
@@ -136,6 +155,20 @@ namespace UniThesis.Infrastructure.Services.Notification
 
         public async Task MarkAllAsReadAsync(Guid userId, CancellationToken ct = default)
             => await _notificationRepository.MarkAllAsReadAsync(userId, ct);
+
+        private static NotificationDto MapToDto(NotificationDocument n) => new()
+        {
+            Id = n.Id,
+            UserId = n.UserId,
+            Title = n.Title,
+            Content = n.Content,
+            Type = n.Type.ToString(),
+            Category = n.Category.ToString(),
+            TargetUrl = n.TargetUrl,
+            IsRead = n.IsRead,
+            ReadAt = n.ReadAt,
+            CreatedAt = n.CreatedAt
+        };
 
         public async Task NotifyProjectSubmittedAsync(
             Guid projectId,
@@ -180,14 +213,22 @@ namespace UniThesis.Infrastructure.Services.Notification
                 ct);
 
         public async Task SendTopicExpirationWarningAsync(Project topic, CancellationToken ct = default)
-            => await SendAsync(
-                (Guid)topic.SubmittedBy!,
+        {
+            if (topic.SubmittedBy is null)
+            {
+                _logger.LogWarning("Cannot send expiration warning for topic {TopicId}: SubmittedBy is null.", topic.Id);
+                return;
+            }
+
+            await SendAsync(
+                topic.SubmittedBy.Value,
                 "Đề tài sắp hết hạn",
                 $"Đề tài '{topic.NameVi}' sẽ hết hạn.",
                 NotificationType.Warning,
                 NotificationCategory.Deadline,
                 $"/topics/{topic.Id}",
                 ct);
+        }
 
         public async Task NotifyMeetingApprovedAsync(
             Guid requesterId,

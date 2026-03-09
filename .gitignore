@@ -362,4 +362,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 nul
-/UniThesis.API/appsettings.Development.json
+UniThesis.API/appsettings.Development.json
