@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using UniThesis.Domain.Aggregates.MeetingAggregate.Events;
-using UniThesis.Infrastructure.Services.Notification;
+using UniThesis.Application.Common.Interfaces;
 using UniThesis.Persistence.MongoDB.Documents;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
 

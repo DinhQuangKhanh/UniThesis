@@ -23,7 +23,6 @@ using UniThesis.Application.Common.Interfaces;
 using UniThesis.Infrastructure.Caching;
 using UniThesis.Infrastructure.HealthChecks;
 using UniThesis.Infrastructure.Middleware;
-using UniThesis.Infrastructure.RealTime.Hubs;
 using UniThesis.Infrastructure.RealTime.Services;
 using UniThesis.Infrastructure.Services.DomainServices;
 using UniThesis.Infrastructure.Services.Email;
@@ -31,6 +30,7 @@ using UniThesis.Infrastructure.Services.Email.Templates;
 using UniThesis.Infrastructure.Services.FileStorage;
 using UniThesis.Infrastructure.Services.Notification;
 using UniThesis.Infrastructure.Services.Reporting;
+using UniThesis.Persistence.SqlServer.QueryServices;
 
 namespace UniThesis.Infrastructure
 {
@@ -160,6 +160,11 @@ namespace UniThesis.Infrastructure
             services.AddScoped<ITopicPoolDomainService, TopicPoolDomainService>();
             services.AddScoped<ISemesterDomainService, SemesterDomainService>();
             services.AddScoped<IGroupDomainService, GroupDomainService>();
+
+            // Query Services
+            services.AddScoped<ITopicPoolQueryService, TopicPoolQueryService>();
+            services.AddScoped<IStudentGroupQueryService, StudentGroupQueryService>();
+            services.AddScoped<IEvaluatorQueryService, EvaluatorQueryService>();
 
             // Email
             services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));

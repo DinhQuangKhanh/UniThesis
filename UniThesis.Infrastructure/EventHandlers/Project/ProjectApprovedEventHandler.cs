@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Aggregates.EvaluationAggregate;
 using UniThesis.Domain.Aggregates.ProjectAggregate.Events;
 using UniThesis.Infrastructure.Caching;
-using UniThesis.Infrastructure.Services.Notification;
+using UniThesis.Application.Common.Interfaces;
 
 namespace UniThesis.Infrastructure.EventHandlers.Project
 {

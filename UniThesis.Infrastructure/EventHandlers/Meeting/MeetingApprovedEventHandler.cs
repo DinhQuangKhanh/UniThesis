@@ -1,7 +1,7 @@
 ﻿using MediatR;
 using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Aggregates.MeetingAggregate.Events;
-using UniThesis.Infrastructure.Services.Notification;
+using UniThesis.Application.Common.Interfaces;
 
 namespace UniThesis.Infrastructure.EventHandlers.Meeting
 {

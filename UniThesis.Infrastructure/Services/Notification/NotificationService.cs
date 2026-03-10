@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using UniThesis.Application.Common.Interfaces;
 using UniThesis.Application.Features.Notifications.DTOs;
 using UniThesis.Domain.Aggregates.ProjectAggregate;
 using UniThesis.Domain.Enums.Notification;
@@ -6,14 +7,13 @@ using UniThesis.Infrastructure.RealTime.Models;
 using UniThesis.Infrastructure.RealTime.Services;
 using UniThesis.Persistence.MongoDB.Documents;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
-using IAppNotificationService = UniThesis.Application.Common.Interfaces.INotificationService;
 
 namespace UniThesis.Infrastructure.Services.Notification
 {
     /// <summary>
     /// Notification service that handles both persistence (MongoDB) and real-time delivery (SignalR).
     /// </summary>
-    public class NotificationService : INotificationService, IAppNotificationService
+    public class NotificationService : INotificationService
     {
         private readonly INotificationRepository _notificationRepository;
         private readonly IRealtimeNotificationService? _realtimeService;
@@ -119,29 +119,18 @@ namespace UniThesis.Infrastructure.Services.Notification
             _logger.LogInformation("Notification sent to {Count} users: {Title}", userIdList.Count, title);
         }
 
-        public async Task<IEnumerable<NotificationDocument>> GetUserNotificationsAsync(
+        public async Task<IEnumerable<NotificationDto>> GetUserNotificationsAsync(
             Guid userId,
             int limit = 50,
             CancellationToken ct = default)
-            => await _notificationRepository.GetByUserIdAsync(userId, limit, ct);
-
-        public async Task<IEnumerable<NotificationDocument>> GetUnreadNotificationsAsync(
-            Guid userId,
-            CancellationToken ct = default)
-            => await _notificationRepository.GetUnreadByUserIdAsync(userId, ct);
-
-        async Task<IEnumerable<NotificationDto>> IAppNotificationService.GetUserNotificationsAsync(
-            Guid userId,
-            int limit,
-            CancellationToken ct)
         {
             var docs = await _notificationRepository.GetByUserIdAsync(userId, limit, ct);
             return docs.Select(MapToDto);
         }
 
-        async Task<IEnumerable<NotificationDto>> IAppNotificationService.GetUnreadNotificationsAsync(
+        public async Task<IEnumerable<NotificationDto>> GetUnreadNotificationsAsync(
             Guid userId,
-            CancellationToken ct)
+            CancellationToken ct = default)
         {
             var docs = await _notificationRepository.GetUnreadByUserIdAsync(userId, ct);
             return docs.Select(MapToDto);

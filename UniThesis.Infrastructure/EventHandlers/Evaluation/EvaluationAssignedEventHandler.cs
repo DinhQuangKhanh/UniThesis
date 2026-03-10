@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Aggregates.EvaluationAggregate.Events;
 using UniThesis.Domain.Enums.Evaluation;
-using UniThesis.Infrastructure.Services.Notification;
+using UniThesis.Application.Common.Interfaces;
 using UniThesis.Persistence.MongoDB.Documents;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
 
