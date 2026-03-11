@@ -11,7 +11,6 @@ import { AdminLayout, EvaluatorLayout, MentorLayout, StudentLayout, DepartmentHe
 import {
   LoginPage,
   DashboardPage,
-  ReportsPage,
   SettingsPage,
   SemestersPage,
   UsersPage,
@@ -22,6 +21,7 @@ import {
   EvaluatorHistoryPage,
   EvaluatorReviewPage,
   EvaluatorSimilarityPage,
+  EvaluatorSupportPage,
   EvaluatorSchedulePage,
   MentorDashboardPage,
   MentorGroupsPage,
@@ -29,10 +29,12 @@ import {
   MentorSchedulePage,
   MentorFeedbackPage,
   MentorTopicDetailPage,
+  MentorSupportPage,
   StudentDashboardPage,
   StudentSchedulePage,
   StudentTopicsPage,
   StudentMyTopicPage,
+  StudentSupportPage,
   MaintenancePage,
   DepartmentHeadDashboardPage,
   ActivityLogsPage,
@@ -97,7 +99,6 @@ function App() {
               }
             >
               <Route index element={<DashboardPage />} />
-              <Route path="reports" element={<ReportsPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="semesters" element={<SemestersPage />} />
               <Route path="users" element={<UsersPage />} />
@@ -122,6 +123,7 @@ function App() {
               <Route path="review/:id" element={<EvaluatorReviewPage />} />
               <Route path="review" element={<EvaluatorReviewPage />} />
               <Route path="similarity" element={<EvaluatorSimilarityPage />} />
+              <Route path="support" element={<EvaluatorSupportPage />} />
             </Route>
 
             {/* Protected Mentor Routes */}
@@ -139,6 +141,7 @@ function App() {
               <Route path="topics" element={<MentorTopicsPage />} />
               <Route path="topics/:id" element={<MentorFeedbackPage />} />
               <Route path="schedule" element={<MentorSchedulePage />} />
+              <Route path="support" element={<MentorSupportPage />} />
             </Route>
 
             {/* Protected Student Routes */}
@@ -154,6 +157,7 @@ function App() {
               <Route path="my-topic" element={<StudentMyTopicPage />} />
               <Route path="topics" element={<StudentTopicsPage />} />
               <Route path="schedule" element={<StudentSchedulePage />} />
+              <Route path="support" element={<StudentSupportPage />} />
             </Route>
 
             {/* Smart redirect: root goes to role-based home */}

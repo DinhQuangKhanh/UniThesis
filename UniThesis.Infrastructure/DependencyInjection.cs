@@ -29,7 +29,6 @@ using UniThesis.Infrastructure.Services.Email;
 using UniThesis.Infrastructure.Services.Email.Templates;
 using UniThesis.Infrastructure.Services.FileStorage;
 using UniThesis.Infrastructure.Services.Notification;
-using UniThesis.Infrastructure.Services.Reporting;
 using UniThesis.Persistence.SqlServer.QueryServices;
 
 namespace UniThesis.Infrastructure
@@ -178,9 +177,6 @@ namespace UniThesis.Infrastructure
             // Notification & RealTime
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<IRealtimeNotificationService, RealtimeNotificationService>();
-
-            // Reporting
-            services.AddScoped<IReportGeneratorService, ExcelReportService>();
 
             // Caching - L1 (Memory) + L2 (Redis) Hybrid
             services.Configure<CacheSettings>(configuration.GetSection(CacheSettings.SectionName));

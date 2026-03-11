@@ -78,7 +78,6 @@ public class AppDbContext : DbContext
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<Major> Majors => Set<Major>();
     public DbSet<SystemConfiguration> SystemConfigurations => Set<SystemConfiguration>();
-    public DbSet<Report> Reports => Set<Report>();
     public DbSet<ProjectArchive> ProjectArchives => Set<ProjectArchive>();
     #endregion
 
