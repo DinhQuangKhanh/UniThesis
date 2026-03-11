@@ -67,5 +67,35 @@ namespace UniThesis.Persistence.SqlServer.Repositories
         {
             return await _dbSet.AnyAsync(u => u.FirebaseUid == firebaseUid, ct);
         }
+
+        /// <inheritdoc/>
+        public async Task<(IEnumerable<User> Items, int TotalCount)> GetPagedAsync(
+            string? role, string? search, int page, int pageSize, CancellationToken ct = default)
+        {
+            var query = _dbSet.Include(u => u.Roles).AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(role))
+                query = query.Where(u => u.Roles.Any(r => r.RoleName == role && r.IsActive));
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.ToLowerInvariant();
+                query = query.Where(u =>
+                    u.FullName.ToLower().Contains(term) ||
+                    EF.Property<string>(u, "Email").Contains(term) ||
+                    (u.StudentCode != null && u.StudentCode.ToLower().Contains(term)) ||
+                    (u.EmployeeCode != null && u.EmployeeCode.ToLower().Contains(term)));
+            }
+
+            var totalCount = await query.CountAsync(ct);
+
+            var items = await query
+                .OrderByDescending(u => u.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return (items, totalCount);
+        }
     }
 }

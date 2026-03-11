@@ -8,6 +8,7 @@
         Task InvalidateUserPermissionsCacheAsync(Guid userId, CancellationToken ct = default);
         Task InvalidateEvaluatorCacheAsync(Guid evaluatorId, CancellationToken ct = default);
         Task InvalidateEvaluatorFilterOptionsCacheAsync(CancellationToken ct = default);
+        Task InvalidateUserListCacheAsync(CancellationToken ct = default);
         Task InvalidateAllAsync(CancellationToken ct = default);
     }
 }

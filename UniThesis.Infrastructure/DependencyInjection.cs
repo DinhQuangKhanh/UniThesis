@@ -152,6 +152,7 @@ namespace UniThesis.Infrastructure
 
             // Firebase Auth Service
             services.AddScoped<IFirebaseAuthService, FirebaseAuthService>();
+            services.AddScoped<IAuthAccountService, FirebaseAuthService>();
 
             // Domain Services
             services.AddScoped<IProjectDomainService, ProjectDomainService>();
