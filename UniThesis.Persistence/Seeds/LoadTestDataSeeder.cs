@@ -64,6 +64,12 @@ public static class LoadTestDataSeeder
     private static Guid TopicPoolId(int majorIndex) => Guid.Parse($"80000000-0000-0000-0000-{majorIndex:D12}");
     private static Guid PoolProjectId(int majorIndex, int topicIndex) => Guid.Parse($"90{majorIndex:D2}0000-0000-0000-0000-{topicIndex:D12}");
     private static Guid RegistrationId(int i) => Guid.Parse($"A0000000-0000-0000-0000-{i:D12}");
+    private static Guid SupportTicketId(int i) => Guid.Parse($"B0000000-0000-0000-0000-{i:D12}");
+    private static Guid RejectedProjectId(int i) => Guid.Parse($"C0000000-0000-0000-0000-{i:D12}");
+
+    // Rejected project count for Spring 2026
+    private const int RejectedProjectCount = 10;
+    private const int SupportTicketCount = 50;
 
     public static string AdminFirebaseUid(int i) => $"test-admin-{i:D4}";
     public static string DualRoleFirebaseUid(int i) => $"test-lecturer-{i:D4}";
@@ -108,6 +114,9 @@ public static class LoadTestDataSeeder
         await SeedProjectMentorsAsync(context, logger);
         await SeedProjectEvaluatorAssignmentsAsync(context, logger);
         await SeedTopicRegistrationsAsync(context, logger);
+        await SeedSpring26RejectedProjectsAsync(context, logger);
+        await SeedSpring26TopicRegistrationsAsync(context, logger);
+        await SeedSupportTicketsAsync(context, logger);
         await SetDepartmentHeadAsync(context, logger);
 
         logger?.LogInformation("Load-test data seeding complete.");
@@ -870,6 +879,355 @@ public static class LoadTestDataSeeder
     }
 
     // ════════════════════════════════════════════════
+    //  SPRING 2026 REJECTED PROJECTS (10 projects, Rejected status)
+    //  These represent topics rejected during the evaluation phase
+    // ════════════════════════════════════════════════
+    private static async Task SeedSpring26RejectedProjectsAsync(AppDbContext context, ILogger? logger)
+    {
+        // Rejected topics — diverse majors, no Group, have Mentor
+        var rejectedTopics = new (string Code, string NameEn, string NameVi, int MajorId)[]
+        {
+            ("RJ_01", "Smart Greenhouse Monitoring System using IoT and Machine Learning", "Hệ thống giám sát nhà kính thông minh sử dụng IoT và Machine Learning", MajorAI),
+            ("RJ_02", "Blockchain-based Supply Chain Tracking Platform for Agricultural Products", "Nền tảng theo dõi chuỗi cung ứng nông sản dựa trên Blockchain", MajorSE),
+            ("RJ_03", "Real-time Network Intrusion Detection using Deep Learning", "Hệ thống phát hiện xâm nhập mạng thời gian thực sử dụng Deep Learning", MajorIA),
+            ("RJ_04", "Automated Resume Screening System with NLP and Sentiment Analysis", "Hệ thống sàng lọc hồ sơ tự động sử dụng NLP và phân tích cảm xúc", MajorDS),
+            ("RJ_05", "FPGA-based Hardware Accelerator for Convolutional Neural Networks", "Thiết kế bộ tăng tốc phần cứng dựa trên FPGA cho mạng CNN", MajorIC),
+            ("RJ_06", "Autonomous Vehicle Parking System using Computer Vision and Sensors", "Hệ thống đỗ xe tự động sử dụng thị giác máy tính và cảm biến", MajorAS),
+            ("RJ_07", "Enterprise Resource Planning System for Small Healthcare Clinics", "Hệ thống ERP cho phòng khám y tế quy mô nhỏ", MajorIS),
+            ("RJ_08", "3D Product Configurator with AR Preview for E-commerce", "Công cụ cấu hình sản phẩm 3D với xem trước AR cho thương mại điện tử", MajorGD),
+            ("RJ_09", "Predictive Maintenance Platform for Industrial Equipment using AI", "Nền tảng bảo trì dự đoán cho thiết bị công nghiệp sử dụng AI", MajorAI),
+            ("RJ_10", "Decentralized Voting System using Zero-Knowledge Proofs", "Hệ thống bỏ phiếu phi tập trung sử dụng Zero-Knowledge Proofs", MajorIA),
+        };
+
+        var valueClauses = new List<string>();
+        var parameters = new List<object?>();
+        var paramIndex = 0;
+
+        for (var i = 0; i < rejectedTopics.Length; i++)
+        {
+            var topic = rejectedTopics[i];
+            var mentorIndex = ((i + 100) % DualRoleCount) + 1; // Offset to avoid clash with existing mentors
+
+            var pId = $"@p{paramIndex++}";
+            var pCode = $"@p{paramIndex++}";
+            var pNameVi = $"@p{paramIndex++}";
+            var pNameEn = $"@p{paramIndex++}";
+            var pNameAbbr = $"@p{paramIndex++}";
+            var pDesc = $"@p{paramIndex++}";
+            var pObj = $"@p{paramIndex++}";
+            var pMajor = $"@p{paramIndex++}";
+            var pSemester = $"@p{paramIndex++}";
+            var pSubmittedBy = $"@p{paramIndex++}";
+            var pSubmittedAt = $"@p{paramIndex++}";
+            var pDate = $"@p{paramIndex++}";
+
+            // Status=4 (Rejected), no GroupId, no TopicPoolId, no ApprovedAt/StartDate/Deadline
+            valueClauses.Add($@"({pId}, {pCode}, {pNameVi}, {pNameEn}, {pNameAbbr},
+                    {pDesc}, {pObj}, NULL, NULL, NULL,
+                    {pMajor}, {pSemester}, NULL, NULL, 5, 1, 0, 4, 0,
+                    {pSubmittedAt}, {pSubmittedBy}, NULL, NULL, NULL, 3, 0,
+                    NULL, NULL, NULL, {pDate}, NULL)");
+
+            parameters.Add(RejectedProjectId(i + 1));
+            parameters.Add(topic.Code);
+            parameters.Add(topic.NameVi);
+            parameters.Add(topic.NameEn);
+            parameters.Add(topic.Code);
+            parameters.Add($"Mô tả đề tài: {topic.NameVi}");
+            parameters.Add($"Mục tiêu: {topic.NameEn}");
+            parameters.Add(topic.MajorId);
+            parameters.Add(Spring2026Id);
+            parameters.Add(DualRoleId(mentorIndex));
+            parameters.Add(new DateTime(2025, 11, 10, 0, 0, 0, DateTimeKind.Utc));
+            parameters.Add(SeedDate);
+        }
+
+        var sql = $@"
+            INSERT INTO Projects (Id, Code, NameVi, NameEn, NameAbbr,
+                Description, Objectives, Scope, Technologies, ExpectedResults,
+                MajorId, SemesterId, GroupId, TopicPoolId, MaxStudents, SourceType, RegistrationType, Status, Priority,
+                SubmittedAt, SubmittedBy, ApprovedAt, StartDate, Deadline, EvaluationCount, LastEvaluationResult,
+                PoolStatus, CreatedInSemesterId, ExpirationSemesterId, CreatedAt, UpdatedAt)
+            VALUES {string.Join(",\n                   ", valueClauses)};";
+
+        await context.Database.ExecuteSqlRawAsync(sql, parameters.ToArray()!);
+
+        // Add ProjectMentors for rejected projects
+        var mentorClauses = new List<string>();
+        var mentorParams = new List<object>();
+        var mParamIndex = 0;
+
+        for (var i = 0; i < rejectedTopics.Length; i++)
+        {
+            var mentorIndex = ((i + 100) % DualRoleCount) + 1;
+            var pProject = $"@p{mParamIndex++}";
+            var pMentor = $"@p{mParamIndex++}";
+            var pDate = $"@p{mParamIndex++}";
+
+            mentorClauses.Add($"({pProject}, {pMentor}, 0, {pDate}, NULL, NULL)");
+            mentorParams.Add(RejectedProjectId(i + 1));
+            mentorParams.Add(DualRoleId(mentorIndex));
+            mentorParams.Add(SeedDate);
+        }
+
+        var mentorSql = $@"
+            INSERT INTO ProjectMentors (ProjectId, MentorId, Status, AssignedAt, AssignedBy, Notes)
+            VALUES {string.Join(",\n                   ", mentorClauses)};";
+
+        await context.Database.ExecuteSqlRawAsync(mentorSql, mentorParams.ToArray());
+
+        logger?.LogInformation("Seeded {Count} rejected Spring 2026 projects with mentors.", rejectedTopics.Length);
+    }
+
+    // ════════════════════════════════════════════════
+    //  SPRING 2026 TOPIC REGISTRATIONS
+    //  40 Confirmed (existing InProgress projects) + 10 Rejected (rejected projects)
+    // ════════════════════════════════════════════════
+    private static async Task SeedSpring26TopicRegistrationsAsync(AppDbContext context, ILogger? logger)
+    {
+        var registrationOffset = Fall25GroupCount; // Fall25 registrations use IDs 1..50
+        var valueClauses = new List<string>();
+        var parameters = new List<object?>();
+        var paramIndex = 0;
+
+        // 40 Confirmed registrations for Spring 2026 InProgress projects (ProjectId 51..90, GroupId 51..90)
+        for (var i = 1; i <= Spring26GroupCount; i++)
+        {
+            var projectIndex = Fall25GroupCount + i; // 51..90
+            var groupIndex = projectIndex;
+            var leaderId = StudentId((projectIndex - 1) * StudentsPerGroup + 1);
+            var mentorIndex = ((projectIndex - 1) % DualRoleCount) + 1;
+
+            var pId = $"@p{paramIndex++}";
+            var pProject = $"@p{paramIndex++}";
+            var pGroup = $"@p{paramIndex++}";
+            var pRegisteredBy = $"@p{paramIndex++}";
+            var pRegisteredAt = $"@p{paramIndex++}";
+            var pProcessedBy = $"@p{paramIndex++}";
+            var pProcessedAt = $"@p{paramIndex++}";
+
+            valueClauses.Add($"({pId}, {pProject}, {pGroup}, {pRegisteredBy}, {pRegisteredAt}, 'Confirmed', 1, NULL, {pProcessedBy}, {pProcessedAt}, NULL)");
+
+            parameters.Add(RegistrationId(registrationOffset + i));
+            parameters.Add(ProjectId(projectIndex));
+            parameters.Add(GroupId(groupIndex));
+            parameters.Add(leaderId);
+            parameters.Add(new DateTime(2025, 11, 10, 0, 0, 0, DateTimeKind.Utc));
+            parameters.Add(DualRoleId(mentorIndex));
+            parameters.Add(new DateTime(2025, 12, 5, 0, 0, 0, DateTimeKind.Utc));
+        }
+
+        var sql = $@"
+            INSERT INTO TopicRegistrations (Id, ProjectId, GroupId, RegisteredBy, RegisteredAt, Status, Priority, Note, ProcessedBy, ProcessedAt, RejectReason)
+            VALUES {string.Join(",\n                   ", valueClauses)};";
+
+        await context.Database.ExecuteSqlRawAsync(sql, parameters.ToArray()!);
+
+        // 10 Rejected registrations for rejected projects
+        // These need existing groups that tried to register for rejected topics
+        // Use groups from the 361..400 student range (students 361*4=1441.. which doesn't exist)
+        // Instead, reuse some groups that already have confirmed registrations — but that would be duplicate.
+        // Better: create virtual registrations from random students
+        var rejClauses = new List<string>();
+        var rejParams = new List<object?>();
+        var rejParamIndex = 0;
+
+        for (var i = 1; i <= RejectedProjectCount; i++)
+        {
+            // Use students not assigned to any project group (students 361+)
+            var studentIndex = Fall25GroupCount * StudentsPerGroup + Spring26GroupCount * StudentsPerGroup + i; // 360+1
+            if (studentIndex > StudentCount) studentIndex = (i % StudentCount) + 1;
+
+            var registrationIndex = registrationOffset + Spring26GroupCount + i; // 90 + i
+            var mentorIndex = ((i + 100 - 1) % DualRoleCount) + 1;
+
+            // Rejected registrations don't need a real group - use an existing group
+            // But TopicRegistration requires GroupId. Use the group that corresponds to the student range
+            // Actually, use the same groups from Fall25 (they already finished, so they could have tried to register again)
+            var groupIndex = i; // Groups 1..10 (Fall25 groups, they're done with Fall25)
+
+            var pId = $"@p{rejParamIndex++}";
+            var pProject = $"@p{rejParamIndex++}";
+            var pGroup = $"@p{rejParamIndex++}";
+            var pRegisteredBy = $"@p{rejParamIndex++}";
+            var pRegisteredAt = $"@p{rejParamIndex++}";
+            var pProcessedBy = $"@p{rejParamIndex++}";
+            var pProcessedAt = $"@p{rejParamIndex++}";
+            var pRejectReason = $"@p{rejParamIndex++}";
+
+            rejClauses.Add($"({pId}, {pProject}, {pGroup}, {pRegisteredBy}, {pRegisteredAt}, 'Rejected', 1, NULL, {pProcessedBy}, {pProcessedAt}, {pRejectReason})");
+
+            rejParams.Add(RegistrationId(registrationIndex));
+            rejParams.Add(RejectedProjectId(i));
+            rejParams.Add(GroupId(groupIndex));
+            rejParams.Add(StudentId((groupIndex - 1) * StudentsPerGroup + 1));
+            rejParams.Add(new DateTime(2025, 11, 12, 0, 0, 0, DateTimeKind.Utc));
+            rejParams.Add(DualRoleId(mentorIndex));
+            rejParams.Add(new DateTime(2025, 12, 10, 0, 0, 0, DateTimeKind.Utc));
+            rejParams.Add($"Đề tài không đáp ứng yêu cầu chất lượng của hội đồng thẩm định kỳ Spring 2026.");
+        }
+
+        var rejSql = $@"
+            INSERT INTO TopicRegistrations (Id, ProjectId, GroupId, RegisteredBy, RegisteredAt, Status, Priority, Note, ProcessedBy, ProcessedAt, RejectReason)
+            VALUES {string.Join(",\n                   ", rejClauses)};";
+
+        await context.Database.ExecuteSqlRawAsync(rejSql, rejParams.ToArray()!);
+
+        logger?.LogInformation("Seeded {Confirmed} confirmed + {Rejected} rejected Spring 2026 topic registrations.",
+            Spring26GroupCount, RejectedProjectCount);
+    }
+
+    // ════════════════════════════════════════════════
+    //  SUPPORT TICKETS (50 tickets, mixed statuses)
+    // ════════════════════════════════════════════════
+    private static async Task SeedSupportTicketsAsync(AppDbContext context, ILogger? logger)
+    {
+        // Support ticket templates: (Title, Description, Category, Priority)
+        // Category: Technical=0, Academic=1, Account=2, Other=3
+        // Priority: Low=0, Medium=1, High=2, Urgent=3
+        var ticketTemplates = new (string Title, string Description, int Category, int Priority)[]
+        {
+            // Technical issues (Category=0)
+            ("Lỗi upload file PDF đồ án", "Khi upload file PDF lớn hơn 10MB, hệ thống báo lỗi timeout. Đã thử nhiều lần nhưng không thành công.", 0, 3),
+            ("Không thể đăng nhập vào hệ thống", "Sau khi đổi mật khẩu, tài khoản bị khóa và không thể đăng nhập lại.", 0, 2),
+            ("Trang quản lý nhóm bị lỗi hiển thị", "Danh sách thành viên nhóm không hiển thị đúng, một số thành viên bị trùng lặp.", 0, 1),
+            ("Lỗi khi xuất báo cáo Excel", "Chức năng xuất báo cáo ra file Excel bị crash khi có quá nhiều dữ liệu.", 0, 2),
+            ("Hệ thống phản hồi chậm vào giờ cao điểm", "Trong khoảng 8h-10h sáng, hệ thống load rất chậm, ảnh hưởng đến việc đăng ký đề tài.", 0, 2),
+            ("Lỗi hiển thị tiếng Việt trên mobile", "Các ký tự tiếng Việt có dấu bị lỗi font trên trình duyệt mobile Safari.", 0, 1),
+            ("Chức năng tìm kiếm không hoạt động", "Thanh tìm kiếm đề tài không trả về kết quả khi nhập từ khóa tiếng Việt có dấu.", 0, 2),
+            ("Lỗi 500 khi xem chi tiết đồ án", "Click vào xem chi tiết một số đồ án trả về lỗi Internal Server Error.", 0, 3),
+            ("Notification email không gửi được", "Hệ thống thông báo qua email đã ngừng hoạt động từ 2 ngày trước.", 0, 2),
+            ("Lỗi phân quyền truy cập trang admin", "Giảng viên thường có thể truy cập một số trang admin restricted.", 0, 3),
+            ("Database connection timeout", "High Server Load detected - database connection pool exhausted during peak hours.", 0, 3),
+            ("SSL certificate sắp hết hạn", "SSL certificate của domain chính sẽ hết hạn trong 7 ngày, cần renew gấp.", 0, 2),
+
+            // Academic issues (Category=1)
+            ("Yêu cầu đổi tên đề tài", "Nhóm đã thống nhất với GVHD đổi tên đề tài nhưng hệ thống không cho phép chỉnh sửa vì đã quá hạn.", 1, 1),
+            ("Xin gia hạn nộp báo cáo tiến độ", "Do thành viên nhóm bị ốm, xin gia hạn nộp báo cáo tiến độ tuần 8 thêm 3 ngày.", 1, 1),
+            ("Yêu cầu đổi GVHD", "GVHD hiện tại không phù hợp với hướng nghiên cứu, xin đổi sang giảng viên khác.", 1, 2),
+            ("Xin phép bảo vệ đồ án sớm", "Nhóm đã hoàn thành đồ án trước hạn, xin được bảo vệ sớm hơn lịch dự kiến.", 1, 0),
+            ("Khiếu nại kết quả thẩm định", "Kết quả thẩm định đề tài bị đánh giá sai, phản biện không đúng chuyên ngành.", 1, 2),
+            ("Yêu cầu bổ sung thành viên nhóm", "Nhóm hiện có 3 thành viên, xin bổ sung thêm 1 thành viên để hoàn thành đồ án.", 1, 1),
+            ("Đề tài trùng lặp với nhóm khác", "Phát hiện đề tài nhóm mình có nội dung gần giống với nhóm PROJ-239, cần xem xét.", 1, 2),
+            ("Yêu cầu thay đổi phạm vi đề tài", "Sau khi triển khai, phạm vi ban đầu quá rộng, xin thu hẹp phạm vi đề tài.", 1, 1),
+            ("Xin xác nhận hoàn thành đồ án", "Nhóm đã hoàn thành tất cả yêu cầu, xin admin xác nhận để được bảo vệ.", 1, 0),
+            ("Hỏi về quy trình đăng ký đề tài", "Sinh viên mới chưa nắm rõ quy trình đăng ký đề tài cho kỳ tới, cần hướng dẫn chi tiết.", 1, 0),
+
+            // Account issues (Category=2)
+            ("Yêu cầu reset mật khẩu", "Quên mật khẩu tài khoản sinh viên, email xác nhận không nhận được.", 2, 1),
+            ("Tài khoản bị khóa không rõ lý do", "Tài khoản sinh viên bị khóa đột ngột mà không nhận được thông báo.", 2, 2),
+            ("Yêu cầu cập nhật thông tin cá nhân", "Cần cập nhật email và số điện thoại trong hệ thống nhưng không có quyền chỉnh sửa.", 2, 0),
+            ("Không thể liên kết tài khoản Google", "Chức năng đăng nhập bằng Google không hoạt động, báo lỗi OAuth.", 2, 1),
+            ("Yêu cầu cấp tài khoản cho giảng viên mới", "Giảng viên mới chuyển về khoa CNTT, cần được cấp tài khoản hệ thống.", 2, 1),
+            ("Tài khoản hiển thị sai vai trò", "Tài khoản giảng viên đang hiển thị vai trò sinh viên, không truy cập được chức năng mentor.", 2, 2),
+            ("Yêu cầu xóa tài khoản cũ", "Sinh viên đã tốt nghiệp, yêu cầu xóa tài khoản theo quy định bảo mật.", 2, 0),
+            ("Không nhận được email kích hoạt", "Đã đăng ký tài khoản 3 ngày nhưng vẫn chưa nhận được email kích hoạt.", 2, 1),
+
+            // Other issues (Category=3)
+            ("Góp ý cải thiện giao diện", "Giao diện trang dashboard khó sử dụng trên tablet, cần responsive design tốt hơn.", 3, 0),
+            ("Đề xuất thêm tính năng thống kê", "Cần thêm biểu đồ thống kê tiến độ đồ án theo tuần cho giảng viên.", 3, 0),
+            ("Báo lỗi tài liệu hướng dẫn", "Tài liệu hướng dẫn sử dụng trên trang help có một số link bị hỏng.", 3, 0),
+            ("Yêu cầu hỗ trợ tích hợp API", "Cần hỗ trợ tích hợp API hệ thống với LMS của trường.", 3, 1),
+            ("Phản hồi về chính sách đề tài", "Chính sách giới hạn số lượng đề tài mỗi giảng viên quá ít, cần xem xét lại.", 3, 1),
+            ("Câu hỏi về bảo mật dữ liệu", "Sinh viên thắc mắc về chính sách bảo mật dữ liệu đồ án trên hệ thống.", 3, 0),
+            ("Yêu cầu export dữ liệu cá nhân", "Theo quy định GDPR, yêu cầu xuất toàn bộ dữ liệu cá nhân trên hệ thống.", 3, 1),
+            ("Đề xuất dark mode cho hệ thống", "Nhiều sinh viên yêu cầu thêm chế độ dark mode để dễ sử dụng ban đêm.", 3, 0),
+            ("Hỗ trợ cài đặt VPN truy cập hệ thống", "Sinh viên thực tập ở nước ngoài không truy cập được hệ thống, cần VPN.", 3, 1),
+            ("Báo cáo spam trong hệ thống tin nhắn", "Có tài khoản gửi tin nhắn spam đến nhiều sinh viên qua hệ thống.", 3, 2),
+
+            // Additional technical (fill to 50)
+            ("Lỗi sync dữ liệu giữa mobile và web", "Dữ liệu cập nhật trên mobile không đồng bộ sang phiên bản web.", 0, 1),
+            ("API response time quá chậm", "Endpoint /api/projects trả về response time > 5 giây khi có filter phức tạp.", 0, 2),
+            ("Lỗi cache không invalidate", "Sau khi cập nhật thông tin đề tài, dữ liệu cũ vẫn hiển thị do cache không được xóa.", 0, 1),
+            ("Memory leak trên server production", "RAM usage tăng liên tục, cần restart server mỗi 48 giờ.", 0, 3),
+            ("Backup database thất bại", "Scheduled backup đêm qua failed, cần kiểm tra disk space và retry.", 0, 3),
+            ("Lỗi CORS khi gọi API từ subdomain", "Frontend ở subdomain mới không gọi được API do CORS policy.", 0, 1),
+            ("Yêu cầu nâng cấp storage", "Dung lượng lưu trữ file đồ án đã đạt 85%, cần mở rộng trước khi hết.", 0, 2),
+            ("Log monitoring alert: nhiều request 404", "Hệ thống monitor phát hiện 500+ request 404 trong 1 giờ qua.", 0, 1),
+            ("Yêu cầu tăng kích thước upload file", "Giới hạn upload 10MB quá nhỏ, nhiều file báo cáo vượt quá giới hạn.", 1, 1),
+            ("Hỏi về lịch bảo vệ đồ án", "Sinh viên hỏi lịch bảo vệ đồ án kỳ Spring 2026 đã được công bố chưa.", 1, 0),
+        };
+
+        // Assign statuses: 15 Open, 10 InProgress, 15 Resolved, 10 Closed
+        // Status: Open=0, InProgress=1, Resolved=2, Closed=3
+        var statusPattern = new int[]
+        {
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  // 15 Open
+            1,1,1,1,1,1,1,1,1,1,              // 10 InProgress
+            2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,  // 15 Resolved
+            3,3,3,3,3,3,3,3,3,3              // 10 Closed
+        };
+
+        var baseDate = new DateTime(2026, 2, 10, 8, 0, 0, DateTimeKind.Utc);
+
+        for (var batch = 0; batch < SupportTicketCount; batch += BatchSize)
+        {
+            var end = Math.Min(batch + BatchSize, SupportTicketCount);
+            var valueClauses2 = new List<string>();
+            var parameters2 = new List<object?>();
+            var pIdx = 0;
+
+            for (var i = batch; i < end; i++)
+            {
+                var template = ticketTemplates[i];
+                var status = statusPattern[i];
+                var ticketCode = $"TK-2026-{(i + 1):D4}";
+                var createdAt = baseDate.AddDays(-(SupportTicketCount - i)).AddHours(i % 12).AddMinutes(i * 7 % 60);
+
+                // Reporter: alternate between students and lecturers
+                var reporterId = i % 3 == 0
+                    ? DualRoleId((i % DualRoleCount) + 1) // lecturer
+                    : StudentId((i % StudentCount) + 1);  // student
+
+                // Assignee: admin for InProgress/Resolved/Closed tickets
+                Guid? assigneeId = status >= 1 ? AdminId((i % 10) + 1) : null;
+
+                DateTime? resolvedAt = status >= 2 ? createdAt.AddDays(1).AddHours(3) : null;
+                DateTime? closedAt = status == 3 ? createdAt.AddDays(2).AddHours(5) : null;
+                DateTime? updatedAt = status >= 1 ? createdAt.AddHours(2) : null;
+
+                var pId = $"@p{pIdx++}";
+                var pCode = $"@p{pIdx++}";
+                var pTitle = $"@p{pIdx++}";
+                var pDesc = $"@p{pIdx++}";
+                var pReporter = $"@p{pIdx++}";
+                var pAssignee = $"@p{pIdx++}";
+                var pCategory = $"@p{pIdx++}";
+                var pPriority = $"@p{pIdx++}";
+                var pStatus = $"@p{pIdx++}";
+                var pCreatedAt = $"@p{pIdx++}";
+                var pUpdatedAt = $"@p{pIdx++}";
+                var pResolvedAt = $"@p{pIdx++}";
+                var pClosedAt = $"@p{pIdx++}";
+
+                valueClauses2.Add($"({pId}, {pCode}, {pTitle}, {pDesc}, {pReporter}, {pAssignee}, {pCategory}, {pPriority}, {pStatus}, {pCreatedAt}, {pUpdatedAt}, {pResolvedAt}, {pClosedAt})");
+
+                parameters2.Add(SupportTicketId(i + 1));
+                parameters2.Add(ticketCode);
+                parameters2.Add(template.Title);
+                parameters2.Add(template.Description);
+                parameters2.Add(reporterId);
+                parameters2.Add(assigneeId.HasValue ? (object)assigneeId.Value : null);
+                parameters2.Add(template.Category);
+                parameters2.Add(template.Priority);
+                parameters2.Add(status);
+                parameters2.Add(createdAt);
+                parameters2.Add(updatedAt.HasValue ? (object)updatedAt.Value : null);
+                parameters2.Add(resolvedAt.HasValue ? (object)resolvedAt.Value : null);
+                parameters2.Add(closedAt.HasValue ? (object)closedAt.Value : null);
+            }
+
+            var sql2 = $@"
+                INSERT INTO SupportTickets (Id, Code, Title, Description, ReporterId, AssigneeId, Category, Priority, Status, CreatedAt, UpdatedAt, ResolvedAt, ClosedAt)
+                VALUES {string.Join(",\n                       ", valueClauses2)};";
+
+            await context.Database.ExecuteSqlRawAsync(sql2, parameters2.ToArray()!);
+        }
+
+        logger?.LogInformation("Seeded {Count} support tickets.", SupportTicketCount);
+    }
+
+    // ════════════════════════════════════════════════
     //  DEPARTMENT HEAD
     // ════════════════════════════════════════════════
     private static async Task SetDepartmentHeadAsync(AppDbContext context, ILogger? logger)
@@ -895,6 +1253,7 @@ public static class LoadTestDataSeeder
         var tables = new[]
         {
             // Leaf tables (no dependents)
+            "SupportTickets",
             "TopicRegistrations",
             "ProjectEvaluatorAssignments",
             "ProjectMentors",
