@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using UniThesis.Application.Common.Interfaces;
 using UniThesis.Application.Features.TopicPools.DTOs;
+using UniThesis.Domain.Enums.Mentor;
 using UniThesis.Domain.Enums.Project;
 
 namespace UniThesis.Persistence.SqlServer.QueryServices;
@@ -90,26 +91,19 @@ public class TopicPoolQueryService : ITopicPoolQueryService
             .AsNoTracking()
             .Where(p => p.TopicPoolId == poolId && p.SourceType == ProjectSourceType.FromPool);
 
-        // Count by PoolStatus
-        var statusCounts = await poolProjects
-            .GroupBy(p => p.PoolStatus)
-            .Select(g => new { Status = g.Key, Count = g.Count() })
-            .ToListAsync(cancellationToken);
+        var totalTopics = await poolProjects.CountAsync(cancellationToken);
 
-        var totalTopics = statusCounts.Sum(x => x.Count);
-        var activeCount = statusCounts
-            .Where(x => x.Status == PoolTopicStatus.Available)
-            .Sum(x => x.Count);
-        var registeredCount = statusCounts
-            .Where(x => x.Status == PoolTopicStatus.Reserved || x.Status == PoolTopicStatus.Assigned)
-            .Sum(x => x.Count);
-        var expiredCount = statusCounts
-            .Where(x => x.Status == PoolTopicStatus.Expired)
-            .Sum(x => x.Count);
+        var activeTopics = await poolProjects
+            .CountAsync(p => p.PoolStatus == PoolTopicStatus.Available, cancellationToken);
 
-        // Count distinct active mentors across all projects in this pool
+        var registeredTopics = await poolProjects
+            .CountAsync(p => p.PoolStatus == PoolTopicStatus.Reserved || p.PoolStatus == PoolTopicStatus.Assigned, cancellationToken);
+
+        var expiredTopics = await poolProjects
+            .CountAsync(p => p.PoolStatus == PoolTopicStatus.Expired, cancellationToken);
+
         var totalMentors = await poolProjects
-            .SelectMany(p => p.Mentors.Where(m => m.IsActive))
+            .SelectMany(p => p.Mentors.Where(m => m.Status == ProjectMentorStatus.Active))
             .Select(m => m.MentorId)
             .Distinct()
             .CountAsync(cancellationToken);
@@ -121,9 +115,9 @@ public class TopicPoolQueryService : ITopicPoolQueryService
             PoolName = pool.Name,
             TotalMentors = totalMentors,
             TotalTopicsCount = totalTopics,
-            ActiveTopicsCount = activeCount,
-            RegisteredTopicsCount = registeredCount,
-            ExpiredTopicsCount = expiredCount,
+            ActiveTopicsCount = activeTopics,
+            RegisteredTopicsCount = registeredTopics,
+            ExpiredTopicsCount = expiredTopics,
         };
     }
 }
