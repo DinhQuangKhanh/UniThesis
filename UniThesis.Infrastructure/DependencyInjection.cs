@@ -36,9 +36,6 @@ namespace UniThesis.Infrastructure
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
-            // MediatR - Auto-discover all handlers from this assembly
-            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
-
             // Firebase Configuration
             services.Configure<FirebaseSettings>(configuration.GetSection(FirebaseSettings.SectionName));
             var firebaseSettings = configuration.GetSection(FirebaseSettings.SectionName).Get<FirebaseSettings>();
@@ -169,7 +166,8 @@ namespace UniThesis.Infrastructure
             services.AddScoped<IFileStorageService, FirebaseStorageService>();
 
             // Notification & RealTime
-            services.AddScoped<INotificationService, NotificationService>();
+            services.AddScoped<UniThesis.Application.Common.Interfaces.INotificationService, NotificationService>();
+            services.AddScoped<INotificationService, NotificationService>(); // Keep the local one if others in Infra depend on it
             services.AddScoped<IRealtimeNotificationService, RealtimeNotificationService>();
 
             // Reporting

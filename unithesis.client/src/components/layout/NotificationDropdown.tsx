@@ -1,180 +1,32 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { apiClient } from '@/lib/apiClient'
 
-// Notification types for different roles
+// ─── Types ──────────────────────────────────────────────────────────────────
+
 export type UserRole = 'admin' | 'mentor' | 'student' | 'evaluator'
 
-interface Notification {
+interface NotificationItem {
     id: string
+    userId: string
     title: string
-    message: string
-    time: string
-    read: boolean
-    type: 'info' | 'warning' | 'success' | 'error'
-    icon: string
+    content: string
+    type: 'Info' | 'Warning' | 'Success' | 'Error'
+    category: string
+    targetUrl: string | null
+    isRead: boolean
+    readAt: string | null
+    createdAt: string
 }
 
-// Mock notifications for each role
-const notificationsByRole: Record<UserRole, Notification[]> = {
-    admin: [
-        {
-            id: '1',
-            title: 'Yêu cầu hỗ trợ mới',
-            message: 'Sinh viên Nguyễn Văn A gửi yêu cầu hỗ trợ về đăng ký đề tài',
-            time: '5 phút trước',
-            read: false,
-            type: 'warning',
-            icon: 'support_agent'
-        },
-        {
-            id: '2',
-            title: 'Đề tài mới cần phê duyệt',
-            message: '3 đề tài mới đang chờ phê duyệt từ GVHD',
-            time: '1 giờ trước',
-            read: false,
-            type: 'info',
-            icon: 'pending_actions'
-        },
-        {
-            id: '3',
-            title: 'Backup hệ thống hoàn tất',
-            message: 'Sao lưu dữ liệu hệ thống đã hoàn thành thành công',
-            time: '2 giờ trước',
-            read: true,
-            type: 'success',
-            icon: 'backup'
-        },
-        {
-            id: '4',
-            title: 'Cảnh báo dung lượng',
-            message: 'Dung lượng lưu trữ đã sử dụng 85%',
-            time: '1 ngày trước',
-            read: true,
-            type: 'error',
-            icon: 'storage'
-        },
-    ],
-    mentor: [
-        {
-            id: '1',
-            title: 'Sinh viên nộp báo cáo',
-            message: 'Nhóm "LocalHub" đã nộp báo cáo tiến độ tuần 5',
-            time: '10 phút trước',
-            read: false,
-            type: 'info',
-            icon: 'description'
-        },
-        {
-            id: '2',
-            title: 'Yêu cầu hướng dẫn',
-            message: 'Nhóm "EduPortal" yêu cầu cuộc họp vào thứ 3',
-            time: '30 phút trước',
-            read: false,
-            type: 'warning',
-            icon: 'event'
-        },
-        {
-            id: '3',
-            title: 'Đề tài mới được phân công',
-            message: 'Bạn được phân công hướng dẫn thêm 1 đề tài mới',
-            time: '2 giờ trước',
-            read: true,
-            type: 'success',
-            icon: 'assignment_ind'
-        },
-        {
-            id: '4',
-            title: 'Nhắc nhở đánh giá',
-            message: 'Còn 2 ngày để hoàn thành đánh giá giữa kỳ',
-            time: '1 ngày trước',
-            read: true,
-            type: 'error',
-            icon: 'schedule'
-        },
-    ],
-    student: [
-        {
-            id: '1',
-            title: 'Phản hồi từ GVHD',
-            message: 'TS. Trần Minh Tuấn đã nhận xét về báo cáo của bạn',
-            time: '15 phút trước',
-            read: false,
-            type: 'info',
-            icon: 'comment'
-        },
-        {
-            id: '2',
-            title: 'Lịch họp được xác nhận',
-            message: 'Buổi họp vào 14:00 thứ 4 đã được GVHD xác nhận',
-            time: '1 giờ trước',
-            read: false,
-            type: 'success',
-            icon: 'event_available'
-        },
-        {
-            id: '3',
-            title: 'Deadline sắp tới',
-            message: 'Còn 3 ngày để nộp báo cáo tiến độ tuần 6',
-            time: '3 giờ trước',
-            read: false,
-            type: 'warning',
-            icon: 'alarm'
-        },
-        {
-            id: '4',
-            title: 'Thông báo từ hệ thống',
-            message: 'Kỳ học Spring 2024 sẽ bắt đầu đăng ký vào 15/02',
-            time: '2 ngày trước',
-            read: true,
-            type: 'info',
-            icon: 'campaign'
-        },
-    ],
-    evaluator: [
-        {
-            id: '1',
-            title: 'Đề tài mới cần đánh giá',
-            message: '2 đề tài mới được phân công để đánh giá',
-            time: '20 phút trước',
-            read: false,
-            type: 'info',
-            icon: 'rate_review'
-        },
-        {
-            id: '2',
-            title: 'Lịch phản biện cập nhật',
-            message: 'Lịch phản biện đề tài "SmartCampus" đã được cập nhật',
-            time: '1 giờ trước',
-            read: false,
-            type: 'warning',
-            icon: 'calendar_month'
-        },
-        {
-            id: '3',
-            title: 'Báo cáo đã được tải lên',
-            message: 'Nhóm "BusDN" đã nộp báo cáo cuối kỳ',
-            time: '4 giờ trước',
-            read: true,
-            type: 'success',
-            icon: 'upload_file'
-        },
-        {
-            id: '4',
-            title: 'Nhắc nhở deadline',
-            message: 'Còn 5 ngày để hoàn thành đánh giá đợt 1',
-            time: '1 ngày trước',
-            read: true,
-            type: 'error',
-            icon: 'timer'
-        },
-    ],
+interface NotificationListResponse {
+    items: NotificationItem[]
+    totalCount: number
+    unreadCount: number
 }
 
-const typeColors = {
-    info: { bg: 'bg-blue-50', icon: 'text-blue-600', border: 'border-blue-200' },
-    warning: { bg: 'bg-amber-50', icon: 'text-amber-600', border: 'border-amber-200' },
-    success: { bg: 'bg-green-50', icon: 'text-green-600', border: 'border-green-200' },
-    error: { bg: 'bg-red-50', icon: 'text-red-600', border: 'border-red-200' },
+interface UnreadCountResponse {
+    count: number
 }
 
 interface NotificationDropdownProps {
@@ -182,14 +34,100 @@ interface NotificationDropdownProps {
     isNavy?: boolean
 }
 
-export function NotificationDropdown({ role = 'admin', isNavy = false }: NotificationDropdownProps) {
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function relativeTime(iso: string): string {
+    const diffMs = Date.now() - new Date(iso).getTime()
+    const mins = Math.floor(diffMs / 60000)
+    if (mins < 1) return 'Vừa xong'
+    if (mins < 60) return `${mins} phút trước`
+    const hours = Math.floor(mins / 60)
+    if (hours < 24) return `${hours} giờ trước`
+    const days = Math.floor(hours / 24)
+    if (days === 1) return 'Hôm qua'
+    return `${days} ngày trước`
+}
+
+type NotiType = NotificationItem['type']
+
+const typeColors: Record<NotiType, { bg: string; icon: string }> = {
+    Info: { bg: 'bg-blue-50', icon: 'text-blue-600' },
+    Warning: { bg: 'bg-amber-50', icon: 'text-amber-600' },
+    Success: { bg: 'bg-green-50', icon: 'text-green-600' },
+    Error: { bg: 'bg-red-50', icon: 'text-red-600' },
+}
+
+function categoryIcon(category: string): string {
+    const map: Record<string, string> = {
+        Project: 'description',
+        Evaluation: 'rate_review',
+        Meeting: 'event',
+        Message: 'chat',
+        TopicPool: 'library_books',
+        Group: 'group',
+        Defense: 'school',
+        Deadline: 'alarm',
+        System: 'campaign',
+    }
+    return map[category] ?? 'notifications'
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
+export function NotificationDropdown({ isNavy = false }: NotificationDropdownProps) {
     const [isOpen, setIsOpen] = useState(false)
-    const [notifications, setNotifications] = useState<Notification[]>(notificationsByRole[role])
+    const [notifications, setNotifications] = useState<NotificationItem[]>([])
+    const [unreadCount, setUnreadCount] = useState(0)
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
     const dropdownRef = useRef<HTMLDivElement>(null)
+    const fetchedRef = useRef(false) // prevent duplicate fetch on first open
 
-    const unreadCount = notifications.filter(n => !n.read).length
+    // ── Fetch unread count (badge) on mount ──────────────────────────────────
+    const fetchUnreadCount = useCallback(async () => {
+        try {
+            const res = await apiClient.get<UnreadCountResponse>('/api/notifications/unread-count')
+            setUnreadCount(Number(res.count ?? 0))
+        } catch {
+            // silently ignore badge errors
+        }
+    }, [])
 
-    // Close dropdown when clicking outside
+    useEffect(() => {
+        fetchUnreadCount()
+        // Poll every 60s to keep badge fresh without SignalR dependency
+        const interval = setInterval(fetchUnreadCount, 60_000)
+        return () => clearInterval(interval)
+    }, [fetchUnreadCount])
+
+    // ── Fetch notifications list when dropdown opens ──────────────────────────
+    const fetchNotifications = useCallback(async () => {
+        if (fetchedRef.current) return
+        fetchedRef.current = true
+        setLoading(true)
+        setError(null)
+        try {
+            const res = await apiClient.get<NotificationListResponse>('/api/notifications?limit=20')
+            setNotifications(res.items ?? [])
+            setUnreadCount(Number(res.unreadCount ?? 0))
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Không thể tải thông báo')
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    const handleOpen = useCallback(() => {
+        setIsOpen(prev => {
+            if (!prev) {
+                fetchedRef.current = false // allow re-fetch every open
+                fetchNotifications()
+            }
+            return !prev
+        })
+    }, [fetchNotifications])
+
+    // ── Close on outside click ────────────────────────────────────────────────
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -200,32 +138,58 @@ export function NotificationDropdown({ role = 'admin', isNavy = false }: Notific
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
-    const markAsRead = (id: string) => {
+    // ── Mark single as read ───────────────────────────────────────────────────
+    const markAsRead = useCallback(async (id: string, targetUrl: string | null) => {
         setNotifications(prev =>
-            prev.map(n => n.id === id ? { ...n, read: true } : n)
+            prev.map(n => n.id === id ? { ...n, isRead: true } : n)
         )
-    }
+        setUnreadCount(prev => Math.max(0, prev - 1))
 
-    const markAllAsRead = () => {
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })))
-    }
+        try {
+            await apiClient.put(`/api/notifications/${id}/read`, {})
+        } catch {
+            // optimistic update — revert if it fails
+            setNotifications(prev =>
+                prev.map(n => n.id === id ? { ...n, isRead: false } : n)
+            )
+            setUnreadCount(prev => prev + 1)
+        }
 
+        if (targetUrl) {
+            window.location.href = targetUrl
+        }
+    }, [])
+
+    // ── Mark all as read ──────────────────────────────────────────────────────
+    const markAllAsRead = useCallback(async () => {
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+        setUnreadCount(0)
+        try {
+            await apiClient.put('/api/notifications/read-all', {})
+        } catch {
+            // silently ignore — badge will self-correct on next poll
+        }
+    }, [])
+
+    // ─────────────────────────────────────────────────────────────────────────
     return (
         <div className="relative z-[9999]" ref={dropdownRef}>
-            {/* Notification Bell Button */}
+            {/* Bell button */}
             <button
-                onClick={() => setIsOpen(!isOpen)}
+                id="notification-bell"
+                onClick={handleOpen}
                 className={`relative transition-colors ${isNavy ? 'text-blue-200 hover:text-white' : 'text-slate-500 hover:text-primary'}`}
+                aria-label="Mở thông báo"
             >
                 <span className="material-symbols-outlined">notifications</span>
                 {unreadCount > 0 && (
                     <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold text-white rounded-full ${isNavy ? 'bg-red-500' : 'bg-primary'}`}>
-                        {unreadCount}
+                        {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                 )}
             </button>
 
-            {/* Dropdown Panel */}
+            {/* Dropdown panel */}
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
@@ -256,39 +220,71 @@ export function NotificationDropdown({ role = 'admin', isNavy = false }: Notific
                             )}
                         </div>
 
-                        {/* Notification List */}
+                        {/* Body */}
                         <div className="max-h-[400px] overflow-y-auto">
-                            {notifications.map((notification) => (
-                                <motion.div
-                                    key={notification.id}
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    onClick={() => markAsRead(notification.id)}
-                                    className={`px-4 py-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors ${!notification.read ? 'bg-blue-50/50' : ''}`}
-                                >
-                                    <div className="flex gap-3">
-                                        {/* Icon */}
-                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${typeColors[notification.type].bg}`}>
-                                            <span className={`material-symbols-outlined text-[20px] ${typeColors[notification.type].icon}`}>
-                                                {notification.icon}
-                                            </span>
-                                        </div>
-                                        {/* Content */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-start justify-between gap-2">
-                                                <p className={`text-sm ${!notification.read ? 'font-bold text-slate-800' : 'font-medium text-slate-700'}`}>
-                                                    {notification.title}
-                                                </p>
-                                                {!notification.read && (
-                                                    <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-1.5" />
-                                                )}
+                            {loading ? (
+                                <div className="flex flex-col gap-3 p-4">
+                                    {[1, 2, 3].map(i => (
+                                        <div key={i} className="flex gap-3 animate-pulse">
+                                            <div className="size-10 rounded-lg bg-slate-200 shrink-0" />
+                                            <div className="flex-1 space-y-2">
+                                                <div className="h-3 bg-slate-200 rounded w-3/4" />
+                                                <div className="h-3 bg-slate-200 rounded w-full" />
+                                                <div className="h-2 bg-slate-200 rounded w-1/3" />
                                             </div>
-                                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{notification.message}</p>
-                                            <p className="text-[10px] text-slate-400 mt-1">{notification.time}</p>
                                         </div>
-                                    </div>
-                                </motion.div>
-                            ))}
+                                    ))}
+                                </div>
+                            ) : error ? (
+                                <div className="flex flex-col items-center gap-2 py-10 px-4 text-center">
+                                    <span className="material-symbols-outlined text-red-400 text-3xl">error</span>
+                                    <p className="text-sm text-slate-500">{error}</p>
+                                    <button
+                                        onClick={() => { fetchedRef.current = false; fetchNotifications() }}
+                                        className="text-xs text-primary hover:underline font-medium"
+                                    >
+                                        Thử lại
+                                    </button>
+                                </div>
+                            ) : notifications.length === 0 ? (
+                                <div className="flex flex-col items-center gap-2 py-10 px-4 text-center">
+                                    <span className="material-symbols-outlined text-slate-300 text-4xl">notifications_off</span>
+                                    <p className="text-sm text-slate-400 font-medium">Không có thông báo nào</p>
+                                </div>
+                            ) : (
+                                notifications.map(n => {
+                                    const colors = typeColors[n.type] ?? typeColors.Info
+                                    return (
+                                        <motion.div
+                                            key={n.id}
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            onClick={() => markAsRead(n.id, n.targetUrl)}
+                                            className={`px-4 py-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors ${!n.isRead ? 'bg-blue-50/50' : ''}`}
+                                        >
+                                            <div className="flex gap-3">
+                                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${colors.bg}`}>
+                                                    <span className={`material-symbols-outlined text-[20px] ${colors.icon}`}>
+                                                        {categoryIcon(n.category)}
+                                                    </span>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <p className={`text-sm leading-snug ${!n.isRead ? 'font-bold text-slate-800' : 'font-medium text-slate-700'}`}>
+                                                            {n.title}
+                                                        </p>
+                                                        {!n.isRead && (
+                                                            <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-1.5" />
+                                                        )}
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.content}</p>
+                                                    <p className="text-[10px] text-slate-400 mt-1">{relativeTime(n.createdAt)}</p>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )
+                                })
+                            )}
                         </div>
 
                         {/* Footer */}

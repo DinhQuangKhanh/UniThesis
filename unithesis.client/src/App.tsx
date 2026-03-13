@@ -31,6 +31,8 @@ import {
   StudentSchedulePage,
   StudentTopicsPage,
   StudentMyTopicPage,
+  TopicPoolsPage,
+  TopicPoolDetailPage,
   MaintenancePage,
 } from "@/pages";
 import { NotFoundPage, AccessDeniedPage } from "@/pages/errors";
@@ -134,6 +136,8 @@ function App() {
               <Route path="topics" element={<MentorTopicsPage />} />
               <Route path="topics/:id" element={<MentorFeedbackPage />} />
               <Route path="schedule" element={<MentorSchedulePage />} />
+              <Route path="topic-pools" element={<TopicPoolsPage />} />
+              <Route path="topic-pools/:id" element={<TopicPoolDetailPage />} />
             </Route>
 
             {/* Protected Student Routes */}
