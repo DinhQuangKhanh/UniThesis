@@ -9,4 +9,7 @@ namespace UniThesis.Application.Features.TopicPools.Commands.RejectRegistration;
 /// <param name="Reason">The reason for rejection.</param>
 public record RejectTopicRegistrationCommand(
     Guid RegistrationId,
-    string Reason) : ICommand;
+    string Reason) : ICacheInvalidatingCommand
+{
+    public IReadOnlyCollection<string> CachePrefixesToInvalidate => ["topic-pools:"];
+}
