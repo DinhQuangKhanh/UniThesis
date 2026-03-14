@@ -28,14 +28,22 @@ namespace UniThesis.Infrastructure.EventHandlers.Project
 
         public async Task Handle(ProjectRejectedEvent notification, CancellationToken cancellationToken)
         {
-            // Invalidate cache for all evaluators assigned to this project
-            var assignments = await _assignmentRepository.GetActiveByProjectIdAsync(notification.ProjectId, cancellationToken);
-            foreach (var assignment in assignments)
+            try
             {
-                await _cacheInvalidation.InvalidateEvaluatorCacheAsync(assignment.EvaluatorId, cancellationToken);
-            }
+                // Invalidate cache for all evaluators assigned to this project
+                var assignments = await _assignmentRepository.GetActiveByProjectIdAsync(notification.ProjectId, cancellationToken);
+                foreach (var assignment in assignments)
+                {
+                    await _cacheInvalidation.InvalidateEvaluatorCacheAsync(assignment.EvaluatorId, cancellationToken);
+                }
 
-            _logger.LogInformation("Project rejected: {ProjectId}", notification.ProjectId);
+                _logger.LogInformation("Project rejected: {ProjectId}", notification.ProjectId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling {Event} for Project {ProjectId}",
+                    nameof(ProjectRejectedEvent), notification.ProjectId);
+            }
         }
     }
 }

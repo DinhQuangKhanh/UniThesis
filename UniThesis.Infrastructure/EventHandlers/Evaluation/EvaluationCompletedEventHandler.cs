@@ -30,25 +30,33 @@ namespace UniThesis.Infrastructure.EventHandlers.Evaluation
 
         public async Task Handle(EvaluationCompletedEvent notification, CancellationToken cancellationToken)
         {
-            var evaluatorId = notification.EvaluatorId;
-
-            await _evaluationLogRepository.AddAsync(new EvaluationLogDocument
+            try
             {
-                ProjectId = notification.ProjectId,
-                EvaluationSubmissionId = notification.SubmissionId,
-                Action = EvaluationAction.Completed,
-                Result = notification.Result,
-                PerformedBy = evaluatorId ?? Guid.Empty,
-                PerformedAt = DateTime.UtcNow
-            }, cancellationToken);
+                var evaluatorId = notification.EvaluatorId;
 
-            // Invalidate evaluator cache - dashboard, projects, history all change when evaluation completes
-            if (evaluatorId.HasValue)
-            {
-                await _cacheInvalidation.InvalidateEvaluatorCacheAsync(evaluatorId.Value, cancellationToken);
+                await _evaluationLogRepository.AddAsync(new EvaluationLogDocument
+                {
+                    ProjectId = notification.ProjectId,
+                    EvaluationSubmissionId = notification.SubmissionId,
+                    Action = EvaluationAction.Completed,
+                    Result = notification.Result,
+                    PerformedBy = evaluatorId ?? Guid.Empty,
+                    PerformedAt = DateTime.UtcNow
+                }, cancellationToken);
+
+                // Invalidate evaluator cache - dashboard, projects, history all change when evaluation completes
+                if (evaluatorId.HasValue)
+                {
+                    await _cacheInvalidation.InvalidateEvaluatorCacheAsync(evaluatorId.Value, cancellationToken);
+                }
+
+                _logger.LogInformation("Evaluation completed: {ProjectId}, Result: {Result}", notification.ProjectId, notification.Result);
             }
-
-            _logger.LogInformation("Evaluation completed: {ProjectId}, Result: {Result}", notification.ProjectId, notification.Result);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling {Event} for Project {ProjectId}",
+                    nameof(EvaluationCompletedEvent), notification.ProjectId);
+            }
         }
     }
 }

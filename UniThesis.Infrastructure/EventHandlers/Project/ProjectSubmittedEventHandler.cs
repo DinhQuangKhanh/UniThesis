@@ -37,34 +37,42 @@ namespace UniThesis.Infrastructure.EventHandlers.Project
 
         public async Task Handle(ProjectSubmittedEvent notification, CancellationToken cancellationToken)
         {
-            await _evaluationLogRepository.AddAsync(new EvaluationLogDocument
+            try
             {
-                ProjectId = notification.ProjectId,
-                Action = EvaluationAction.Submitted,
-                PerformedBy = notification.SubmittedBy,
-                PerformedAt = DateTime.UtcNow,
-            }, cancellationToken);
+                await _evaluationLogRepository.AddAsync(new EvaluationLogDocument
+                {
+                    ProjectId = notification.ProjectId,
+                    Action = EvaluationAction.Submitted,
+                    PerformedBy = notification.SubmittedBy,
+                    PerformedAt = DateTime.UtcNow,
+                }, cancellationToken);
 
-            await _activityLogRepository.AddAsync(new UserActivityLogDocument
-            {
-                UserId   = notification.SubmittedBy,
-                UserRole = "student",
-                Action   = "ProjectSubmitted",
-                Category = "Project",
-                EntityType = "Project",
-                EntityId = notification.ProjectId,
-                Severity = "info",
-                Timestamp = DateTime.UtcNow,
-            }, cancellationToken);
+                await _activityLogRepository.AddAsync(new UserActivityLogDocument
+                {
+                    UserId   = notification.SubmittedBy,
+                    UserRole = "student",
+                    Action   = "ProjectSubmitted",
+                    Category = "Project",
+                    EntityType = "Project",
+                    EntityId = notification.ProjectId,
+                    Severity = "info",
+                    Timestamp = DateTime.UtcNow,
+                }, cancellationToken);
 
-            // Invalidate cache for all evaluators assigned to this project
-            var assignments = await _assignmentRepository.GetActiveByProjectIdAsync(notification.ProjectId, cancellationToken);
-            foreach (var assignment in assignments)
-            {
-                await _cacheInvalidation.InvalidateEvaluatorCacheAsync(assignment.EvaluatorId, cancellationToken);
+                // Invalidate cache for all evaluators assigned to this project
+                var assignments = await _assignmentRepository.GetActiveByProjectIdAsync(notification.ProjectId, cancellationToken);
+                foreach (var assignment in assignments)
+                {
+                    await _cacheInvalidation.InvalidateEvaluatorCacheAsync(assignment.EvaluatorId, cancellationToken);
+                }
+
+                _logger.LogInformation("Project submitted for evaluation: {ProjectId}", notification.ProjectId);
             }
-
-            _logger.LogInformation("Project submitted for evaluation: {ProjectId}", notification.ProjectId);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling {Event} for Project {ProjectId}",
+                    nameof(ProjectSubmittedEvent), notification.ProjectId);
+            }
         }
     }
 }
