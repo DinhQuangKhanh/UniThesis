@@ -90,5 +90,15 @@ namespace UniThesis.Persistence.SqlServer.Repositories
             var spec = new GroupWithoutProjectSpec(semesterId);
             return await ListAsync(spec, cancellationToken);
         }
+
+        public async Task<List<Guid>> GetActiveGroupIdsWithoutProjectAsync(int semesterId, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Where(g => g.SemesterId == semesterId &&
+                           g.Status == GroupStatus.Active &&
+                           g.ProjectId == null)
+                .Select(g => g.Id)
+                .ToListAsync(cancellationToken);
+        }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using UniThesis.Domain.Aggregates.TopicPoolAggregate.Entities;
 using UniThesis.Domain.Common.Interfaces;
+using UniThesis.Domain.Enums.TopicPool;
 
 namespace UniThesis.Domain.Aggregates.TopicPoolAggregate;
 
@@ -42,4 +43,8 @@ public interface ITopicRegistrationRepository : IRepository<TopicRegistration, G
     /// Gets all pending registrations for a mentor's projects.
     /// </summary>
     Task<IEnumerable<TopicRegistration>> GetPendingByMentorIdAsync(Guid mentorId, CancellationToken cancellationToken = default);
+
+    Task<int> CountPendingByProjectIdExcludingAsync(Guid projectId, Guid excludeRegistrationId, CancellationToken cancellationToken = default);
+
+    Task<Dictionary<TopicRegistrationStatus, int>> GetRegistrationStatusCountsByProjectIdsAsync(IEnumerable<Guid> projectIds, CancellationToken cancellationToken = default);
 }

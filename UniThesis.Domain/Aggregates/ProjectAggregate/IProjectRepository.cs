@@ -1,6 +1,7 @@
 ﻿using UniThesis.Domain.Aggregates.ProjectAggregate.ValueObjects;
 using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Domain.Enums.Project;
+using UniThesis.Domain.Enums.TopicPool;
 
 namespace UniThesis.Domain.Aggregates.ProjectAggregate
 {
@@ -70,5 +71,21 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
         /// Gets the count of projects by status for a semester.
         /// </summary>
         Task<Dictionary<ProjectStatus, int>> GetStatusCountBySemesterAsync(int semesterId, CancellationToken cancellationToken = default);
+
+        Task<Dictionary<ProjectSourceType, int>> GetSourceTypeCountBySemesterAsync(int semesterId, CancellationToken cancellationToken = default);
+
+        Task<int> CountActivePoolTopicsByMentorAsync(Guid topicPoolId, Guid mentorId, CancellationToken cancellationToken = default);
+
+        Task<Dictionary<PoolTopicStatus, int>> GetPoolStatusCountsAsync(Guid topicPoolId, CancellationToken cancellationToken = default);
+
+        Task<List<Guid>> GetPoolProjectIdsAsync(Guid topicPoolId, CancellationToken cancellationToken = default);
+
+        Task<List<int>> GetMentorTopicCountsInPoolAsync(Guid topicPoolId, CancellationToken cancellationToken = default);
+
+        Task<List<Project>> GetExpirablePoolTopicsAsync(int currentSemesterId, CancellationToken cancellationToken = default);
+
+        Task<List<Guid>> GetAvailableApprovedPoolTopicIdsAsync(Guid topicPoolId, CancellationToken cancellationToken = default);
+
+        Task<List<Project>> GetExpiringPoolTopicsWithMentorsAsync(int currentSemesterId, CancellationToken cancellationToken = default);
     }
 }

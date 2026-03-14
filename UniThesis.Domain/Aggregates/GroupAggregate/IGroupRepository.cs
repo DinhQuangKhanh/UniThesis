@@ -13,5 +13,6 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
         Task<bool> ExistsCodeAsync(GroupCode code, CancellationToken cancellationToken = default);
         Task<int> GetNextSequenceAsync(int year, CancellationToken cancellationToken = default);
         Task<bool> IsStudentInActiveGroupAsync(Guid studentId, int semesterId, CancellationToken cancellationToken = default);
+        Task<List<Guid>> GetActiveGroupIdsWithoutProjectAsync(int semesterId, CancellationToken cancellationToken = default);
     }
 }

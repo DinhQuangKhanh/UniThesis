@@ -82,6 +82,7 @@ namespace UniThesis.Persistence
             services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
             services.AddScoped<ITopicRegistrationRepository, TopicRegistrationRepository>();
             services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+            services.AddScoped<IMajorReadRepository, MajorRepository>();
             services.AddScoped<IProjectEvaluatorAssignmentRepository, ProjectEvaluatorAssignmentRepository>();
 
             // Add Query Services

@@ -90,5 +90,23 @@ namespace UniThesis.Persistence.SqlServer.Repositories
                 .Select(g => new { Result = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.Result, x => x.Count, cancellationToken);
         }
+
+        public async Task<List<EvaluationSubmission>> GetBySemesterWithSnapshotAsync(int semesterId, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Include(e => e.Snapshot)
+                .Where(e => _context.Projects.Any(p => p.Id == e.ProjectId && p.SemesterId == semesterId))
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<Dictionary<Guid, int>> GetActiveEvaluatorWorkloadCountsAsync(CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Where(e => (e.Status == SubmissionStatus.Pending || e.Status == SubmissionStatus.InReview) &&
+                           e.AssignedEvaluatorId.HasValue)
+                .GroupBy(e => e.AssignedEvaluatorId!.Value)
+                .Select(g => new { EvaluatorId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.EvaluatorId, x => x.Count, cancellationToken);
+        }
     }
 }
