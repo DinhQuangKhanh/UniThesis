@@ -5,4 +5,7 @@ namespace UniThesis.Application.Features.Semesters.Commands.CloseSemester;
 /// <summary>
 /// Command to close an active semester.
 /// </summary>
-public record CloseSemesterCommand(int SemesterId) : ICommand;
+public record CloseSemesterCommand(int SemesterId) : ICacheInvalidatingCommand
+{
+    public IReadOnlyCollection<string> CachePrefixesToInvalidate => ["admin:dashboard"];
+}

@@ -28,6 +28,7 @@ public static class DependencyInjection
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(CachingBehavior<,>));
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(CacheInvalidationBehavior<,>));
+            cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(CacheInvalidationWithResultBehavior<,>));
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         });
 

@@ -13,7 +13,10 @@ public record CreateSemesterCommand(
     int AcademicYearStart,
     string? Description,
     List<CreateSemesterPhaseDto> Phases
-) : ICommand<int>;
+) : ICacheInvalidatingCommand<int>
+{
+    public IReadOnlyCollection<string> CachePrefixesToInvalidate => ["admin:dashboard", "evaluator:filter-options"];
+}
 
 /// <summary>
 /// DTO for creating a phase as part of semester creation.

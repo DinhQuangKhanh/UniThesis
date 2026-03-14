@@ -11,4 +11,7 @@ namespace UniThesis.Application.Features.TopicPools.Commands.RequestRegistration
 public record RequestTopicRegistrationCommand(
     Guid ProjectId,
     Guid GroupId,
-    string? Note = null) : ICommand<Guid>;
+    string? Note = null) : ICacheInvalidatingCommand<Guid>
+{
+    public IReadOnlyCollection<string> CachePrefixesToInvalidate => ["topic-pools:"];
+}

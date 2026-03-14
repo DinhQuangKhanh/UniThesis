@@ -10,4 +10,7 @@ namespace UniThesis.Application.Features.Departments.Commands.SetDepartmentHead;
 public record SetDepartmentHeadCommand(
     int DepartmentId,
     Guid UserId
-) : ICommand;
+) : ICacheInvalidatingCommand
+{
+    public IReadOnlyCollection<string> CachePrefixesToInvalidate => ["users:list:"];
+}
