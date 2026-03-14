@@ -91,16 +91,17 @@ public class TopicPoolQueryService : ITopicPoolQueryService
             .AsNoTracking()
             .Where(p => p.TopicPoolId == poolId && p.SourceType == ProjectSourceType.FromPool);
 
-        var totalTopics = await poolProjects.CountAsync(cancellationToken);
+        var statusCounts = await poolProjects
+            .Where(p => p.PoolStatus.HasValue)
+            .GroupBy(p => p.PoolStatus!.Value)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
 
-        var activeTopics = await poolProjects
-            .CountAsync(p => p.PoolStatus == PoolTopicStatus.Available, cancellationToken);
-
-        var registeredTopics = await poolProjects
-            .CountAsync(p => p.PoolStatus == PoolTopicStatus.Reserved || p.PoolStatus == PoolTopicStatus.Assigned, cancellationToken);
-
-        var expiredTopics = await poolProjects
-            .CountAsync(p => p.PoolStatus == PoolTopicStatus.Expired, cancellationToken);
+        var totalTopics = statusCounts.Values.Sum();
+        var activeTopics = statusCounts.GetValueOrDefault(PoolTopicStatus.Available);
+        var registeredTopics = statusCounts.GetValueOrDefault(PoolTopicStatus.Reserved)
+                             + statusCounts.GetValueOrDefault(PoolTopicStatus.Assigned);
+        var expiredTopics = statusCounts.GetValueOrDefault(PoolTopicStatus.Expired);
 
         var totalMentors = await poolProjects
             .SelectMany(p => p.Mentors.Where(m => m.Status == ProjectMentorStatus.Active))
