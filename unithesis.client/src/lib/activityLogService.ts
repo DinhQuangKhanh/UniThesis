@@ -7,7 +7,7 @@ export interface ActivityLogItem {
   userId: string;
   userName: string;
   userEmail: string | null;
-  userRole: string;
+  activeRole: string;
   action: string;
   category: string | null;
   entityType: string | null;
@@ -45,11 +45,15 @@ export interface SeverityCounts {
   critical: number;
 }
 
+export interface SeveritySummary extends SeverityCounts {
+  total: number;
+}
+
 export interface GroupedActivityLogItem {
   userId: string;
   userName: string;
   userEmail: string | null;
-  userRole: string;
+  activeRole: string;
   action: string;
   category: string | null;
   totalCount: number;
@@ -77,6 +81,35 @@ export interface ErrorDetailsResponse {
   errors: ErrorDetailItem[];
 }
 
+// ── Types (error log detail) ────────────────────────────────────────────────
+
+export interface InnerException {
+  message: string;
+  type: string;
+  stackTrace: string | null;
+}
+
+export interface ErrorLogDetail {
+  id: string;
+  userId: string | null;
+  userName: string | null;
+  userEmail: string | null;
+  activeRole: string | null;
+  severity: string;
+  source: string;
+  actionCode: string | null;
+  action: string | null;
+  routePath: string | null;
+  requestPath: string;
+  requestMethod: string;
+  errorMessage: string;
+  errorType: string;
+  stackTrace: string | null;
+  innerExceptions: InnerException[];
+  correlationId: string | null;
+  timestamp: string;
+}
+
 // ── Service ─────────────────────────────────────────────────────────────────
 
 export const activityLogService = {
@@ -97,6 +130,21 @@ export const activityLogService = {
   },
 
   /**
+   * Fetches aggregate severity counts (info, warning, error, critical + total).
+   */
+  getSeveritySummary: (
+    role?: string,
+    from?: string,
+    to?: string,
+  ): Promise<SeveritySummary> => {
+    const params = new URLSearchParams();
+    if (role) params.set("role", role);
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    return apiClient.get<SeveritySummary>(`/api/admin/activity-logs/severity-summary?${params.toString()}`);
+  },
+
+  /**
    * Fetches error details for a specific (userId, action) pair.
    */
   getErrorDetails: (
@@ -111,6 +159,13 @@ export const activityLogService = {
     if (from) params.set("from", from);
     if (to) params.set("to", to);
     return apiClient.get<ErrorDetailsResponse>(`/api/admin/activity-logs/errors?${params.toString()}`);
+  },
+
+  /**
+   * Fetches full error log detail by ID (stack trace, inner exceptions, request params).
+   */
+  getErrorLogDetail: (id: string): Promise<ErrorLogDetail> => {
+    return apiClient.get<ErrorLogDetail>(`/api/admin/error-logs/${id}`);
   },
 };
 

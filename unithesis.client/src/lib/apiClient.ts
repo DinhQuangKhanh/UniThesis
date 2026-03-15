@@ -32,6 +32,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "X-Route-Path": window.location.pathname,
     ...(options.headers as Record<string, string>),
   };
   if (token) {
