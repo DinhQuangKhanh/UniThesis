@@ -32,7 +32,7 @@ public static class DevelopmentDataSeeder
         // Idempotent: skip entirely if the department row already exists
         var alreadySeeded = await context.Database
             .SqlQueryRaw<int>("SELECT COUNT(*) AS [Value] FROM Departments WHERE Id = {0}", DeptCNTT)
-            .FirstOrDefaultAsync();
+            .SingleOrDefaultAsync();
 
         if (alreadySeeded > 0)
             return;

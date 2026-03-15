@@ -92,7 +92,7 @@ public static class LoadTestDataSeeder
 
         var alreadySeeded = await context.Database
             .SqlQueryRaw<int>("SELECT COUNT(*) AS [Value] FROM Users WHERE Id = {0}", AdminId(1))
-            .FirstOrDefaultAsync();
+            .SingleOrDefaultAsync();
 
         if (alreadySeeded > 0)
         {
