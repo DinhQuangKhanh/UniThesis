@@ -69,7 +69,7 @@ namespace UniThesis.Persistence.MongoDB.Repositories.Implementation
                     ["_id"] = new BsonDocument
                     {
                         ["userId"] = "$UserId",
-                        ["userRole"] = "$ActiveRole",
+                        ["userRole"] = new BsonDocument("$ifNull", new BsonArray { "$ActiveRole", "$UserRole" }),
                         ["action"] = "$Action",
                         ["category"] = "$Category"
                     },
@@ -134,7 +134,7 @@ namespace UniThesis.Persistence.MongoDB.Repositories.Implementation
                     items.Add(new GroupedActivityLogResult
                     {
                         UserId = SafeParseGuid(id["userId"]),
-                        ActiveRole = id["userRole"].AsString,
+                        ActiveRole = id.GetValue("userRole", BsonNull.Value) is BsonString s ? s.AsString : "unknown",
                         Action = id["action"].AsString,
                         Category = id["category"].IsBsonNull ? null : id["category"].AsString,
                         UserName = doc["userName"].AsString,
@@ -161,7 +161,7 @@ namespace UniThesis.Persistence.MongoDB.Repositories.Implementation
                 new BsonDocument("$match", roleMatchDoc),
                 new BsonDocument("$group", new BsonDocument
                 {
-                    ["_id"] = "$ActiveRole",
+                    ["_id"] = new BsonDocument("$ifNull", new BsonArray { "$ActiveRole", "$UserRole" }),
                     ["count"] = new BsonDocument("$sum", 1)
                 })
             };

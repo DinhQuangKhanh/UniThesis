@@ -105,6 +105,13 @@ namespace UniThesis.Persistence.MongoDB.Indexes
 
         private static async Task CreateUserActivityLogIndexesAsync(MongoDbContext context)
         {
+            // One-time migration: rename old "UserRole" field → "ActiveRole" for pre-redesign documents
+            var rawCollection = context.GetCollection<global::MongoDB.Bson.BsonDocument>(
+                MongoDbContext.Collections.UserActivityLogs);
+            await rawCollection.UpdateManyAsync(
+                Builders<global::MongoDB.Bson.BsonDocument>.Filter.Exists("UserRole"),
+                Builders<global::MongoDB.Bson.BsonDocument>.Update.Rename("UserRole", "ActiveRole"));
+
             var collection = context.GetCollection<UserActivityLogDocument>(MongoDbContext.Collections.UserActivityLogs);
             var indexKeys = Builders<UserActivityLogDocument>.IndexKeys;
 
