@@ -1,11 +1,12 @@
-﻿using MongoDB.Bson;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace UniThesis.Persistence.MongoDB.Documents
 {
     /// <summary>
     /// Document for user activity logs.
-    /// Tracks all actions performed by users across the system, categorized by role.
+    /// Tracks meaningful actions (commands and domain events) performed by users.
+    /// Queries are NOT logged here — only commands and domain events.
     /// </summary>
     public class UserActivityLogDocument
     {
@@ -22,21 +23,25 @@ namespace UniThesis.Persistence.MongoDB.Documents
         public string? UserEmail { get; set; }
 
         /// <summary>
-        /// The role context under which the action was performed
-        /// (e.g. "admin", "mentor", "evaluator", "student").
+        /// The active role from ICurrentUserService (e.g. "admin", "mentor", "evaluator", "student").
         /// </summary>
-        public string UserRole { get; set; } = string.Empty;
+        public string ActiveRole { get; set; } = string.Empty;
 
         /// <summary>
-        /// Semantic action name (e.g. "MemberRemoved", "ProjectSubmitted", "EvaluationCompleted").
+        /// Human-readable action name (e.g. "Create Semester", "Approve Project").
         /// </summary>
         public string Action { get; set; } = string.Empty;
 
         /// <summary>
-        /// Category to group related actions for easier filtering
-        /// (e.g. "Group", "Project", "Evaluation", "Meeting", "Defense", "System").
+        /// Machine key for the action (e.g. "CreateSemesterCommand", "ProjectSubmitted").
         /// </summary>
-        public string? Category { get; set; }
+        public string ActionCode { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Category to group related actions for easier filtering
+        /// (e.g. "Semester", "Project", "Evaluation", "Group", "TopicPool", "User", "Department").
+        /// </summary>
+        public string Category { get; set; } = string.Empty;
 
         /// <summary>Type of entity involved (e.g. "Group", "Project").</summary>
         public string? EntityType { get; set; }
@@ -46,16 +51,24 @@ namespace UniThesis.Persistence.MongoDB.Documents
 
         /// <summary>
         /// Severity level: "info" (default), "warning", "error", "critical".
-        /// Helps admins filter important actions quickly.
         /// </summary>
         [BsonDefaultValue("info")]
         public string Severity { get; set; } = "info";
+
+        /// <summary>Frontend route path from X-Route-Path header (e.g. "/admin/semesters").</summary>
+        public string? RoutePath { get; set; }
 
         /// <summary>Client IP address.</summary>
         public string? IpAddress { get; set; }
 
         /// <summary>Client User-Agent string.</summary>
         public string? UserAgent { get; set; }
+
+        /// <summary>Links to error_logs document when Severity is error/critical.</summary>
+        public Guid? ErrorLogId { get; set; }
+
+        /// <summary>Command execution time in milliseconds.</summary>
+        public long? DurationMs { get; set; }
 
         /// <summary>When the action occurred (UTC).</summary>
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]

@@ -50,8 +50,9 @@ namespace UniThesis.Infrastructure.EventHandlers.Project
                 await _activityLogRepository.AddAsync(new UserActivityLogDocument
                 {
                     UserId   = notification.SubmittedBy,
-                    UserRole = "student",
-                    Action   = "ProjectSubmitted",
+                    ActiveRole = "student",
+                    Action   = "Nộp đồ án",
+                    ActionCode = "ProjectSubmitted",
                     Category = "Project",
                     EntityType = "Project",
                     EntityId = notification.ProjectId,
