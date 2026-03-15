@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using MongoDB.Bson;
 using System.Net;
 using System.Security.Claims;
 using System.Text.Json;
 using UniThesis.Application.Common;
+using UniThesis.Application.Common.Interfaces;
 using UniThesis.Domain.Common.Exceptions;
 using UniThesis.Persistence.MongoDB.Documents;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
@@ -40,7 +40,7 @@ namespace UniThesis.Infrastructure.Middleware
             var (statusCode, response) = exception switch
             {
                 EntityNotFoundException entityNotFoundEx => (HttpStatusCode.NotFound, ApiResponse.Fail(entityNotFoundEx.Message)),
-                Domain.Common.Exceptions.ValidationException validationEx => (HttpStatusCode.BadRequest, ApiResponse.Fail(validationEx.Message, validationEx.Errors)),
+                ValidationException validationEx => (HttpStatusCode.BadRequest, ApiResponse.Fail(validationEx.Message, validationEx.Errors)),
                 BusinessRuleValidationException businessRuleEx => (HttpStatusCode.BadRequest, ApiResponse.Fail(businessRuleEx.Message)),
                 ConcurrencyException concurrencyEx => (HttpStatusCode.Conflict, ApiResponse.Fail(concurrencyEx.Message)),
                 UnauthorizedAccessException => (HttpStatusCode.Forbidden, ApiResponse.Fail("Bạn không có quyền truy cập tài nguyên này.")),
@@ -51,7 +51,7 @@ namespace UniThesis.Infrastructure.Middleware
             if (statusCode == HttpStatusCode.InternalServerError)
             {
                 _logger.LogError(exception, "Unhandled exception occurred: {Message}", exception.Message);
-                await LogExceptionToActivityLogAsync(context, exception);
+                await LogExceptionAsync(context, exception);
             }
             else
             {
@@ -65,48 +65,100 @@ namespace UniThesis.Infrastructure.Middleware
             await context.Response.WriteAsync(json);
         }
 
-        private async Task LogExceptionToActivityLogAsync(HttpContext context, Exception exception)
+        /// <summary>
+        /// Logs the exception to both error_logs (full detail) and user_activity_logs (summary with link).
+        /// </summary>
+        private async Task LogExceptionAsync(HttpContext context, Exception exception)
         {
             try
             {
-                var repository = context.RequestServices.GetService<IUserActivityLogRepository>();
-                if (repository is null) return;
+                var errorLogService = context.RequestServices.GetService<IErrorLogService>();
+                var activityLogRepository = context.RequestServices.GetService<IUserActivityLogRepository>();
 
                 var user = context.User;
-                _ = Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId);
+                var userIdStr = user.FindFirstValue(ClaimTypes.NameIdentifier);
+                _ = Guid.TryParse(userIdStr, out var userId);
 
-                var path = context.Request.Path.Value ?? "";
-                var role = ResolveRoleFromPath(path);
-
-                var document = new UserActivityLogDocument
-                {
-                    UserId = userId,
-                    UserName = user.FindFirstValue(ClaimTypes.Name)
+                var userName = user.FindFirstValue(ClaimTypes.Name)
                                ?? user.FindFirstValue("name")
-                               ?? "Anonymous",
-                    UserEmail = user.FindFirstValue(ClaimTypes.Email),
-                    UserRole = role,
-                    Action = "UnhandledException",
-                    Category = "System",
-                    Severity = "critical",
-                    IpAddress = context.Connection.RemoteIpAddress?.ToString(),
-                    UserAgent = context.Request.Headers["User-Agent"].ToString(),
-                    Timestamp = DateTime.UtcNow,
-                    Details = new BsonDocument
-                    {
-                        ["ErrorMessage"] = exception.Message,
-                        ["ErrorType"] = exception.GetType().FullName,
-                        ["StackTrace"] = exception.StackTrace ?? string.Empty,
-                        ["RequestPath"] = path,
-                        ["RequestMethod"] = context.Request.Method,
-                    },
-                };
+                               ?? "Anonymous";
+                var userEmail = user.FindFirstValue(ClaimTypes.Email);
 
-                await repository.AddAsync(document);
+                var apiPath = context.Request.Path.Value ?? "";
+                var httpMethod = context.Request.Method;
+                var role = ResolveRoleFromPath(apiPath);
+                var routePath = context.Request.Headers["X-Route-Path"].ToString();
+                var ipAddress = context.Connection.RemoteIpAddress?.ToString();
+                var userAgent = context.Request.Headers["User-Agent"].ToString();
+                var correlationId = context.TraceIdentifier;
+
+                // Build inner exception chain
+                var innerExceptions = new List<InnerExceptionEntry>();
+                var inner = exception.InnerException;
+                while (inner is not null)
+                {
+                    innerExceptions.Add(new InnerExceptionEntry(
+                        inner.Message,
+                        inner.GetType().FullName ?? inner.GetType().Name,
+                        inner.StackTrace));
+                    inner = inner.InnerException;
+                }
+
+                // 1. Write full error detail to error_logs collection
+                Guid? errorLogId = null;
+                if (errorLogService is not null)
+                {
+                    errorLogId = Guid.NewGuid();
+                    await errorLogService.LogAsync(new ErrorLogEntry(
+                        UserId: userIdStr,
+                        UserName: userName,
+                        UserEmail: userEmail,
+                        ActiveRole: role,
+                        Severity: "critical",
+                        Source: "Middleware",
+                        ActionCode: "UnhandledException",
+                        ActionDisplayName: $"Lỗi hệ thống: {httpMethod} {apiPath}",
+                        RoutePath: string.IsNullOrEmpty(routePath) ? null : routePath,
+                        RequestPath: apiPath,
+                        RequestMethod: httpMethod,
+                        IpAddress: ipAddress,
+                        UserAgent: userAgent,
+                        ErrorMessage: exception.Message,
+                        ErrorType: exception.GetType().FullName ?? exception.GetType().Name,
+                        StackTrace: exception.StackTrace,
+                        InnerExceptions: innerExceptions,
+                        RequestParameters: null,
+                        CorrelationId: correlationId,
+                        Timestamp: DateTime.UtcNow
+                    ));
+                }
+
+                // 2. Write summary entry to user_activity_logs with ErrorLogId link
+                if (activityLogRepository is not null)
+                {
+                    var activityDoc = new UserActivityLogDocument
+                    {
+                        UserId = userId,
+                        UserName = userName,
+                        UserEmail = userEmail,
+                        ActiveRole = role,
+                        Action = $"Lỗi hệ thống: {httpMethod} {apiPath}",
+                        ActionCode = "UnhandledException",
+                        Category = "System",
+                        Severity = "critical",
+                        RoutePath = string.IsNullOrEmpty(routePath) ? null : routePath,
+                        ErrorLogId = errorLogId,
+                        IpAddress = ipAddress,
+                        UserAgent = userAgent,
+                        Timestamp = DateTime.UtcNow,
+                    };
+
+                    await activityLogRepository.AddAsync(activityDoc);
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to persist unhandled exception to activity log");
+                _logger.LogWarning(ex, "Failed to persist unhandled exception to logs");
             }
         }
 
@@ -115,8 +167,7 @@ namespace UniThesis.Infrastructure.Middleware
             if (path.StartsWith("/api/admin/", StringComparison.OrdinalIgnoreCase)) return "admin";
             if (path.StartsWith("/api/mentor/", StringComparison.OrdinalIgnoreCase)) return "mentor";
             if (path.StartsWith("/api/evaluator/", StringComparison.OrdinalIgnoreCase)) return "evaluator";
-            if (path.StartsWith("/api/student/", StringComparison.OrdinalIgnoreCase)) return "student";
-            return "system";
+            return path.StartsWith("/api/student/", StringComparison.OrdinalIgnoreCase) ? "student" : "anonymous";
         }
     }
 }

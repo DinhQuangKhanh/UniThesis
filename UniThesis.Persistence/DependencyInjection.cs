@@ -99,9 +99,11 @@ namespace UniThesis.Persistence
             services.AddScoped<IMessageRepository, MessageRepository>();
             services.AddScoped<IUserActivityLogRepository, UserActivityLogRepository>();
             services.AddScoped<ISystemAuditLogRepository, SystemAuditLogRepository>();
+            services.AddScoped<IErrorLogRepository, ErrorLogRepository>();
 
             // Add Log Services
             services.AddScoped<IRequestLogService, RequestLogService>();
+            services.AddScoped<IErrorLogService, ErrorLogService>();
 
             return services;
         }
