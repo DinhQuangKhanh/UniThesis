@@ -1,4 +1,5 @@
 using UniThesis.Application.Common.Abstractions;
+using UniThesis.Application.Common.Attributes;
 
 namespace UniThesis.Application.Features.TopicPools.Commands.RequestRegistration;
 
@@ -8,6 +9,7 @@ namespace UniThesis.Application.Features.TopicPools.Commands.RequestRegistration
 /// <param name="ProjectId">The ID of the pool topic (project) to register for.</param>
 /// <param name="GroupId">The ID of the student group making the request.</param>
 /// <param name="Note">Optional note from the group.</param>
+[ActionLog("Request Topic Registration", "TopicPool")]
 public record RequestTopicRegistrationCommand(
     Guid ProjectId,
     Guid GroupId,

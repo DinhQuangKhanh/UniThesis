@@ -1,10 +1,12 @@
 using UniThesis.Application.Common.Abstractions;
+using UniThesis.Application.Common.Attributes;
 
 namespace UniThesis.Application.Features.Semesters.Commands.CreateSemester;
 
 /// <summary>
 /// Command to create a new semester with optional phases.
 /// </summary>
+[ActionLog("Create Semester", "Semester")]
 public record CreateSemesterCommand(
     string Name,
     string Code,

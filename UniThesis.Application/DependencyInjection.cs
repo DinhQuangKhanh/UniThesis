@@ -3,6 +3,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using UniThesis.Application.Common.Behaviors;
+using UniThesis.Application.Common.Services;
 
 namespace UniThesis.Application;
 
@@ -17,6 +18,9 @@ public static class DependencyInjection
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         var assembly = Assembly.GetExecutingAssembly();
+
+        // Action name resolver for activity logging
+        services.AddSingleton<ActionNameResolver>();
 
         // Register MediatR — Application handlers only.
         // Infrastructure EventHandlers are registered separately via AddInfrastructure.
