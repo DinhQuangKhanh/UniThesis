@@ -1,82 +1,113 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { NotificationDropdown } from '@/components/layout'
+import { TopicCard, TopicCardSkeleton } from '@/components/student/TopicCard'
+import { TopicDetailDrawer } from '@/components/student/TopicDetailDrawer'
+import { WishlistDrawer } from '@/components/student/WishlistDrawer'
+import { useWishlist } from '@/hooks/useWishlist'
+import { useSystemError } from '@/contexts/SystemErrorContext'
+import {
+    topicPoolService,
+    type PoolTopicFilters,
+    type PoolTopicsResponse,
+    type MajorOption,
+} from '@/lib/topicPoolService'
+
+// ── Animation variants ───────────────────────────────────────────────────────
 
 const container = {
     hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.05 } }
+    show: { opacity: 1, transition: { staggerChildren: 0.04 } },
 }
 
 const item = {
     hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
+    show: { opacity: 1, y: 0 },
 }
 
-const topics = [
-    {
-        id: 1,
-        title: 'Phát triển hệ thống quản lý học tập tích hợp AI (LMS AI)',
-        mentor: 'TS. Nguyễn Khắc Hùng',
-        major: 'CNTT',
-        majorColor: 'blue',
-        status: 'available',
-        maxStudents: 3,
-    },
-    {
-        id: 2,
-        title: 'Hệ thống phân tích cảm xúc người dùng trên mạng xã hội bằng Deep Learning',
-        mentor: 'ThS. Lê Thị Thu Hà',
-        major: 'KTPM',
-        majorColor: 'purple',
-        status: 'taken',
-        group: 'Nhóm 14 - K62CNTT',
-    },
-    {
-        id: 3,
-        title: 'Ứng dụng IoT trong giám sát năng lượng tiêu thụ tại tòa nhà thông minh',
-        mentor: 'PGS. TS. Trần Văn Đạo',
-        major: 'HTTT',
-        majorColor: 'green',
-        status: 'available',
-        maxStudents: 2,
-    },
-    {
-        id: 4,
-        title: 'Phân tích dữ liệu lớn để dự báo xu hướng tiêu dùng thương mại điện tử',
-        mentor: 'TS. Đặng Minh Tuấn',
-        major: 'KHDL',
-        majorColor: 'blue',
-        status: 'available',
-        maxStudents: 2,
-    },
-    {
-        id: 5,
-        title: 'Xây dựng ứng dụng ví điện tử hỗ trợ giao dịch Blockchain doanh nghiệp',
-        mentor: 'ThS. Vũ Anh Đức',
-        major: 'CNTT',
-        majorColor: 'blue',
-        status: 'taken',
-        group: 'Blockchain Team A',
-    },
-    {
-        id: 6,
-        title: 'Tự động hóa quy trình CI/CD cho hạ tầng Microservices trên Cloud',
-        mentor: 'TS. Phạm Thanh Sơn',
-        major: 'KTPM',
-        majorColor: 'purple',
-        status: 'available',
-        maxStudents: 3,
-    },
+// ── Pagination helper ────────────────────────────────────────────────────────
+
+function getPageNumbers(currentPage: number, totalPages: number): (number | '...')[] {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1)
+    const pages: (number | '...')[] = [1]
+    if (currentPage > 3) pages.push('...')
+    for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++)
+        pages.push(i)
+    if (currentPage < totalPages - 2) pages.push('...')
+    if (totalPages > 1) pages.push(totalPages)
+    return pages
+}
+
+// ── Sort options ─────────────────────────────────────────────────────────────
+
+const sortOptions = [
+    { value: 'newest', label: 'Mới nhất' },
+    { value: 'name', label: 'Tên A → Z' },
+    { value: 'mentor', label: 'Theo mentor' },
 ]
 
-export function StudentTopicsPage() {
-    const [favorites, setFavorites] = useState<number[]>([])
+// ── Page Component ───────────────────────────────────────────────────────────
 
-    const toggleFavorite = (id: number) => {
-        setFavorites((prev) =>
-            prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
-        )
+export function StudentTopicsPage() {
+    // State
+    const [filters, setFilters] = useState<PoolTopicFilters>({ page: 1, pageSize: 12 })
+    const [search, setSearch] = useState('')
+    const [data, setData] = useState<PoolTopicsResponse | null>(null)
+    const [majors, setMajors] = useState<MajorOption[]>([])
+    const [loading, setLoading] = useState(true)
+    const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null)
+    const [showWishlist, setShowWishlist] = useState(false)
+    const wishlist = useWishlist()
+    const { showError } = useSystemError()
+
+    // Debounced search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setFilters((prev) => ({ ...prev, search: search || undefined, page: 1 }))
+        }, 400)
+        return () => clearTimeout(timer)
+    }, [search])
+
+    // Fetch majors on mount
+    useEffect(() => {
+        topicPoolService.getMajors().then(setMajors).catch((err) => {
+            showError(err instanceof Error ? err.message : 'Không thể tải danh sách chuyên ngành.')
+        })
+    }, [])
+
+    // Fetch topics when filters change
+    useEffect(() => {
+        setLoading(true)
+        topicPoolService
+            .getTopics(filters)
+            .then(setData)
+            .catch((err) => {
+                setData(null)
+                showError(err instanceof Error ? err.message : 'Không thể tải danh sách đề tài. Vui lòng thử lại sau.')
+            })
+            .finally(() => setLoading(false))
+    }, [filters])
+
+    // Handlers
+    const updateFilter = useCallback(
+        <K extends keyof PoolTopicFilters>(key: K, value: PoolTopicFilters[K]) => {
+            setFilters((prev) => ({ ...prev, [key]: value, page: 1 }))
+        },
+        []
+    )
+
+    const setPage = useCallback((page: number) => {
+        setFilters((prev) => ({ ...prev, page }))
+    }, [])
+
+    const clearFilters = () => {
+        setSearch('')
+        setFilters({ page: 1, pageSize: 12 })
     }
+
+    const hasActiveFilters = !!(filters.majorId || filters.poolStatus != null || filters.search || (filters.sortBy && filters.sortBy !== 'newest'))
+
+    const pageNumbers = data ? getPageNumbers(data.page, data.totalPages) : []
 
     return (
         <>
@@ -89,8 +120,10 @@ export function StudentTopicsPage() {
                         </div>
                         <input
                             className="block w-full pl-10 pr-3 py-2 border-none rounded-lg leading-5 bg-[#f6f7f8] text-gray-900 placeholder-[#58698d] focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary transition-all sm:text-sm h-10"
-                            placeholder="Tìm kiếm đề tài đề xuất..."
+                            placeholder="Tìm kiếm đề tài hoặc mentor..."
                             type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
                 </div>
@@ -105,7 +138,7 @@ export function StudentTopicsPage() {
             </header>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-8">
+            <div className="flex-1 overflow-y-auto p-8 scrollbar-hide">
                 <motion.div variants={container} initial="hidden" animate="show" className="flex flex-col gap-6">
                     {/* Page Header */}
                     <motion.div variants={item} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -116,140 +149,192 @@ export function StudentTopicsPage() {
                             </p>
                         </div>
                         <div className="flex items-center gap-3">
-                            <button className="flex items-center gap-2 bg-white border border-[#e9ecf1] px-4 py-2 rounded-lg text-sm font-semibold text-[#101319] hover:bg-gray-50 transition-colors">
+                            <motion.button
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => setShowWishlist(true)}
+                                className="flex items-center gap-2 bg-white border border-[#e9ecf1] px-4 py-2 rounded-lg text-sm font-semibold text-[#101319] hover:bg-gray-50 transition-colors relative"
+                            >
                                 <span className="material-symbols-outlined text-xl">bookmark</span>
-                                Quan tâm ({favorites.length})
-                            </button>
+                                Quan tâm
+                                {wishlist.count > 0 && (
+                                    <span className="bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                                        {wishlist.count}
+                                    </span>
+                                )}
+                            </motion.button>
                         </div>
                     </motion.div>
 
                     {/* Filters */}
                     <motion.div variants={item} className="bg-white p-5 rounded-xl border border-[#e9ecf1] shadow-sm">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div className="flex flex-col gap-1.5 md:col-span-2">
-                                <label className="text-xs font-bold text-[#58698d] uppercase tracking-wider">Chuyên ngành</label>
-                                <select className="form-select w-full border-[#e9ecf1] rounded-lg text-sm focus:ring-primary focus:border-primary">
-                                    <option>Tất cả chuyên ngành</option>
-                                    <option>Công nghệ thông tin</option>
-                                    <option>Hệ thống thông tin</option>
-                                    <option>Kỹ thuật phần mềm</option>
-                                    <option>Khoa học dữ liệu</option>
-                                </select>
-                            </div>
+                        <div className="flex flex-col gap-4">
+                            {/* Major chips */}
                             <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-bold text-[#58698d] uppercase tracking-wider">Trạng thái</label>
-                                <select className="form-select w-full border-[#e9ecf1] rounded-lg text-sm focus:ring-primary focus:border-primary">
-                                    <option>Tất cả trạng thái</option>
-                                    <option>Còn trống</option>
-                                    <option>Đã có nhóm</option>
-                                </select>
+                                <label className="text-xs font-bold text-[#58698d] uppercase tracking-wider">Chuyên ngành</label>
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        onClick={() => updateFilter('majorId', undefined)}
+                                        className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${!filters.majorId
+                                            ? 'bg-primary text-white shadow-sm'
+                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                            }`}
+                                    >
+                                        Tất cả
+                                    </button>
+                                    {majors.map((m) => (
+                                        <button
+                                            key={m.id}
+                                            onClick={() => updateFilter('majorId', filters.majorId === m.id ? undefined : m.id)}
+                                            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${filters.majorId === m.id
+                                                ? 'bg-primary text-white shadow-sm'
+                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                }`}
+                                        >
+                                            {m.code}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                            <div className="flex items-end">
-                                <button className="w-full bg-[#f6f7f8] hover:bg-gray-200 text-[#101319] font-bold py-2 px-4 rounded-lg text-sm transition-colors flex items-center justify-center gap-2">
-                                    <span className="material-symbols-outlined text-lg">filter_alt_off</span>
-                                    Xóa bộ lọc
-                                </button>
+
+                            {/* Status chips + Sort + Clear */}
+                            <div className="flex flex-wrap items-end gap-4">
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-xs font-bold text-[#58698d] uppercase tracking-wider">Trạng thái</label>
+                                    <div className="flex gap-2">
+                                        {[
+                                            { value: undefined as number | undefined, label: 'Tất cả' },
+                                            { value: 0, label: 'Còn trống' },
+                                            { value: 2, label: 'Đã có nhóm' },
+                                        ].map((opt) => (
+                                            <button
+                                                key={String(opt.value)}
+                                                onClick={() => updateFilter('poolStatus', filters.poolStatus === opt.value ? undefined : opt.value)}
+                                                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${filters.poolStatus === opt.value || (opt.value === undefined && filters.poolStatus == null)
+                                                    ? 'bg-primary text-white shadow-sm'
+                                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                    }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-xs font-bold text-[#58698d] uppercase tracking-wider">Sắp xếp</label>
+                                    <select
+                                        value={filters.sortBy ?? 'newest'}
+                                        onChange={(e) => updateFilter('sortBy', e.target.value)}
+                                        className="border border-slate-200 rounded-lg text-xs font-medium px-3 py-1.5 focus:ring-1 focus:ring-primary focus:border-primary bg-white"
+                                    >
+                                        {sortOptions.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {hasActiveFilters && (
+                                    <button
+                                        onClick={clearFilters}
+                                        className="bg-[#f6f7f8] hover:bg-gray-200 text-[#101319] font-bold py-1.5 px-4 rounded-lg text-xs transition-colors flex items-center gap-1.5"
+                                    >
+                                        <span className="material-symbols-outlined text-sm">filter_alt_off</span>
+                                        Xóa bộ lọc
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </motion.div>
 
                     {/* Topics Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {topics.map((topic) => (
-                            <motion.div
-                                key={topic.id}
-                                variants={item}
-                                className="bg-white rounded-xl border border-[#e9ecf1] shadow-sm hover:shadow-md transition-all group overflow-hidden flex flex-col relative"
-                            >
-                                <div className="absolute top-0 right-0">
-                                    <div className="bg-primary/10 text-primary text-[10px] font-bold px-3 py-1 rounded-bl-lg border-l border-b border-primary/20">
-                                        ĐỀ TÀI TỪ KHO
-                                    </div>
-                                </div>
-                                <div className="p-6 flex-1">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <span className={`bg-${topic.majorColor}-50 text-${topic.majorColor}-600 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-${topic.majorColor}-100`}>
-                                            {topic.major}
-                                        </span>
-                                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider italic ${topic.status === 'available'
-                                            ? 'bg-green-50 text-green-600 border border-green-100'
-                                            : 'bg-gray-50 text-gray-400 border border-gray-100'
-                                            }`}>
-                                            {topic.status === 'available' ? 'Còn trống' : 'Đã có nhóm'}
-                                        </span>
-                                    </div>
-                                    <h3 className="text-lg font-bold text-[#101319] group-hover:text-primary transition-colors leading-tight mb-3">
-                                        {topic.title}
-                                    </h3>
-                                    <div className="flex flex-col gap-2 mt-auto">
-                                        <div className="flex items-center gap-2 text-sm text-[#58698d]">
-                                            <span className="material-symbols-outlined text-lg">school</span>
-                                            <span className="font-medium italic">Mentor: {topic.mentor}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-xs text-[#58698d]">
-                                            <span className="material-symbols-outlined text-base text-gray-400">info</span>
-                                            <span>
-                                                {topic.status === 'available'
-                                                    ? `Số lượng SV tối đa: ${topic.maxStudents} sinh viên`
-                                                    : `Nhóm: ${topic.group}`}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="px-6 py-4 bg-gray-50/50 border-t border-[#e9ecf1] flex gap-3">
-                                    <button
-                                        onClick={() => toggleFavorite(topic.id)}
-                                        className={`bg-white border py-2 px-3 rounded-lg transition-colors flex items-center justify-center ${favorites.includes(topic.id)
-                                            ? 'border-red-200 bg-red-50 text-red-500'
-                                            : 'border-[#e9ecf1] text-[#58698d] hover:text-red-500 hover:border-red-200 hover:bg-red-50'
-                                            }`}
-                                        title="Quan tâm"
-                                    >
-                                        <span className={`material-symbols-outlined text-xl ${favorites.includes(topic.id) ? 'fill-1' : ''}`}>favorite</span>
-                                    </button>
-                                    <button className="flex-1 bg-white border border-[#e9ecf1] text-[#101319] py-2 rounded-lg text-xs font-bold hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5">
-                                        <span className="material-symbols-outlined text-base">visibility</span>
-                                        Chi tiết
-                                    </button>
-                                    {topic.status === 'available' ? (
-                                        <button className="flex-1 bg-primary text-white py-2 rounded-lg text-xs font-bold hover:bg-primary-light transition-colors flex items-center justify-center gap-1.5">
-                                            <span className="material-symbols-outlined text-base">app_registration</span>
-                                            Đăng ký đề tài
-                                        </button>
-                                    ) : (
-                                        <button className="flex-1 bg-gray-200 text-gray-500 py-2 rounded-lg text-xs font-bold cursor-not-allowed flex items-center justify-center gap-1.5" disabled>
-                                            <span className="material-symbols-outlined text-base">app_registration</span>
-                                            Đã đăng ký
-                                        </button>
-                                    )}
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
+                    {loading ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {Array.from({ length: 6 }).map((_, i) => (
+                                <TopicCardSkeleton key={i} />
+                            ))}
+                        </div>
+                    ) : data && data.items.length > 0 ? (
+                        <motion.div
+                            variants={container}
+                            initial="hidden"
+                            animate="show"
+                            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                        >
+                            {data.items.map((topic) => (
+                                <TopicCard
+                                    key={topic.id}
+                                    topic={topic}
+                                    isFavorite={wishlist.has(topic.id)}
+                                    onToggleFavorite={() => wishlist.toggle(topic.id, topic)}
+                                    onViewDetail={() => setSelectedTopicId(topic.id)}
+                                />
+                            ))}
+                        </motion.div>
+                    ) : (
+                        <motion.div variants={item} className="flex flex-col items-center justify-center py-20">
+                            <span className="material-symbols-outlined text-[56px] text-slate-200 mb-4">search_off</span>
+                            <p className="text-slate-500 font-medium mb-1">Không tìm thấy đề tài nào</p>
+                            <p className="text-slate-400 text-sm">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
+                            {hasActiveFilters && (
+                                <button
+                                    onClick={clearFilters}
+                                    className="mt-4 text-primary text-sm font-medium hover:underline flex items-center gap-1"
+                                >
+                                    <span className="material-symbols-outlined text-sm">filter_alt_off</span>
+                                    Xóa bộ lọc
+                                </button>
+                            )}
+                        </motion.div>
+                    )}
 
                     {/* Pagination */}
-                    <motion.div variants={item} className="flex items-center justify-between bg-white px-6 py-4 rounded-xl border border-[#e9ecf1] shadow-sm mt-4">
-                        <div className="text-sm text-[#58698d]">
-                            Hiển thị <span className="font-bold text-[#101319]">1-6</span> trên <span className="font-bold text-[#101319]">45</span> đề tài
-                        </div>
-                        <div className="flex gap-2">
-                            <button className="p-2 rounded-lg border border-[#e9ecf1] hover:bg-gray-50 text-[#58698d] transition-colors disabled:opacity-50" disabled>
-                                <span className="material-symbols-outlined text-xl">chevron_left</span>
-                            </button>
-                            <button className="h-10 w-10 rounded-lg bg-primary text-white font-bold text-sm">1</button>
-                            <button className="h-10 w-10 rounded-lg border border-[#e9ecf1] hover:bg-gray-50 text-[#58698d] font-bold text-sm transition-colors">2</button>
-                            <button className="h-10 w-10 rounded-lg border border-[#e9ecf1] hover:bg-gray-50 text-[#58698d] font-bold text-sm transition-colors">3</button>
-                            <span className="px-2 self-center text-[#58698d]">...</span>
-                            <button className="h-10 w-10 rounded-lg border border-[#e9ecf1] hover:bg-gray-50 text-[#58698d] font-bold text-sm transition-colors">8</button>
-                            <button className="p-2 rounded-lg border border-[#e9ecf1] hover:bg-gray-50 text-[#58698d] transition-colors">
-                                <span className="material-symbols-outlined text-xl">chevron_right</span>
-                            </button>
-                        </div>
-                    </motion.div>
+                    {data && data.totalPages > 1 && (
+                        <motion.div variants={item} className="flex items-center justify-between bg-white px-6 py-4 rounded-xl border border-[#e9ecf1] shadow-sm">
+                            <div className="text-sm text-[#58698d]">
+                                Hiển thị{' '}
+                                <span className="font-bold text-[#101319]">
+                                    {(data.page - 1) * data.pageSize + 1}-{Math.min(data.page * data.pageSize, data.totalCount)}
+                                </span>{' '}
+                                trên <span className="font-bold text-[#101319]">{data.totalCount}</span> đề tài
+                            </div>
+                            <div className="flex gap-1.5">
+                                <button
+                                    onClick={() => setPage(data.page - 1)}
+                                    disabled={data.page <= 1}
+                                    className="p-2 rounded-lg border border-[#e9ecf1] hover:bg-gray-50 text-[#58698d] transition-colors disabled:opacity-40"
+                                >
+                                    <span className="material-symbols-outlined text-xl">chevron_left</span>
+                                </button>
+                                {pageNumbers.map((p, i) =>
+                                    p === '...' ? (
+                                        <span key={`ellipsis-${i}`} className="px-2 self-center text-[#58698d]">...</span>
+                                    ) : (
+                                        <button
+                                            key={p}
+                                            onClick={() => setPage(p)}
+                                            className={`h-10 w-10 rounded-lg font-bold text-sm transition-colors ${p === data.page
+                                                ? 'bg-primary text-white'
+                                                : 'border border-[#e9ecf1] hover:bg-gray-50 text-[#58698d]'
+                                                }`}
+                                        >
+                                            {p}
+                                        </button>
+                                    )
+                                )}
+                                <button
+                                    onClick={() => setPage(data.page + 1)}
+                                    disabled={data.page >= data.totalPages}
+                                    className="p-2 rounded-lg border border-[#e9ecf1] hover:bg-gray-50 text-[#58698d] transition-colors disabled:opacity-40"
+                                >
+                                    <span className="material-symbols-outlined text-xl">chevron_right</span>
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
 
                     {/* Footer */}
                     <div className="mt-8 pt-6 border-t border-[#e9ecf1] flex flex-col md:flex-row justify-between items-center text-[#58698d] text-sm pb-8">
-                        <p>© 2023 University Thesis Management System.</p>
+                        <p>&copy; 2023 University Thesis Management System.</p>
                         <div className="flex gap-4 mt-2 md:mt-0">
                             <a className="hover:text-primary transition-colors" href="#">Quy định bảo mật</a>
                             <a className="hover:text-primary transition-colors" href="#">Điều khoản sử dụng</a>
@@ -257,6 +342,27 @@ export function StudentTopicsPage() {
                     </div>
                 </motion.div>
             </div>
+
+            {/* Drawers */}
+            <TopicDetailDrawer
+                projectId={selectedTopicId}
+                isOpen={!!selectedTopicId}
+                onClose={() => setSelectedTopicId(null)}
+                isFavorite={selectedTopicId ? wishlist.has(selectedTopicId) : false}
+                onToggleFavorite={() => {
+                    if (selectedTopicId) {
+                        const topic = data?.items.find((t) => t.id === selectedTopicId)
+                        wishlist.toggle(selectedTopicId, topic)
+                    }
+                }}
+            />
+
+            <WishlistDrawer
+                isOpen={showWishlist}
+                onClose={() => setShowWishlist(false)}
+                wishlist={wishlist}
+                onViewDetail={(id) => { setShowWishlist(false); setSelectedTopicId(id) }}
+            />
         </>
     )
 }
