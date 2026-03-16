@@ -157,10 +157,11 @@ public class TopicPoolQueryService : ITopicPoolQueryService
                 (x.primaryMentor != null && x.primaryMentor.FullName.Contains(term)));
         }
 
-        // Sort
+        // Sort — use EF.Property<string>() for value objects to avoid translation failures
+        // when combined with complex 'let' subqueries (NameVi is ProjectName with HasConversion)
         query = sortBy switch
         {
-            "name" => query.OrderBy(x => x.Project.NameVi.Value),
+            "name" => query.OrderBy(x => EF.Property<string>(x.Project, "NameVi")),
             "mentor" => query.OrderBy(x => x.primaryMentor != null ? x.primaryMentor.FullName : ""),
             _ => query.OrderByDescending(x => x.Project.CreatedAt) // "newest" default
         };
