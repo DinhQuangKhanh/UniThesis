@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Services;
 
 namespace UniThesis.Infrastructure.BackgroundJobs.Jobs

@@ -1,0 +1,19 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  UniThesis.Domain -> C:\Users\Admin\source\repos\UniThesis\UniThesis.Domain\bin\Debug\net8.0\UniThesis.Domain.dll
+  UniThesis.Application -> C:\Users\Admin\source\repos\UniThesis\UniThesis.Application\bin\Debug\net8.0\UniThesis.Application.dll
+  UniThesis.Persistence -> C:\Users\Admin\source\repos\UniThesis\UniThesis.Persistence\bin\Debug\net8.0\UniThesis.Persistence.dll
+  UniThesis.Infrastructure -> C:\Users\Admin\source\repos\UniThesis\UniThesis.Infrastructure\bin\Debug\net8.0\UniThesis.Infrastructure.dll
+C:\Users\Admin\source\repos\UniThesis\UniThesis.API\Endpoints\Supports\SupportEndpoints.cs(50,43): error CS1061: 'ClaimsPrincipal' does not contain a definition for 'GetUserId' and no accessible extension method 'GetUserId' accepting a first argument of type 'ClaimsPrincipal' could be found (are you missing a using directive or an assembly reference?) [C:\Users\Admin\source\repos\UniThesis\UniThesis.API\UniThesis.API.csproj]
+C:\Users\Admin\source\repos\UniThesis\UniThesis.API\Endpoints\Supports\SupportEndpoints.cs(67,41): error CS1061: 'ClaimsPrincipal' does not contain a definition for 'GetUserId' and no accessible extension method 'GetUserId' accepting a first argument of type 'ClaimsPrincipal' could be found (are you missing a using directive or an assembly reference?) [C:\Users\Admin\source\repos\UniThesis\UniThesis.API\UniThesis.API.csproj]
+
+Build FAILED.
+
+C:\Users\Admin\source\repos\UniThesis\UniThesis.API\Endpoints\Supports\SupportEndpoints.cs(50,43): error CS1061: 'ClaimsPrincipal' does not contain a definition for 'GetUserId' and no accessible extension method 'GetUserId' accepting a first argument of type 'ClaimsPrincipal' could be found (are you missing a using directive or an assembly reference?) [C:\Users\Admin\source\repos\UniThesis\UniThesis.API\UniThesis.API.csproj]
+C:\Users\Admin\source\repos\UniThesis\UniThesis.API\Endpoints\Supports\SupportEndpoints.cs(67,41): error CS1061: 'ClaimsPrincipal' does not contain a definition for 'GetUserId' and no accessible extension method 'GetUserId' accepting a first argument of type 'ClaimsPrincipal' could be found (are you missing a using directive or an assembly reference?) [C:\Users\Admin\source\repos\UniThesis\UniThesis.API\UniThesis.API.csproj]
+    0 Warning(s)
+    2 Error(s)
+
+Time Elapsed 00:00:02.14
+
+Workload updates are available. Run `dotnet workload list` for more information.

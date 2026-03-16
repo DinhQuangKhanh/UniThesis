@@ -11,6 +11,11 @@ namespace UniThesis.Domain.Aggregates.UserAggregate
         Task<User?> GetByIdAsync(Guid id, CancellationToken ct = default);
 
         /// <summary>
+        /// Gets a list of users by their IDs.
+        /// </summary>
+        Task<IEnumerable<User>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default);
+
+        /// <summary>
         /// Gets a user by their email address.
         /// </summary>
         Task<User?> GetByEmailAsync(string email, CancellationToken ct = default);

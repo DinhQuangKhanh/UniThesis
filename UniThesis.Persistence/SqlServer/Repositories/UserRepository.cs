@@ -45,6 +45,15 @@ namespace UniThesis.Persistence.SqlServer.Repositories
                 .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
         }
 
+        public async Task<IEnumerable<User>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default)
+        {
+            var idList = ids.ToList();
+            if (!idList.Any()) return Enumerable.Empty<User>();
+            return await _context.Users
+                .Where(u => idList.Contains(u.Id))
+                .ToListAsync(ct);
+        }
+
         /// <inheritdoc/>
         /// <remarks>
         /// Synchronous EF operation. Returns completed task without async state machine overhead.

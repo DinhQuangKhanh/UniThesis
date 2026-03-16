@@ -119,11 +119,12 @@ public static class LoadTestDataSeeder
     private static async Task SeedSemestersAsync(AppDbContext context, ILogger? logger)
     {
         // Semesters.Id uses ValueGeneratedNever (no identity column)
+        // Status column was removed – it is now a computed property based on StartDate/EndDate
         var sql = @"
-            INSERT INTO Semesters (Id, Name, Code, AcademicYear, StartDate, EndDate, Status, Description, CreatedAt, UpdatedAt)
+            INSERT INTO Semesters (Id, Name, Code, AcademicYear, StartDate, EndDate, Description, CreatedAt, UpdatedAt)
             VALUES
-            (@p0, N'Học kỳ Fall 2025', 'FALL2025', '2025-2026', @p2, @p3, 2, N'Học kỳ đồ án tốt nghiệp Fall 2025 - Đã kết thúc', @p6, NULL),
-            (@p1, N'Học kỳ Spring 2026', 'SPRING2026', '2025-2026', @p4, @p5, 1, N'Học kỳ đồ án tốt nghiệp Spring 2026 - Đang triển khai', @p6, NULL);";
+            (@p0, N'Học kỳ Fall 2025', 'FALL2025', '2025-2026', @p2, @p3, N'Học kỳ đồ án tốt nghiệp Fall 2025 - Đã kết thúc', @p6, NULL),
+            (@p1, N'Học kỳ Spring 2026', 'SPRING2026', '2025-2026', @p4, @p5, N'Học kỳ đồ án tốt nghiệp Spring 2026 - Đang triển khai', @p6, NULL);";
 
         await context.Database.ExecuteSqlRawAsync(sql,
             Fall2025Id,

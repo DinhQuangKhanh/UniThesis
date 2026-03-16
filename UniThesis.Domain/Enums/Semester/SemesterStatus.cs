@@ -9,8 +9,8 @@ public enum SemesterStatus
     Upcoming = 0,
 
     /// <summary>Semester is currently active.</summary>
-    Active = 1,
+    Ongoing = 1,
 
     /// <summary>Semester has ended.</summary>
-    Closed = 2
+    Ended = 2
 }

@@ -752,9 +752,6 @@ namespace UniThesis.Persistence.Migrations
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -766,8 +763,6 @@ namespace UniThesis.Persistence.Migrations
                         .IsUnique();
 
                     b.HasIndex("StartDate");
-
-                    b.HasIndex("Status");
 
                     b.ToTable("Semesters", (string)null);
                 });
@@ -838,6 +833,37 @@ namespace UniThesis.Persistence.Migrations
                     b.HasIndex("Status");
 
                     b.ToTable("SupportTickets", (string)null);
+                });
+
+            modelBuilder.Entity("UniThesis.Domain.Aggregates.SupportAggregate.TicketMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("SenderId");
+
+                    b.HasIndex("TicketId");
+
+                    b.ToTable("TicketMessages", (string)null);
                 });
 
             modelBuilder.Entity("UniThesis.Domain.Aggregates.TopicPoolAggregate.Entities.TopicRegistration", b =>
@@ -1576,6 +1602,21 @@ namespace UniThesis.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("UniThesis.Domain.Aggregates.SupportAggregate.TicketMessage", b =>
+                {
+                    b.HasOne("UniThesis.Domain.Aggregates.UserAggregate.User", null)
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("UniThesis.Domain.Aggregates.SupportAggregate.SupportTicket", null)
+                        .WithMany("Messages")
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("UniThesis.Domain.Aggregates.TopicPoolAggregate.Entities.TopicRegistration", b =>
                 {
                     b.HasOne("UniThesis.Domain.Aggregates.GroupAggregate.Group", null)
@@ -1674,6 +1715,11 @@ namespace UniThesis.Persistence.Migrations
             modelBuilder.Entity("UniThesis.Domain.Aggregates.SemesterAggregate.Semester", b =>
                 {
                     b.Navigation("Phases");
+                });
+
+            modelBuilder.Entity("UniThesis.Domain.Aggregates.SupportAggregate.SupportTicket", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("UniThesis.Domain.Aggregates.UserAggregate.User", b =>

@@ -1,0 +1,12 @@
+﻿src/components/admin/EditSemesterModal.tsx(4,29): error TS2307: Cannot find module '@/types/admin.types' or its corresponding type declarations.
+src/pages/admin/SemestersPage.tsx(2,24): error TS2307: Cannot find module 'date-fns' or its corresponding type declarations.
+src/pages/admin/SemestersPage.tsx(3,20): error TS2307: Cannot find module 'date-fns/locale' or its corresponding type declarations.
+src/pages/admin/SemestersPage.tsx(9,29): error TS2307: Cannot find module '@/types/admin.types' or its corresponding type declarations.
+src/pages/admin/SemestersPage.tsx(89,29): error TS2339: Property 'delete' does not exist on type '{ get: <T>(path: string) => Promise<T>; post: <T>(path: string, body: unknown) => Promise<T>; put: <T>(path: string, body: unknown) => Promise<T>; }'.
+src/pages/admin/SemestersPage.tsx(99,29): error TS2554: Expected 2 arguments, but got 1.
+src/pages/admin/SemestersPage.tsx(109,29): error TS2554: Expected 2 arguments, but got 1.
+src/pages/admin/SemestersPage.tsx(210,75): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/pages/admin/SemestersPage.tsx(298,112): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/pages/admin/SemestersPage.tsx(302,115): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/pages/admin/SemestersPage.tsx(307,111): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/pages/admin/SemestersPage.tsx(318,83): error TS7006: Parameter 'phase' implicitly has an 'any' type.

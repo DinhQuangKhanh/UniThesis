@@ -39,6 +39,7 @@ public static class DevelopmentDataSeeder
 
         await SeedDepartmentsAsync(context);
         await SeedMajorsAsync(context);
+        await SeedSemestersAsync(context);
     }
 
     // ─── 1. Departments ──────────────────────────────────────────────────────
@@ -75,5 +76,26 @@ public static class DevelopmentDataSeeder
         await context.Database.ExecuteSqlRawAsync(sql,
             MajorSE, MajorAI, MajorDS, MajorIA, MajorIC, MajorAS, MajorIS, MajorGD,
             DeptCNTT, SeedDate);
+    }
+
+    // ─── 3. Semesters ────────────────────────────────────────────────────────
+
+    private static async Task SeedSemestersAsync(AppDbContext context)
+    {
+        var alreadySeeded = await context.Database
+            .SqlQueryRaw<int>("SELECT COUNT(*) AS [Value] FROM Semesters")
+            .FirstOrDefaultAsync();
+
+        if (alreadySeeded > 0)
+            return;
+
+        var sql = @"
+            INSERT INTO Semesters (Id, Name, Code, StartDate, EndDate, AcademicYear, Description, CreatedAt, UpdatedAt)
+            VALUES
+            (100, N'Học kỳ Thu 2024', 'FA24', '2024-09-01T00:00:00', '2024-12-31T23:59:59', '2024-2025', N'Học kỳ kết thúc', @p0, NULL),
+            (101, N'Học kỳ Xuân 2025', 'SP25', '2025-01-01T00:00:00', '2025-05-31T23:59:59', '2024-2025', N'Học kỳ hiện tại', @p0, NULL),
+            (102, N'Học kỳ Hè 2025', 'SU25', '2025-06-01T00:00:00', '2025-08-31T23:59:59', '2024-2025', N'Học kỳ sắp tới', @p0, NULL);";
+
+        await context.Database.ExecuteSqlRawAsync(sql, SeedDate);
     }
 }

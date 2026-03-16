@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using UniThesis.Domain.Aggregates.SupportAggregate;
 using UniThesis.Domain.Aggregates.SupportAggregate.ValueObjects;
 using UniThesis.Domain.Enums.Ticket;
@@ -13,9 +13,18 @@ namespace UniThesis.Persistence.SqlServer.Repositories
     {
         public SupportTicketRepository(AppDbContext context) : base(context) { }
 
+        public override async Task<SupportTicket?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Include(t => t.Messages.OrderBy(m => m.CreatedAt))
+                .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        }
+
         public async Task<SupportTicket?> GetByCodeAsync(TicketCode code, CancellationToken cancellationToken = default)
         {
-            return await _dbSet.FirstOrDefaultAsync(t => t.Code == code, cancellationToken);
+            return await _dbSet
+                .Include(t => t.Messages.OrderBy(m => m.CreatedAt))
+                .FirstOrDefaultAsync(t => t.Code == code, cancellationToken);
         }
 
         public async Task<IEnumerable<SupportTicket>> GetByReporterIdAsync(Guid reporterId, CancellationToken cancellationToken = default)

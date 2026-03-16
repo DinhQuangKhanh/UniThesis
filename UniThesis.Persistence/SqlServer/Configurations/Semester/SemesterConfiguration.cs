@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using UniThesis.Persistence.ValueConverters;
 
@@ -35,10 +35,6 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Semester
 
             builder.Property(s => s.Description)
                 .HasMaxLength(500);
-
-            builder.Property(s => s.Status)
-                .HasConversion<int>();
-
             // Relationships
             builder.HasMany(s => s.Phases)
                 .WithOne()
@@ -47,7 +43,6 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Semester
 
             // Indexes
             builder.HasIndex(s => s.Code).IsUnique();
-            builder.HasIndex(s => s.Status);
             builder.HasIndex(s => s.AcademicYear);
             builder.HasIndex(s => s.StartDate);
 
@@ -55,6 +50,7 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Semester
             builder.Ignore(s => s.DomainEvents);
             builder.Ignore(s => s.CurrentPhase);
             builder.Ignore(s => s.IsActive);
+            builder.Ignore(s => s.Status);
         }
     }
 }

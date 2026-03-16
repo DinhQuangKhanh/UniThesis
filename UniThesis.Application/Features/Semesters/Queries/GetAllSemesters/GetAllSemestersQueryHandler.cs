@@ -1,6 +1,7 @@
 using UniThesis.Application.Common.Abstractions;
 using UniThesis.Application.Features.Semesters.DTOs;
 using UniThesis.Domain.Aggregates.SemesterAggregate;
+using UniThesis.Domain.Enums.Semester;
 
 namespace UniThesis.Application.Features.Semesters.Queries.GetAllSemesters;
 
@@ -19,6 +20,18 @@ public class GetAllSemestersQueryHandler : IQueryHandler<GetAllSemestersQuery, L
     public async Task<List<SemesterDto>> Handle(GetAllSemestersQuery request, CancellationToken cancellationToken)
     {
         var semesters = await _semesterRepository.GetAllAsync(cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(request.Status) && Enum.TryParse<SemesterStatus>(request.Status, true, out var statusFilter))
+        {
+            var now = DateTime.UtcNow;
+            semesters = statusFilter switch
+            {
+                SemesterStatus.Upcoming => semesters.Where(s => s.StartDate > now),
+                SemesterStatus.Ended => semesters.Where(s => s.EndDate < now),
+                SemesterStatus.Ongoing => semesters.Where(s => s.StartDate <= now && s.EndDate >= now),
+                _ => semesters
+            };
+        }
 
         return semesters.Select(s => new SemesterDto
         {
