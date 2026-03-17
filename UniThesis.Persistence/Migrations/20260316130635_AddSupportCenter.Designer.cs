@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UniThesis.Persistence.SqlServer;
 
@@ -11,9 +12,11 @@ using UniThesis.Persistence.SqlServer;
 namespace UniThesis.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260316130635_AddSupportCenter")]
+    partial class AddSupportCenter
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1103,8 +1106,6 @@ namespace UniThesis.Persistence.Migrations
 
                     b.HasIndex("FirebaseUid")
                         .IsUnique();
-
-                    b.HasIndex("FullName");
 
                     b.HasIndex("Status");
 

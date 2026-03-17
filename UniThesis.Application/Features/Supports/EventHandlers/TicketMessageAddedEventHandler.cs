@@ -1,0 +1,65 @@
+using MediatR;
+using Microsoft.Extensions.Logging;
+using UniThesis.Application.Common.Interfaces;
+using UniThesis.Domain.Aggregates.SupportAggregate;
+using UniThesis.Domain.Aggregates.SupportAggregate.Events;
+using UniThesis.Domain.Aggregates.UserAggregate;
+using UniThesis.Domain.Enums.Notification;
+
+namespace UniThesis.Application.Features.Supports.EventHandlers;
+
+/// <summary>
+/// Handles the TicketMessageAddedEvent domain event.
+/// Logs the message addition and notifies the relevant party (reporter or admin).
+/// </summary>
+public class TicketMessageAddedEventHandler : INotificationHandler<TicketMessageAddedEvent>
+{
+    private readonly ILogger<TicketMessageAddedEventHandler> _logger;
+    private readonly INotificationService _notificationService;
+    private readonly ISupportTicketRepository _ticketRepository;
+    private readonly IUserRepository _userRepository;
+
+    public TicketMessageAddedEventHandler(
+        ILogger<TicketMessageAddedEventHandler> logger,
+        INotificationService notificationService,
+        ISupportTicketRepository ticketRepository,
+        IUserRepository userRepository)
+    {
+        _logger = logger;
+        _notificationService = notificationService;
+        _ticketRepository = ticketRepository;
+        _userRepository = userRepository;
+    }
+
+    public async Task Handle(TicketMessageAddedEvent notification, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "Message added to ticket: TicketId={TicketId}, MessageId={MessageId}, SenderId={SenderId}",
+            notification.TicketId,
+            notification.MessageId,
+            notification.SenderId);
+
+        var ticket = await _ticketRepository.GetByIdAsync(notification.TicketId, cancellationToken);
+        if (ticket is null) return;
+
+        var sender = await _userRepository.GetByIdAsync(notification.SenderId, cancellationToken);
+        var senderName = sender?.FullName ?? "Người dùng";
+
+        // If sender is the reporter, notify the assignee (Admin). Otherwise, notify the reporter.
+        var recipientId = notification.SenderId == ticket.ReporterId
+            ? ticket.AssigneeId ?? Guid.Empty
+            : ticket.ReporterId;
+
+        if (recipientId != Guid.Empty)
+        {
+            await _notificationService.SendAsync(
+                recipientId,
+                "Phản hồi mới trên ticket",
+                $"{senderName} đã gửi phản hồi trên ticket {ticket.Code.Value}.",
+                NotificationType.Info,
+                NotificationCategory.Support,
+                $"/supports/{notification.TicketId}",
+                cancellationToken);
+        }
+    }
+}

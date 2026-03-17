@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using UniThesis.Domain.Aggregates.SupportAggregate;
 using UniThesis.Persistence.ValueConverters;
@@ -60,8 +60,41 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Support
                 .HasForeignKey(t => t.AssigneeId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            // Messages Relationship
+            builder.HasMany(t => t.Messages)
+                .WithOne()
+                .HasForeignKey(m => m.TicketId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // Ignore domain events
             builder.Ignore(t => t.DomainEvents);
+        }
+    }
+
+    /// <summary>
+    /// EF Core configuration for TicketMessage entity.
+    /// </summary>
+    public class TicketMessageConfiguration : IEntityTypeConfiguration<TicketMessage>
+    {
+        public void Configure(EntityTypeBuilder<TicketMessage> builder)
+        {
+            builder.ToTable("TicketMessages");
+
+            builder.HasKey(m => m.Id);
+
+            builder.Property(m => m.Content)
+                .HasMaxLength(4000)
+                .IsRequired();
+
+            builder.HasIndex(m => m.TicketId);
+            builder.HasIndex(m => m.SenderId);
+            builder.HasIndex(m => m.CreatedAt);
+
+            // Foreign key to User (Sender)
+            builder.HasOne<Domain.Aggregates.UserAggregate.User>()
+                .WithMany()
+                .HasForeignKey(m => m.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

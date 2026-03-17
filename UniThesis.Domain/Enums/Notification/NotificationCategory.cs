@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -16,6 +16,7 @@ namespace UniThesis.Domain.Enums.Notification
         TopicPool = 5,
         Group = 6,
         Defense = 7,
-        Deadline = 8
+        Deadline = 8,
+        Support = 9
     }
 }

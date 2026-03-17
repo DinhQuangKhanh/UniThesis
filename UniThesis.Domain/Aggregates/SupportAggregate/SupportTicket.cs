@@ -1,4 +1,4 @@
-﻿using UniThesis.Domain.Aggregates.SupportAggregate.Events;
+using UniThesis.Domain.Aggregates.SupportAggregate.Events;
 using UniThesis.Domain.Aggregates.SupportAggregate.ValueObjects;
 using UniThesis.Domain.Common.Exceptions;
 using UniThesis.Domain.Common.Primitives;
@@ -20,6 +20,9 @@ namespace UniThesis.Domain.Aggregates.SupportAggregate
         public DateTime? UpdatedAt { get; private set; }
         public DateTime? ResolvedAt { get; private set; }
         public DateTime? ClosedAt { get; private set; }
+
+        private readonly List<TicketMessage> _messages = new();
+        public IReadOnlyCollection<TicketMessage> Messages => _messages.AsReadOnly();
 
         private SupportTicket() { }
 
@@ -157,6 +160,18 @@ namespace UniThesis.Domain.Aggregates.SupportAggregate
                 Description = description.Trim();
 
             UpdatedAt = DateTime.UtcNow;
+        }
+
+        public void AddMessage(Guid senderId, string content)
+        {
+            if (Status == TicketStatus.Closed)
+                throw new BusinessRuleValidationException("Cannot add a message to a closed ticket.");
+
+            var message = TicketMessage.Create(Id, senderId, content);
+            _messages.Add(message);
+            
+            UpdatedAt = DateTime.UtcNow;
+            RaiseDomainEvent(new TicketMessageAddedEvent(Id, message.Id, senderId));
         }
     }
 }
