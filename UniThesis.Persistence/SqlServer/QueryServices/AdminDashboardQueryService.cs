@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using UniThesis.Application.Common.Interfaces;
 using UniThesis.Application.Features.Dashboard.DTOs;
 using UniThesis.Domain.Enums.Project;
-using UniThesis.Domain.Enums.Semester;
 using UniThesis.Domain.Enums.Ticket;
 using UniThesis.Persistence.SqlServer;
 
@@ -29,10 +28,13 @@ public class AdminDashboardQueryService : IAdminDashboardQueryService
             .CountAsync(r => r.RoleName == "Mentor" && r.IsActive, cancellationToken);
 
         // 2. Active semester with phases
+        var now = DateTime.UtcNow;
         var activeSemester = await _context.Semesters
             .AsNoTracking()
             .Include(s => s.Phases)
-            .FirstOrDefaultAsync(s => s.Status == SemesterStatus.Active, cancellationToken);
+            .FirstOrDefaultAsync(
+                s => s.StartDate <= now && s.EndDate >= now,
+                cancellationToken);
 
         // 3. Project stats for active semester
         var totalRegisteredTopics = 0;
