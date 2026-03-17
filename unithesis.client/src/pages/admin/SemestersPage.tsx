@@ -1,46 +1,27 @@
 import { useState, useEffect, useCallback } from 'react'
+import { format } from 'date-fns'
+import { vi } from 'date-fns/locale'
 import { motion } from 'framer-motion'
 import { Header } from '@/components/layout'
 import { CreateSemesterModal } from '@/components/admin/CreateSemesterModal'
+import { EditSemesterModal } from '@/components/admin/EditSemesterModal'
 import { apiClient } from '@/lib/apiClient'
-
-// ---- Types matching backend SemesterDto ----
-interface SemesterPhaseDto {
-    id: number
-    name: string
-    type: string
-    startDate: string
-    endDate: string
-    order: number
-    status: string
-    durationDays: number
-}
-
-interface SemesterDto {
-    id: number
-    name: string
-    code: string
-    startDate: string
-    endDate: string
-    status: string
-    academicYear: string
-    description: string | null
-    createdAt: string
-    updatedAt: string | null
-    phases: SemesterPhaseDto[]
-}
+import { SemesterDto, SemesterPhaseDto } from '@/types/admin.types'
 
 // ---- Helpers ----
 function formatDate(iso: string) {
-    return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    if (!iso) return ''
+    return format(new Date(iso), 'dd/MM/yyyy', { locale: vi })
 }
 
 function statusBadge(status: string) {
     switch (status) {
-        case 'Active':
-            return { bg: 'bg-green-100 text-green-700 border-green-200', dot: 'bg-green-600', label: 'Đang hoạt động' }
-        case 'Closed':
-            return { bg: 'bg-slate-100 text-slate-600 border-slate-200', dot: '', label: 'Đã đóng' }
+        case 'Ongoing':
+            return { bg: 'bg-green-100 text-green-700 border-green-200', dot: 'bg-green-600', label: 'Đang diễn ra' }
+        case 'Ended':
+            return { bg: 'bg-slate-100 text-slate-600 border-slate-200', dot: '', label: 'Đã kết thúc' }
+        case 'Upcoming':
+            return { bg: 'bg-blue-100 text-blue-700 border-blue-200', dot: 'bg-blue-600', label: 'Sắp tới' }
         default:
             return { bg: 'bg-amber-100 text-amber-700 border-amber-200', dot: 'bg-amber-500', label: status }
     }
@@ -75,30 +56,52 @@ const item = {
 
 // ---- Page ----
 export function SemestersPage() {
-    const [isModalOpen, setIsModalOpen] = useState(false)
     const [semesters, setSemesters] = useState<SemesterDto[]>([])
-    const [loading, setLoading] = useState(true)
+    const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+    const [selectedSemester, setSelectedSemester] = useState<SemesterDto | null>(null)
+    const [statusFilter, setStatusFilter] = useState<string>('')
+    const [openDropdownId, setOpenDropdownId] = useState<number | null>(null)
 
     const fetchSemesters = useCallback(async () => {
         try {
-            setLoading(true)
+            setIsLoading(true)
             setError(null)
-            const data = await apiClient.get<SemesterDto[]>('/api/admin/semesters')
+            const query = statusFilter ? '?status=' + statusFilter : ''
+            const data = await apiClient.get<SemesterDto[]>('/api/admin/semesters' + query)
             setSemesters(data)
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Không thể tải danh sách kỳ học.')
         } finally {
-            setLoading(false)
+            setIsLoading(false)
         }
-    }, [])
+    }, [statusFilter])
 
     useEffect(() => {
         fetchSemesters()
     }, [fetchSemesters])
 
-    const handleCreated = () => {
-        fetchSemesters()
+    const handleDelete = async (id: number) => {
+        if (!window.confirm('Bạn có chắc chắn muốn xóa kỳ học này? Chỉ có thể xóa kỳ học Chưa bắt đầu.')) return
+        try {
+            await apiClient.delete('/api/admin/semesters/' + id)
+            fetchSemesters()
+        } catch (err: any) {
+            alert(err.message || 'Xóa thất bại')
+        }
+    }
+
+    const handleEdit = (semester: SemesterDto) => {
+        setSelectedSemester(semester)
+        setIsEditModalOpen(true)
+        setOpenDropdownId(null)
+    }
+
+    const toggleDropdown = (id: number) => {
+        if (openDropdownId === id) setOpenDropdownId(null)
+        else setOpenDropdownId(id)
     }
 
     return (
@@ -123,12 +126,22 @@ export function SemestersPage() {
                             <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Danh Sách Kỳ Học</h2>
                             <p className="text-sm text-slate-500 mt-1">Quản lý các kỳ bảo vệ đồ án, tiến độ và mốc thời gian.</p>
                         </div>
-                        <div className="flex gap-3">
-                            <button className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-600 border border-slate-300 px-4 py-2.5 rounded-md shadow-sm transition-all font-medium text-sm">
-                                <span className="material-symbols-outlined text-[20px]">filter_list</span>
-                                Bộ lọc
+                        <div className="flex items-center gap-3">
+                            <select 
+                                value={statusFilter} 
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="bg-white border border-slate-200 text-sm font-semibold text-slate-700 px-4 py-2.5 rounded-lg hover:bg-slate-50 transition-colors shadow-sm outline-none focus:ring-2 focus:ring-primary/20"
+                            >
+                                <option value="">Tất cả trạng thái</option>
+                                <option value="Ongoing">Đang diễn ra</option>
+                                <option value="Upcoming">Sắp tới</option>
+                                <option value="Ended">Đã kết thúc</option>
+                            </select>
+                            <button className="flex items-center gap-2 bg-white border border-slate-200 text-sm font-semibold text-slate-700 px-4 py-2.5 rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
+                                <span className="material-symbols-outlined text-[18px]">filter_list</span>
+                                Báo cáo
                             </button>
-                            <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2.5 rounded-md shadow-sm transition-all font-medium text-sm">
+                            <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2.5 rounded-md shadow-sm transition-all font-medium text-sm">
                                 <span className="material-symbols-outlined text-[20px]">add</span>
                                 Tạo kỳ học mới
                             </button>
@@ -136,7 +149,7 @@ export function SemestersPage() {
                     </motion.div>
 
                     {/* Loading */}
-                    {loading && (
+                    {isLoading && (
                         <motion.div variants={item} className="flex flex-col items-center justify-center py-16 gap-3">
                             <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
                             <p className="text-sm text-slate-500">Đang tải danh sách kỳ học...</p>
@@ -144,7 +157,7 @@ export function SemestersPage() {
                     )}
 
                     {/* Error */}
-                    {error && !loading && (
+                    {error && !isLoading && (
                         <motion.div variants={item} className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
                             <span className="material-symbols-outlined text-red-600 text-[20px] mt-0.5">error</span>
                             <div>
@@ -156,7 +169,7 @@ export function SemestersPage() {
                     )}
 
                     {/* Empty state */}
-                    {!loading && !error && semesters.length === 0 && (
+                    {!isLoading && !error && semesters.length === 0 && (
                         <motion.div variants={item} className="flex flex-col items-center justify-center py-16 gap-4 text-center">
                             <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
                                 <span className="material-symbols-outlined text-4xl text-slate-400">calendar_month</span>
@@ -169,12 +182,12 @@ export function SemestersPage() {
                     )}
 
                     {/* Semester Cards */}
-                    {!loading && !error && semesters.length > 0 && (
+                    {!isLoading && !error && semesters.length > 0 && (
                         <div className="space-y-6">
                             {semesters.map((semester) => {
                                 const badge = statusBadge(semester.status)
-                                const isActive = semester.status === 'Active'
-                                const currentPhase = semester.phases.find(p => p.status === 'Active' || p.status === 'InProgress')
+                                const isActive = semester.status === 'Ongoing'
+                                const currentPhase = semester.phases.find((p: SemesterPhaseDto) => p.status === 'Ongoing' || p.status === 'InProgress')
 
                                 return (
                                     <motion.div
@@ -207,13 +220,31 @@ export function SemestersPage() {
                                                         )}
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <button className="p-2 text-slate-400 hover:text-primary hover:bg-slate-100 rounded-full transition-colors" title="Cấu hình">
-                                                        <span className="material-symbols-outlined">settings</span>
+                                                <div className="flex items-center gap-2 relative">
+                                                    <button 
+                                                        onClick={() => toggleDropdown(semester.id)}
+                                                        className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+                                                    >
+                                                        <span className="material-symbols-outlined text-[20px]">more_vert</span>
                                                     </button>
-                                                    <button className="p-2 text-slate-400 hover:text-primary hover:bg-slate-100 rounded-full transition-colors" title="Thêm hành động">
-                                                        <span className="material-symbols-outlined">more_vert</span>
-                                                    </button>
+                                                    
+                                                    {openDropdownId === semester.id && (
+                                                        <div className="absolute right-0 top-10 mt-1 w-48 bg-white rounded-md shadow-lg border border-slate-200 z-10 py-1">
+                                                            {semester.status === 'Upcoming' && (
+                                                                <>
+                                                                    <button onClick={() => handleEdit(semester)} className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                                                                        <span className="material-symbols-outlined text-[18px]">edit</span> Sửa thông tin
+                                                                    </button>
+                                                                    <button onClick={() => { handleDelete(semester.id); setOpenDropdownId(null); }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+                                                                        <span className="material-symbols-outlined text-[18px]">delete</span> Xóa kỳ học
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                            {semester.status !== 'Upcoming' && (
+                                                                <p className="px-4 py-2 text-xs text-slate-400 italic">Không thể chỉnh sửa kỳ học đã bắt đầu hoặc kết thúc.</p>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
 
@@ -239,16 +270,16 @@ export function SemestersPage() {
                                                             const total = semester.phases.length
                                                             let pct = 0
                                                             if (total > 1) {
-                                                                const currentIndex = semester.phases.findIndex(p => p.status === 'Active' || p.status === 'InProgress')
+                                                                const currentIndex = semester.phases.findIndex((p: SemesterPhaseDto) => p.status === 'Active' || p.status === 'InProgress')
                                                                 if (currentIndex !== -1) {
                                                                     pct = (currentIndex / (total - 1)) * 100
                                                                 } else {
-                                                                    const completedCount = semester.phases.filter(p => p.status === 'Completed').length
+                                                                    const completedCount = semester.phases.filter((p: SemesterPhaseDto) => p.status === 'Completed').length
                                                                     if (completedCount === total) pct = 100
                                                                     else if (completedCount > 0) pct = Math.round(((completedCount - 1) / (total - 1)) * 100)
                                                                 }
                                                             } else if (total === 1) {
-                                                                const completedCount = semester.phases.filter(p => p.status === 'Completed').length
+                                                                const completedCount = semester.phases.filter((p: SemesterPhaseDto) => p.status === 'Completed').length
                                                                 pct = completedCount === 1 ? 100 : 0
                                                             }
                                                             return (
@@ -259,17 +290,17 @@ export function SemestersPage() {
                                                             )
                                                         })()}
                                                         <div className="relative z-10 flex justify-between w-full">
-                                                            {semester.phases.map((phase) => (
+                                                            {semester.phases.map((phase: SemesterPhaseDto) => (
                                                                 <TimelineStep
                                                                     key={phase.id}
                                                                     icon={phaseIcon(phase.type)}
                                                                     label={phase.name}
                                                                     status={phaseStatus(phase.status)}
                                                                     info={phase.status === 'Completed'
-                                                                        ? `Hoàn tất ${formatDate(phase.endDate)}`
+                                                                        ? 'Hoàn tất ' + formatDate(phase.endDate)
                                                                         : phaseStatus(phase.status) === 'current'
                                                                             ? 'Đang diễn ra'
-                                                                            : `Dự kiến ${formatDate(phase.startDate)}`
+                                                                            : 'Dự kiến ' + formatDate(phase.startDate)
                                                                     }
                                                                 />
                                                             ))}
@@ -285,7 +316,19 @@ export function SemestersPage() {
                     )}
                 </motion.div>
             </div>
-            <CreateSemesterModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onCreated={handleCreated} />
+            {/* Create/Edit Modals */}
+            <CreateSemesterModal 
+                isOpen={isCreateModalOpen} 
+                onClose={() => setIsCreateModalOpen(false)} 
+                onCreated={fetchSemesters}
+            />
+            
+            <EditSemesterModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                onUpdated={fetchSemesters}
+                initialData={selectedSemester}
+            />
         </>
     )
 }
