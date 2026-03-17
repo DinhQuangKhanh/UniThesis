@@ -28,7 +28,7 @@ public class StudentGroupQueryService : IStudentGroupQueryService
         var targetSemesterId = semesterId
             ?? await _context.Semesters
                 .AsNoTracking()
-                .Where(s => s.Status == SemesterStatus.Active)
+                .Where(s => s.StartDate <= DateTime.UtcNow && s.EndDate >= DateTime.UtcNow)
                 .Select(s => s.Id)
                 .FirstOrDefaultAsync(cancellationToken);
 

@@ -1,7 +1,8 @@
 using MediatR;
-using UniThesis.Application.Features.Semesters.Commands.ActivateSemester;
-using UniThesis.Application.Features.Semesters.Commands.CloseSemester;
+using Microsoft.AspNetCore.Mvc;
 using UniThesis.Application.Features.Semesters.Commands.CreateSemester;
+using UniThesis.Application.Features.Semesters.Commands.DeleteSemester;
+using UniThesis.Application.Features.Semesters.Commands.UpdateSemester;
 using UniThesis.Application.Features.Semesters.Queries.GetActiveSemester;
 using UniThesis.Application.Features.Semesters.Queries.GetAllSemesters;
 using UniThesis.Application.Features.Semesters.Queries.GetSemesterById;
@@ -13,10 +14,11 @@ public class GetAllSemestersEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("/api/admin/semesters", async (
+                [FromQuery] string? status,
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
-                var result = await sender.Send(new GetAllSemestersQuery(), cancellationToken);
+                var result = await sender.Send(new GetAllSemestersQuery(status), cancellationToken);
                 return Results.Ok(result);
             })
             .RequireAuthorization("RequireAdmin")
@@ -89,21 +91,24 @@ public class CreateSemesterEndpoint : IEndpoint
     }
 }
 
-public class ActivateSemesterEndpoint : IEndpoint
+
+public class UpdateSemesterEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/admin/semesters/{id:int}/activate", async (
+        app.MapPut("/api/admin/semesters/{id:int}", async (
                 int id,
+                UpdateSemesterCommand command,
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
-                await sender.Send(new ActivateSemesterCommand(id), cancellationToken);
+                if (id != command.Id) return Results.BadRequest("Id mismatch");
+                await sender.Send(command, cancellationToken);
                 return Results.NoContent();
             })
             .RequireAuthorization("RequireAdmin")
             .WithTags("Semesters")
-            .WithName("ActivateSemester")
+            .WithName("UpdateSemester")
             .Produces(204)
             .Produces(400)
             .Produces(401)
@@ -111,21 +116,21 @@ public class ActivateSemesterEndpoint : IEndpoint
     }
 }
 
-public class CloseSemesterEndpoint : IEndpoint
+public class DeleteSemesterEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/admin/semesters/{id:int}/close", async (
+        app.MapDelete("/api/admin/semesters/{id:int}", async (
                 int id,
                 ISender sender,
                 CancellationToken cancellationToken) =>
             {
-                await sender.Send(new CloseSemesterCommand(id), cancellationToken);
+                await sender.Send(new DeleteSemesterCommand(id), cancellationToken);
                 return Results.NoContent();
             })
             .RequireAuthorization("RequireAdmin")
             .WithTags("Semesters")
-            .WithName("CloseSemester")
+            .WithName("DeleteSemester")
             .Produces(204)
             .Produces(400)
             .Produces(401)
