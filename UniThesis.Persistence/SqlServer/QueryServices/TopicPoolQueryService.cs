@@ -46,6 +46,68 @@ public class TopicPoolQueryService : ITopicPoolQueryService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<List<DepartmentWithPoolsDto>> GetPoolsByDepartmentAsync(CancellationToken cancellationToken = default)
+    {
+        var departments = await _context.Departments
+            .AsNoTracking()
+            .Where(d => d.IsActive)
+            .OrderBy(d => d.Name)
+            .Select(d => new
+            {
+                d.Id,
+                d.Code,
+                d.Name,
+                Majors = _context.Majors
+                    .Where(m => m.DepartmentId == d.Id && m.IsActive)
+                    .OrderBy(m => m.Name)
+                    .Select(m => new
+                    {
+                        m.Id,
+                        m.Code,
+                        m.Name,
+                        Pool = _context.TopicPools
+                            .Where(tp => tp.MajorId == m.Id)
+                            .OrderByDescending(tp => tp.UpdatedAt ?? tp.CreatedAt)
+                            .Select(tp => new
+                            {
+                                tp.Id,
+                                tp.Code,
+                                tp.Name,
+                                tp.Status,
+                                TotalTopics = _context.Projects.Count(p =>
+                                    p.TopicPoolId == tp.Id &&
+                                    p.SourceType == ProjectSourceType.FromPool)
+                            })
+                            .FirstOrDefault()
+                    })
+                    .ToList()
+            })
+            .ToListAsync(cancellationToken);
+
+        return departments.Select(d => new DepartmentWithPoolsDto
+        {
+            DepartmentId = d.Id,
+            DepartmentCode = d.Code,
+            DepartmentName = d.Name,
+            Majors = d.Majors.Select(m => new MajorWithPoolDto
+            {
+                MajorId = m.Id,
+                MajorCode = m.Code,
+                MajorName = m.Name,
+                Pool = m.Pool is null
+                    ? null
+                    : new TopicPoolSummaryDto
+                    {
+                        Id = m.Pool.Id,
+                        Code = m.Pool.Code,
+                        Name = m.Pool.Name,
+                        StatusName = m.Pool.Status.ToString(),
+                        TotalTopics = m.Pool.TotalTopics,
+                    }
+            }).ToList()
+        }).ToList();
+    }
+
     public async Task<TopicPoolDto?> GetTopicPoolByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.TopicPools
@@ -126,15 +188,11 @@ public class TopicPoolQueryService : ITopicPoolQueryService
         int? majorId, string? search, int? poolStatus, string? sortBy,
         int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        // Base query: projects from pool with major info and first active mentor
+        // Base query: projects from pool with major info (no 'let' subquery — avoids EF translation issues)
         var query = from p in _context.Projects.AsNoTracking()
                     where p.SourceType == ProjectSourceType.FromPool
                     join m in _context.Set<Domain.Entities.Major>() on p.MajorId equals m.Id
-                    let primaryMentor = p.Mentors
-                        .Where(pm => pm.Status == ProjectMentorStatus.Active)
-                        .Join(_context.Users, pm => pm.MentorId, u => u.Id, (pm, u) => new { pm.MentorId, u.FullName })
-                        .FirstOrDefault()
-                    select new { Project = p, MajorName = m.Name, MajorCode = m.Code, primaryMentor };
+                    select new { Project = p, MajorName = m.Name, MajorCode = m.Code };
 
         // Filter by major
         if (majorId.HasValue)
@@ -152,24 +210,30 @@ public class TopicPoolQueryService : ITopicPoolQueryService
         {
             var term = search.Trim();
             query = query.Where(x =>
-                x.Project.NameVi.Value.Contains(term) ||
-                x.Project.NameEn.Value.Contains(term) ||
-                (x.primaryMentor != null && x.primaryMentor.FullName.Contains(term)));
+                EF.Property<string>(x.Project, "NameVi").Contains(term) ||
+                EF.Property<string>(x.Project, "NameEn").Contains(term) ||
+                x.Project.Mentors.Any(pm =>
+                    pm.Status == ProjectMentorStatus.Active &&
+                    _context.Users.Any(u => u.Id == pm.MentorId && u.FullName.Contains(term))));
         }
 
         // Sort — use EF.Property<string>() for value objects to avoid translation failures
-        // when combined with complex 'let' subqueries (NameVi is ProjectName with HasConversion)
         query = sortBy switch
         {
             "name" => query.OrderBy(x => EF.Property<string>(x.Project, "NameVi")),
-            "mentor" => query.OrderBy(x => x.primaryMentor != null ? x.primaryMentor.FullName : ""),
+            "mentor" => query.OrderBy(x =>
+                x.Project.Mentors
+                    .Where(pm => pm.Status == ProjectMentorStatus.Active)
+                    .Join(_context.Users, pm => pm.MentorId, u => u.Id, (pm, u) => u.FullName)
+                    .FirstOrDefault() ?? ""),
             _ => query.OrderByDescending(x => x.Project.CreatedAt) // "newest" default
         };
 
         var totalCount = await query.CountAsync(cancellationToken);
         var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
-        // 2-step projection: anonymous first to avoid (int) cast on nvarchar PoolStatus in SQL
+        // 2-step projection: anonymous first to avoid (int) cast on nvarchar PoolStatus in SQL.
+        // Mentor subquery is resolved here (only for the current page) instead of via 'let' clause.
         var rawItems = await query
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -186,8 +250,14 @@ public class TopicPoolQueryService : ITopicPoolQueryService
                 x.MajorCode,
                 x.Project.PoolStatus,
                 x.Project.MaxStudents,
-                MentorName = x.primaryMentor != null ? x.primaryMentor.FullName : "Chưa có mentor",
-                MentorId = x.primaryMentor != null ? x.primaryMentor.MentorId : Guid.Empty,
+                MentorName = x.Project.Mentors
+                    .Where(pm => pm.Status == ProjectMentorStatus.Active)
+                    .Join(_context.Users, pm => pm.MentorId, u => u.Id, (pm, u) => u.FullName)
+                    .FirstOrDefault() ?? "Chưa có mentor",
+                MentorId = x.Project.Mentors
+                    .Where(pm => pm.Status == ProjectMentorStatus.Active)
+                    .Select(pm => pm.MentorId)
+                    .FirstOrDefault(),
                 x.Project.CreatedAt,
             })
             .ToListAsync(cancellationToken);
