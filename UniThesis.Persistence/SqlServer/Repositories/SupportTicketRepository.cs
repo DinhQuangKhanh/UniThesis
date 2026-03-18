@@ -85,14 +85,18 @@ namespace UniThesis.Persistence.SqlServer.Repositories
         public async Task<int> GetNextSequenceAsync(int year, CancellationToken cancellationToken = default)
         {
             var prefix = $"TK-{year}-";
-            var lastCode = await _dbSet
-                .Where(t => EF.Functions.Like(t.Code.Value, $"{prefix}%"))
-                .OrderByDescending(t => t.Code)
-                .Select(t => t.Code.Value)
-                .FirstOrDefaultAsync(cancellationToken);
+            // Load all tickets, filter by year in memory to avoid ValueConverter issue with WHERE clause
+            var allTickets = await _dbSet
+                .OrderByDescending(t => t.CreatedAt)
+                .Take(1000) // Limit to recent tickets for performance
+                .ToListAsync(cancellationToken);
 
-            if (lastCode == null) return 1;
+            var lastTicket = allTickets
+                .FirstOrDefault(t => t.Code.Value.StartsWith(prefix));
 
+            if (lastTicket == null) return 1;
+
+            var lastCode = lastTicket.Code.Value;
             var sequencePart = lastCode.Replace(prefix, "");
             return int.TryParse(sequencePart, out var seq) ? seq + 1 : 1;
         }
