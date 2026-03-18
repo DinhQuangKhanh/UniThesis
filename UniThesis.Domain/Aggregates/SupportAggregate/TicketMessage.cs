@@ -21,7 +21,6 @@ namespace UniThesis.Domain.Aggregates.SupportAggregate
 
             return new TicketMessage
             {
-                Id = Guid.NewGuid(),
                 TicketId = ticketId,
                 SenderId = senderId,
                 Content = content.Trim(),

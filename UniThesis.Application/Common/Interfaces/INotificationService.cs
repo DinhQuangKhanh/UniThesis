@@ -23,7 +23,7 @@ public interface INotificationService
     Task<IEnumerable<NotificationDto>> GetUnreadNotificationsAsync(Guid userId,
         CancellationToken ct = default);
 
-    Task<long> GetUnreadCountAsync(Guid userId, CancellationToken ct = default);
+    Task<long> GetUnreadCountAsync(Guid userId, NotificationCategory? category = null, CancellationToken ct = default);
 
     Task MarkAsReadAsync(Guid notificationId, CancellationToken ct = default);
 

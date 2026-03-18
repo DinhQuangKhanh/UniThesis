@@ -1,4 +1,4 @@
-﻿using MongoDB.Driver;
+using MongoDB.Driver;
 using UniThesis.Persistence.MongoDB.Documents;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
 
@@ -25,8 +25,18 @@ namespace UniThesis.Persistence.MongoDB.Repositories.Implementation
         public async Task<IEnumerable<NotificationDocument>> GetUnreadByUserIdAsync(Guid userId, CancellationToken ct = default)
             => await _collection.Find(n => n.UserId == userId && !n.IsRead).SortByDescending(n => n.CreatedAt).ToListAsync(ct);
 
-        public async Task<long> GetUnreadCountAsync(Guid userId, CancellationToken ct = default)
-            => await _collection.CountDocumentsAsync(n => n.UserId == userId && !n.IsRead, cancellationToken: ct);
+        public async Task<long> GetUnreadCountAsync(Guid userId, UniThesis.Domain.Enums.Notification.NotificationCategory? category = null, CancellationToken ct = default)
+        {
+            var filter = Builders<NotificationDocument>.Filter.Eq(n => n.UserId, userId) & 
+                         Builders<NotificationDocument>.Filter.Eq(n => n.IsRead, false);
+            
+            if (category.HasValue)
+            {
+                filter &= Builders<NotificationDocument>.Filter.Eq(n => n.Category, category.Value);
+            }
+
+            return await _collection.CountDocumentsAsync(filter, cancellationToken: ct);
+        }
 
         public async Task MarkAsReadAsync(Guid notificationId, CancellationToken ct = default)
             => await _collection.UpdateOneAsync(n => n.Id == notificationId, Builders<NotificationDocument>.Update.Set(n => n.IsRead, true).Set(n => n.ReadAt, DateTime.UtcNow), cancellationToken: ct);

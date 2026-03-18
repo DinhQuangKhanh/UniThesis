@@ -1,4 +1,4 @@
-﻿using UniThesis.Persistence.MongoDB.Documents;
+using UniThesis.Persistence.MongoDB.Documents;
 
 namespace UniThesis.Persistence.MongoDB.Repositories.Interfaces
 {
@@ -8,7 +8,7 @@ namespace UniThesis.Persistence.MongoDB.Repositories.Interfaces
         Task AddManyAsync(IEnumerable<NotificationDocument> notifications, CancellationToken ct = default);
         Task<IEnumerable<NotificationDocument>> GetByUserIdAsync(Guid userId, int limit = 50, CancellationToken ct = default);
         Task<IEnumerable<NotificationDocument>> GetUnreadByUserIdAsync(Guid userId, CancellationToken ct = default);
-        Task<long> GetUnreadCountAsync(Guid userId, CancellationToken ct = default);
+        Task<long> GetUnreadCountAsync(Guid userId, UniThesis.Domain.Enums.Notification.NotificationCategory? category = null, CancellationToken ct = default);
         Task MarkAsReadAsync(Guid notificationId, CancellationToken ct = default);
         Task MarkAllAsReadAsync(Guid userId, CancellationToken ct = default);
     }

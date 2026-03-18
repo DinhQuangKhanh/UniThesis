@@ -12,10 +12,11 @@ public class GetUnreadCountEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("/api/notifications/unread-count", async (
+                [Microsoft.AspNetCore.Mvc.FromQuery] UniThesis.Domain.Enums.Notification.NotificationCategory? category,
                 ISender sender,
                 CancellationToken cancellationToken = default) =>
             {
-                var count = await sender.Send(new GetUnreadCountQuery(), cancellationToken);
+                var count = await sender.Send(new GetUnreadCountQuery(category), cancellationToken);
                 return Results.Ok(new { UnreadCount = count });
             })
             .RequireAuthorization()

@@ -18,18 +18,22 @@ public class SupportEndpoints : IEndpoint
         var group = app.MapGroup("api/supports").RequireAuthorization();
 
         // 1. Thống kê tổng quan ticket (Admin only typically, but we allow based on permissions later if needed)
-        group.MapGet("stats", async (ISender sender) =>
+        group.MapGet("stats", async (ISender sender, HttpContext context) =>
         {
-            var result = await sender.Send(new GetTicketStatsQuery());
+            var userId = context.User.GetUserId();
+            var isAdmin = context.User.IsInRole("Admin");
+            var result = await sender.Send(new GetTicketStatsQuery(userId, isAdmin));
             return Results.Ok(result);
         })
         .WithName("GetTicketStats")
         .WithTags("Supports");
 
         // 2. Danh sách ticket (Filter, Search)
-        group.MapGet("", async ([AsParameters] GetTicketsRequest request, ISender sender) =>
+        group.MapGet("", async ([AsParameters] GetTicketsRequest request, ISender sender, HttpContext context) =>
         {
-            var result = await sender.Send(new GetTicketsQuery(request.SearchTerm, request.Status, request.Priority));
+            var userId = context.User.GetUserId();
+            var isAdmin = context.User.IsInRole("Admin");
+            var result = await sender.Send(new GetTicketsQuery(userId, isAdmin, request.SearchTerm, request.Status, request.Priority));
             return Results.Ok(result);
         })
         .WithName("GetTickets")

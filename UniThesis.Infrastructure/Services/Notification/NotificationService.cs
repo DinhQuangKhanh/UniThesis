@@ -136,8 +136,8 @@ namespace UniThesis.Infrastructure.Services.Notification
             return docs.Select(MapToDto);
         }
 
-        public async Task<long> GetUnreadCountAsync(Guid userId, CancellationToken ct = default)
-            => await _notificationRepository.GetUnreadCountAsync(userId, ct);
+        public async Task<long> GetUnreadCountAsync(Guid userId, NotificationCategory? category = null, CancellationToken ct = default)
+            => await _notificationRepository.GetUnreadCountAsync(userId, category, ct);
 
         public async Task MarkAsReadAsync(Guid notificationId, CancellationToken ct = default)
             => await _notificationRepository.MarkAsReadAsync(notificationId, ct);

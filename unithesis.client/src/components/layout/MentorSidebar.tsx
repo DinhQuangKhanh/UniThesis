@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
 import { RoleSwitcher } from './RoleSwitcher'
+import { useUnreadSupportCount } from '@/hooks/useUnreadSupportCount'
 
 const navItems = [
     { label: 'Dashboard', icon: 'dashboard', path: '/mentor' },
@@ -19,6 +20,7 @@ const systemItems = [
 export function MentorSidebar() {
     const location = useLocation()
     const { user, logout } = useAuth()
+    const unreadSupportCount = useUnreadSupportCount()
     const [isHovered, setIsHovered] = useState(false)
 
     const isActive = (path: string) => {
@@ -56,7 +58,13 @@ export function MentorSidebar() {
             <div className={`p-4 border-t border-[#e9ecf1] ${isHovered ? '' : 'px-2'}`}>
                 <RoleSwitcher expanded={isHovered} />
                 {systemItems.map((item) => (
-                    <NavItem key={item.path} {...item} active={isActive(item.path)} expanded={isHovered} />
+                    <NavItem 
+                        key={item.path} 
+                        {...item} 
+                        badge={item.path === '/mentor/support' && unreadSupportCount > 0 ? unreadSupportCount.toString() : undefined}
+                        active={isActive(item.path)} 
+                        expanded={isHovered} 
+                    />
                 ))}
                 {/* User Profile */}
                 <div className={`mt-4 flex items-center ${isHovered ? 'gap-3 px-4' : 'justify-center px-0'} py-2 transition-all duration-300`}>

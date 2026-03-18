@@ -27,7 +27,7 @@ interface NotificationListResponse {
 }
 
 interface UnreadCountResponse {
-  count: number;
+  unreadCount: number;
 }
 
 interface NotificationDropdownProps {
@@ -88,7 +88,7 @@ export function NotificationDropdown({ isNavy = false }: NotificationDropdownPro
   const fetchUnreadCount = useCallback(async () => {
     try {
       const res = await apiClient.get<UnreadCountResponse>("/api/notifications/unread-count");
-      setUnreadCount(Number(res.count ?? 0));
+      setUnreadCount(Number(res.unreadCount ?? 0));
     } catch {
       // silently ignore badge errors
     }
@@ -139,10 +139,10 @@ export function NotificationDropdown({ isNavy = false }: NotificationDropdownPro
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ── Mark single as read ───────────────────────────────────────────────────
   const markAsRead = useCallback(async (id: string, targetUrl: string | null) => {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
     setUnreadCount((prev) => Math.max(0, prev - 1));
+    window.dispatchEvent(new Event("notificationRead"));
 
     try {
       await apiClient.put(`/api/notifications/${id}/read`, {});
@@ -157,10 +157,10 @@ export function NotificationDropdown({ isNavy = false }: NotificationDropdownPro
     }
   }, []);
 
-  // ── Mark all as read ──────────────────────────────────────────────────────
   const markAllAsRead = useCallback(async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnreadCount(0);
+    window.dispatchEvent(new Event("notificationRead"));
     try {
       await apiClient.put("/api/notifications/read-all", {});
     } catch {

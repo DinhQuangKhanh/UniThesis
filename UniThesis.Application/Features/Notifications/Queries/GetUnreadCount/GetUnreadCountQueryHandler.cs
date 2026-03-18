@@ -25,6 +25,6 @@ public class GetUnreadCountQueryHandler : IQueryHandler<GetUnreadCountQuery, lon
         if (!_currentUser.IsAuthenticated || _currentUser.UserId is null)
             throw new UnauthorizedAccessException("User is not authenticated.");
 
-        return await _notificationService.GetUnreadCountAsync(_currentUser.UserId.Value, cancellationToken);
+        return await _notificationService.GetUnreadCountAsync(_currentUser.UserId.Value, request.Category, cancellationToken);
     }
 }

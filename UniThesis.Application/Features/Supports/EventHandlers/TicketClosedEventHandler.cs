@@ -36,14 +36,6 @@ public class TicketClosedEventHandler : INotificationHandler<TicketClosedEvent>
         var ticket = await _ticketRepository.GetByIdAsync(notification.TicketId, cancellationToken);
         if (ticket is null) return;
 
-        // Notify the reporter that their ticket has been closed
-        await _notificationService.SendAsync(
-            ticket.ReporterId,
-            "Ticket đã được đóng",
-            $"Ticket {ticket.Code.Value}: \"{ticket.Title}\" đã được đóng. Cảm ơn bạn đã sử dụng hệ thống hỗ trợ.",
-            NotificationType.Info,
-            NotificationCategory.Support,
-            $"/supports/{notification.TicketId}",
-            cancellationToken);
+        // Note: Notifications disabled to ensure reporter only gets reply notifications.
     }
 }
