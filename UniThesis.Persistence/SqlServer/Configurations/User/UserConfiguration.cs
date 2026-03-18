@@ -66,6 +66,8 @@ namespace UniThesis.Persistence.SqlServer.Configurations.User
 
             builder.HasIndex(u => u.Status);
 
+            builder.HasIndex(u => u.FullName);
+
             builder.HasIndex(u => u.DepartmentId);
 
             // Relationships

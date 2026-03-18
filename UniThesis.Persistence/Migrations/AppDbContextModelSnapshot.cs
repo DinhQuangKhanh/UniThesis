@@ -1104,6 +1104,8 @@ namespace UniThesis.Persistence.Migrations
                     b.HasIndex("FirebaseUid")
                         .IsUnique();
 
+                    b.HasIndex("FullName");
+
                     b.HasIndex("Status");
 
                     b.HasIndex("StudentCode")
