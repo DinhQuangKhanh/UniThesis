@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { NotificationDropdown } from '@/components/layout'
+import { studentGroupService, type MentorGroupDto } from '@/lib/studentGroupService'
 
 const container = {
     hidden: { opacity: 0 },
@@ -12,15 +14,18 @@ const item = {
     show: { opacity: 1, y: 0 }
 }
 
-const groups = [
-    { id: 'G1', name: 'Nhóm 01 - K15', field: 'Công nghệ Web', icon: 'code', topic: 'Xây dựng nền tảng học trực tuyến E-Learning tích hợp AI', members: 3 },
-    { id: 'G2', name: 'Nhóm 05 - K15', field: 'Ứng dụng Mobile', icon: 'smartphone', topic: 'Ứng dụng đặt sân bóng đá và quản lý giải đấu mini', members: 2 },
-    { id: 'G3', name: 'Nhóm 12 - K15', field: 'IoT / Robotics', icon: 'smart_toy', topic: 'Hệ thống nhà thông minh điều khiển bằng giọng nói tiếng Việt', members: 4 },
-    { id: 'G4', name: 'Nhóm 18 - K15', field: 'Big Data', icon: 'database', topic: 'Phân tích hành vi người dùng trên mạng xã hội', members: 2 },
-]
-
 export function MentorGroupsPage() {
     const navigate = useNavigate()
+    const [groups, setGroups] = useState<MentorGroupDto[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+
+    useEffect(() => {
+        studentGroupService.getMentorGroups()
+            .then(setGroups)
+            .catch(err => setError(err.message))
+            .finally(() => setLoading(false))
+    }, [])
 
     return (
         <>
@@ -55,86 +60,108 @@ export function MentorGroupsPage() {
                     <motion.div variants={item} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
                             <h1 className="text-2xl font-bold text-slate-900">Danh sách nhóm hướng dẫn</h1>
-                            <p className="text-slate-500 text-sm mt-1">Quản lý tiến độ và theo dõi các nhóm sinh viên khóa K15</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <select className="appearance-none bg-white border border-slate-200 text-slate-700 py-2 pl-4 pr-10 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary text-sm font-medium shadow-sm">
-                                <option>Tất cả trạng thái</option>
-                                <option>Đúng tiến độ</option>
-                                <option>Chậm tiến độ</option>
-                                <option>Cần xem xét</option>
-                            </select>
+                            <p className="text-slate-500 text-sm mt-1">Quản lý tiến độ và theo dõi các nhóm sinh viên</p>
                         </div>
                     </motion.div>
+
+                    {/* Loading State */}
+                    {loading && (
+                        <div className="flex items-center justify-center py-12">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                        </div>
+                    )}
+
+                    {/* Error State */}
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+                            <span className="material-symbols-outlined text-red-400 text-3xl mb-2">error</span>
+                            <p className="text-red-600 text-sm">{error}</p>
+                        </div>
+                    )}
+
+                    {/* Empty State */}
+                    {!loading && !error && groups.length === 0 && (
+                        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                            <span className="material-symbols-outlined text-slate-300 text-5xl mb-3">group_off</span>
+                            <h3 className="text-lg font-bold text-slate-700 mb-1">Chưa có nhóm nào</h3>
+                            <p className="text-slate-500 text-sm">Bạn chưa được phân công hướng dẫn nhóm nào trong học kỳ này.</p>
+                        </div>
+                    )}
 
                     {/* Groups Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {groups.map((group) => (
-                            <motion.div
-                                key={group.id}
-                                variants={item}
-                                className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col overflow-hidden"
-                            >
-                                <div className="p-5 flex-1">
-                                    <div className="flex justify-between items-start mb-3">
-                                        <div>
-                                            <h3 className="text-lg font-bold text-slate-900">{group.name}</h3>
-                                            <span className="inline-flex items-center gap-1 text-xs text-slate-500 mt-1">
-                                                <span className="material-symbols-outlined text-[14px]">{group.icon}</span>
-                                                {group.field}
+                    {!loading && groups.length > 0 && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {groups.map((group) => (
+                                <motion.div
+                                    key={group.groupId}
+                                    variants={item}
+                                    className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col overflow-hidden"
+                                >
+                                    <div className="p-5 flex-1">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <h3 className="text-lg font-bold text-slate-900">{group.groupName ?? group.groupCode}</h3>
+                                                <span className="inline-flex items-center gap-1 text-xs text-slate-500 mt-1">
+                                                    <span className="material-symbols-outlined text-[14px]">tag</span>
+                                                    {group.groupCode}
+                                                </span>
+                                            </div>
+                                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                                                group.groupStatus === 'Active' ? 'bg-green-50 text-green-700' :
+                                                group.groupStatus === 'Completed' ? 'bg-blue-50 text-blue-700' :
+                                                'bg-gray-50 text-gray-700'
+                                            }`}>
+                                                {group.groupStatus === 'Active' ? 'Hoạt động' :
+                                                 group.groupStatus === 'Completed' ? 'Hoàn thành' : group.groupStatus}
                                             </span>
                                         </div>
-                                        <button className="text-slate-400 hover:text-slate-600">
-                                            <span className="material-symbols-outlined">more_horiz</span>
+                                        {group.projectName && (
+                                            <h4 className="font-medium text-slate-800 text-sm mb-4 line-clamp-2 h-10">{group.projectName}</h4>
+                                        )}
+                                        {!group.projectName && (
+                                            <p className="text-sm text-slate-400 italic mb-4 h-10">Chưa có đề tài</p>
+                                        )}
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex -space-x-2 overflow-hidden">
+                                                {group.members.slice(0, 3).map((member, i) => (
+                                                    <div
+                                                        key={member.studentId}
+                                                        className="inline-block size-8 rounded-full ring-2 ring-white bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500"
+                                                        title={member.fullName}
+                                                    >
+                                                        {member.fullName.charAt(0)}
+                                                    </div>
+                                                ))}
+                                                {group.members.length > 3 && (
+                                                    <div className="inline-block size-8 rounded-full ring-2 ring-white bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
+                                                        +{group.members.length - 3}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <span className="text-xs font-medium text-slate-500">{group.members.length} thành viên</span>
+                                        </div>
+                                    </div>
+                                    <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-end">
+                                        <button
+                                            onClick={() => navigate(`/mentor/groups/${group.groupId}`)}
+                                            className="text-primary hover:text-primary/80 text-sm font-semibold flex items-center gap-1"
+                                        >
+                                            Chi tiết <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                                         </button>
                                     </div>
-                                    <h4 className="font-medium text-slate-800 text-sm mb-4 line-clamp-2 h-10">{group.topic}</h4>
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex -space-x-2 overflow-hidden">
-                                            {Array.from({ length: Math.min(group.members, 3) }).map((_, i) => (
-                                                <div
-                                                    key={i}
-                                                    className="inline-block size-8 rounded-full ring-2 ring-white bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500"
-                                                >
-                                                    {i + 1}
-                                                </div>
-                                            ))}
-                                            {group.members > 3 && (
-                                                <div className="inline-block size-8 rounded-full ring-2 ring-white bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
-                                                    +{group.members - 3}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <span className="text-xs font-medium text-slate-500">{group.members} thành viên</span>
-                                    </div>
-                                </div>
-                                <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-end">
-                                    <button
-                                        onClick={() => navigate('/mentor/groups/1')}
-                                        className="text-primary hover:text-primary/80 text-sm font-semibold flex items-center gap-1"
-                                    >
-                                        Chi tiết <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                                    </button>
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
+                                </motion.div>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Pagination */}
-                    <motion.div variants={item} className="flex items-center justify-between border-t border-slate-200 pt-4">
-                        <p className="text-sm text-slate-500">
-                            Hiển thị <span className="font-medium text-slate-900">1-4</span> trên <span className="font-medium text-slate-900">4</span> nhóm
-                        </p>
-                        <div className="flex gap-2">
-                            <button className="px-3 py-1 border border-slate-300 rounded-md text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50" disabled>
-                                Trước
-                            </button>
-                            <button className="px-3 py-1 bg-primary text-white border border-primary rounded-md text-sm font-medium hover:bg-primary/90">1</button>
-                            <button className="px-3 py-1 border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50" disabled>
-                                Sau
-                            </button>
-                        </div>
-                    </motion.div>
+                    {!loading && groups.length > 0 && (
+                        <motion.div variants={item} className="flex items-center justify-between border-t border-slate-200 pt-4">
+                            <p className="text-sm text-slate-500">
+                                Hiển thị <span className="font-medium text-slate-900">1-{groups.length}</span> trên <span className="font-medium text-slate-900">{groups.length}</span> nhóm
+                            </p>
+                        </motion.div>
+                    )}
                 </motion.div>
             </div>
         </>
