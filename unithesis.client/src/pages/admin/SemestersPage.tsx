@@ -193,7 +193,7 @@ export function SemestersPage() {
                                     <motion.div
                                         key={semester.id}
                                         variants={item}
-                                        className={`bento-card rounded-lg overflow-hidden transition-all hover:shadow-md ${isActive ? 'border-l-4 border-l-primary' : 'opacity-90 hover:opacity-100'}`}
+                                        className={`relative bento-card rounded-lg overflow-visible transition-all hover:shadow-md ${openDropdownId === semester.id ? 'z-30' : ''} ${isActive ? 'border-l-4 border-l-primary' : 'opacity-90 hover:opacity-100'}`}
                                     >
                                         <div className="p-6">
                                             {/* Card Header */}
