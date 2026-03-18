@@ -17,10 +17,22 @@ interface ApiErrorBody {
   errors?: Record<string, string[]>;
 }
 
+interface ApiEnvelope<T> {
+  success: boolean;
+  message: string;
+  data?: T;
+  errors?: Record<string, string[]>;
+}
+
+function isApiEnvelope<T>(body: unknown): body is ApiEnvelope<T> {
+  return typeof body === "object" && body !== null && "success" in body && "message" in body;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "X-Route-Path": window.location.pathname,
     ...(options.headers as Record<string, string>),
   };
   if (token) {
@@ -46,11 +58,23 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new Error(message);
   }
 
-  return response.json() as Promise<T>;
+  const text = await response.text();
+  if (!text) return {} as T;
+  const body: unknown = JSON.parse(text);
+
+  if (isApiEnvelope<T>(body)) {
+    if (!body.success) {
+      throw new Error(body.message || "Đã xảy ra lỗi không xác định.");
+    }
+    return body.data as T;
+  }
+
+  return body as T;
 }
 
 export const apiClient = {
   get: <T>(path: string) => request<T>(path),
-  post: <T>(path: string, body: unknown) => request<T>(path, { method: "POST", body: JSON.stringify(body) }),
-  put: <T>(path: string, body: unknown) => request<T>(path, { method: "PUT", body: JSON.stringify(body) }),
+  post: <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
+  put: <T>(path: string, body?: unknown) => request<T>(path, { method: "PUT", body: body ? JSON.stringify(body) : undefined }),
+  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };

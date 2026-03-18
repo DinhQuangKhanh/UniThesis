@@ -6,7 +6,7 @@ namespace UniThesis.Persistence.SqlServer.Repositories
     /// <summary>
     /// Repository for Major entity.
     /// </summary>
-    public class MajorRepository
+    public class MajorRepository : IMajorReadRepository
     {
         private readonly AppDbContext _context;
         private readonly DbSet<Major> _dbSet;

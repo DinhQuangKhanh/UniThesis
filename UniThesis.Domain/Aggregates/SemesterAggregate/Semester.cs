@@ -1,4 +1,4 @@
-﻿using UniThesis.Domain.Aggregates.SemesterAggregate.Entities;
+using UniThesis.Domain.Aggregates.SemesterAggregate.Entities;
 using UniThesis.Domain.Aggregates.SemesterAggregate.Events;
 using UniThesis.Domain.Aggregates.SemesterAggregate.Rules;
 using UniThesis.Domain.Aggregates.SemesterAggregate.ValueObjects;
@@ -16,7 +16,16 @@ namespace UniThesis.Domain.Aggregates.SemesterAggregate
         public SemesterCode Code { get; private set; } = null!;
         public DateTime StartDate { get; private set; }
         public DateTime EndDate { get; private set; }
-        public SemesterStatus Status { get; private set; }
+        public SemesterStatus Status
+        {
+            get
+            {
+                var now = DateTime.UtcNow;
+                if (now < StartDate) return SemesterStatus.Upcoming;
+                if (now > EndDate) return SemesterStatus.Ended;
+                return SemesterStatus.Ongoing;
+            }
+        }
         public AcademicYear AcademicYear { get; private set; } = null!;
         public string? Description { get; private set; }
         public DateTime CreatedAt { get; private set; }
@@ -24,7 +33,7 @@ namespace UniThesis.Domain.Aggregates.SemesterAggregate
 
         public IReadOnlyCollection<SemesterPhase> Phases => _phases.AsReadOnly();
         public SemesterPhase? CurrentPhase => _phases.FirstOrDefault(p => p.IsCurrent);
-        public bool IsActive => Status == SemesterStatus.Active;
+        public bool IsActive => Status == SemesterStatus.Ongoing;
 
         private Semester() { }
 
@@ -43,7 +52,6 @@ namespace UniThesis.Domain.Aggregates.SemesterAggregate
                 EndDate = endDate,
                 AcademicYear = academicYear,
                 Description = description,
-                Status = SemesterStatus.Upcoming,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -64,24 +72,6 @@ namespace UniThesis.Domain.Aggregates.SemesterAggregate
             _phases.Add(phase);
             UpdatedAt = DateTime.UtcNow;
             return phase;
-        }
-
-        public void Activate()
-        {
-            if (Status != SemesterStatus.Upcoming)
-                throw new BusinessRuleValidationException("Only upcoming semesters can be activated.");
-            Status = SemesterStatus.Active;
-            UpdatedAt = DateTime.UtcNow;
-            RaiseDomainEvent(new SemesterActivatedEvent(Id));
-        }
-
-        public void Close()
-        {
-            if (Status != SemesterStatus.Active)
-                throw new BusinessRuleValidationException("Only active semesters can be closed.");
-            Status = SemesterStatus.Closed;
-            UpdatedAt = DateTime.UtcNow;
-            RaiseDomainEvent(new SemesterClosedEvent(Id));
         }
 
         public void StartPhase(int phaseId)
@@ -108,10 +98,38 @@ namespace UniThesis.Domain.Aggregates.SemesterAggregate
 
         public void UpdateDates(DateTime startDate, DateTime endDate)
         {
+            EnsureUpcoming();
             CheckRule(new SemesterDatesMustBeValidRule(startDate, endDate));
             StartDate = startDate;
             EndDate = endDate;
             UpdatedAt = DateTime.UtcNow;
+        }
+
+        public void UpdateDetails(string name, string? description)
+        {
+            EnsureUpcoming();
+            if (string.IsNullOrWhiteSpace(name))
+                throw new BusinessRuleValidationException("Semester name cannot be empty.");
+
+            Name = name;
+            Description = description;
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+        public void UpdatePhaseDates(int phaseId, DateTime startDate, DateTime endDate)
+        {
+            EnsureUpcoming();
+            var phase = _phases.FirstOrDefault(p => p.Id == phaseId)
+                ?? throw new EntityNotFoundException(nameof(SemesterPhase), phaseId);
+            phase.UpdateDates(startDate, endDate);
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+        private void EnsureUpcoming()
+        {
+            if (Status != SemesterStatus.Upcoming)
+                throw new BusinessRuleValidationException(
+                    "Chỉ có thể chỉnh sửa học kỳ khi chưa bắt đầu (trạng thái Sắp tới).");
         }
     }
 }

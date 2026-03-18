@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Aggregates.ProjectAggregate;
 using UniThesis.Domain.Aggregates.TopicPoolAggregate;
 using UniThesis.Domain.Aggregates.TopicPoolAggregate.Entities;
@@ -9,8 +8,6 @@ using UniThesis.Domain.Entities;
 using UniThesis.Domain.Enums.Project;
 using UniThesis.Domain.Enums.TopicPool;
 using UniThesis.Domain.Services;
-using UniThesis.Persistence.SqlServer;
-using UniThesis.Domain.Specifications.TopicPools;
 
 namespace UniThesis.Infrastructure.Services.DomainServices;
 
@@ -22,29 +19,29 @@ public class TopicPoolDomainService : ITopicPoolDomainService
     private readonly ITopicPoolRepository _topicPoolRepository;
     private readonly ITopicRegistrationRepository _registrationRepository;
     private readonly IProjectRepository _projectRepository;
+    private readonly IMajorReadRepository _majorRepository;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly AppDbContext _context;
     private readonly ILogger<TopicPoolDomainService> _logger;
 
     public TopicPoolDomainService(
         ITopicPoolRepository topicPoolRepository,
         ITopicRegistrationRepository registrationRepository,
         IProjectRepository projectRepository,
+        IMajorReadRepository majorRepository,
         IUnitOfWork unitOfWork,
-        AppDbContext context,
         ILogger<TopicPoolDomainService> logger)
     {
         _topicPoolRepository = topicPoolRepository;
         _registrationRepository = registrationRepository;
         _projectRepository = projectRepository;
+        _majorRepository = majorRepository;
         _unitOfWork = unitOfWork;
-        _context = context;
         _logger = logger;
     }
 
     public async Task<string> GeneratePoolCodeAsync(int majorId, CancellationToken cancellationToken = default)
     {
-        var major = await _context.Majors.FindAsync([majorId], cancellationToken)
+        var major = await _majorRepository.GetByIdAsync(majorId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Major), majorId);
 
         return TopicPool.GenerateCode(major.Code);
@@ -58,7 +55,7 @@ public class TopicPoolDomainService : ITopicPoolDomainService
             return existingPool;
 
         // Create new pool
-        var major = await _context.Majors.FindAsync([majorId], cancellationToken)
+        var major = await _majorRepository.GetByIdAsync(majorId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Major), majorId);
 
         var code = TopicPool.GenerateCode(major.Code);
@@ -77,12 +74,7 @@ public class TopicPoolDomainService : ITopicPoolDomainService
     public async Task<int> GetMentorActiveTopicCountAsync(Guid mentorId, Guid topicPoolId, CancellationToken cancellationToken = default)
     {
         // Active = Available or Reserved (not Assigned or Expired)
-        return await _context.Projects
-            .Where(p => p.TopicPoolId == topicPoolId &&
-                       p.SourceType == ProjectSourceType.FromPool &&
-                       (p.PoolStatus == PoolTopicStatus.Available || p.PoolStatus == PoolTopicStatus.Reserved) &&
-                       p.Mentors.Any(m => m.MentorId == mentorId && m.IsActive))
-            .CountAsync(cancellationToken);
+        return await _projectRepository.CountActivePoolTopicsByMentorAsync(topicPoolId, mentorId, cancellationToken);
     }
 
     public async Task<(bool CanPropose, string? Reason)> CanMentorProposeTopicAsync(
@@ -206,10 +198,8 @@ public class TopicPoolDomainService : ITopicPoolDomainService
         _registrationRepository.Update(registration);
 
         // Check if there are any other pending registrations for this project
-        var otherPendingCount = await _context.Set<TopicRegistration>()
-            .CountAsync(tr => tr.ProjectId == registration.ProjectId &&
-                             tr.Status == TopicRegistrationStatus.Pending &&
-                             tr.Id != registrationId, cancellationToken);
+        var otherPendingCount = await _registrationRepository.CountPendingByProjectIdExcludingAsync(
+            registration.ProjectId, registrationId, cancellationToken);
 
         // If no other pending registrations, set project back to Available
         if (otherPendingCount == 0)
@@ -232,29 +222,14 @@ public class TopicPoolDomainService : ITopicPoolDomainService
         var pool = await _topicPoolRepository.GetByIdAsync(topicPoolId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(TopicPool), topicPoolId);
 
-        var poolProjectsQuery = _context.Projects
-            .Where(p => p.TopicPoolId == topicPoolId && p.SourceType == ProjectSourceType.FromPool);
-
-        var statusCounts = await poolProjectsQuery
-            .GroupBy(p => p.PoolStatus)
-            .Select(g => new { Status = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
-
+        var statusCounts = await _projectRepository.GetPoolStatusCountsAsync(topicPoolId, cancellationToken);
         var totalTopics = statusCounts.Values.Sum();
 
-        var projectIds = await poolProjectsQuery.Select(p => p.Id).ToListAsync(cancellationToken);
+        var projectIds = await _projectRepository.GetPoolProjectIdsAsync(topicPoolId, cancellationToken);
 
-        var registrationCounts = await _context.Set<TopicRegistration>()
-            .Where(tr => projectIds.Contains(tr.ProjectId))
-            .GroupBy(tr => tr.Status)
-            .Select(g => new { Status = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
+        var registrationCounts = await _registrationRepository.GetRegistrationStatusCountsByProjectIdsAsync(projectIds, cancellationToken);
 
-        var mentorCounts = await poolProjectsQuery
-            .SelectMany(p => p.Mentors.Where(m => m.IsActive))
-            .GroupBy(m => m.MentorId)
-            .Select(g => g.Count())
-            .ToListAsync(cancellationToken);
+        var mentorCounts = await _projectRepository.GetMentorTopicCountsInPoolAsync(topicPoolId, cancellationToken);
 
         return new TopicPoolStatistics(
             TotalTopics: totalTopics,
@@ -273,12 +248,7 @@ public class TopicPoolDomainService : ITopicPoolDomainService
     public async Task<int> ExpireOldTopicsAsync(int currentSemesterId, CancellationToken cancellationToken = default)
     {
         // Find all projects that should be expired
-        var expiredProjects = await _context.Projects
-            .Where(p => p.SourceType == ProjectSourceType.FromPool &&
-                       p.PoolStatus == PoolTopicStatus.Available &&
-                       p.ExpirationSemesterId.HasValue &&
-                       p.ExpirationSemesterId.Value < currentSemesterId)
-            .ToListAsync(cancellationToken);
+        var expiredProjects = await _projectRepository.GetExpirablePoolTopicsAsync(currentSemesterId, cancellationToken);
 
         foreach (var project in expiredProjects)
         {
@@ -295,22 +265,12 @@ public class TopicPoolDomainService : ITopicPoolDomainService
 
     public async Task<IEnumerable<Guid>> GetAvailableTopicsInPoolAsync(Guid topicPoolId, CancellationToken cancellationToken = default)
     {
-        return await _context.Projects
-            .Where(p => p.TopicPoolId == topicPoolId &&
-                       p.SourceType == ProjectSourceType.FromPool &&
-                       p.PoolStatus == PoolTopicStatus.Available &&
-                       p.Status == ProjectStatus.Approved)
-            .Select(p => p.Id)
-            .ToListAsync(cancellationToken);
+        return await _projectRepository.GetAvailableApprovedPoolTopicIdsAsync(topicPoolId, cancellationToken);
     }
 
     public async Task<IEnumerable<Project>> GetExpiringTopicsAsync(int currentSemesterId, CancellationToken cancellationToken = default)
     {
-        var spec = new ExpiringTopicsInPoolSpec(currentSemesterId);
-        return await _context.Projects
-            .Where(spec.Criteria)
-            .Include(p => p.Mentors)
-            .ToListAsync(cancellationToken);
+        return await _projectRepository.GetExpiringPoolTopicsWithMentorsAsync(currentSemesterId, cancellationToken);
     }
 
     public async Task<int> CalculateExpirationSemesterAsync(int createdSemesterId, int expirationSemesters, CancellationToken cancellationToken = default)

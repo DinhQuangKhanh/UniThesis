@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using UniThesis.Application.Common.Interfaces;
 
 namespace UniThesis.Infrastructure.Caching
 {
@@ -39,6 +40,24 @@ namespace UniThesis.Infrastructure.Caching
         {
             await _cacheService.RemoveAsync(CacheKeys.UserPermissions(userId), ct);
             _logger.LogInformation("User permissions cache invalidated: {UserId}", userId);
+        }
+
+        public async Task InvalidateEvaluatorCacheAsync(Guid evaluatorId, CancellationToken ct = default)
+        {
+            await _cacheService.RemoveByPrefixAsync($"evaluator:{evaluatorId}:", ct);
+            _logger.LogInformation("Evaluator cache invalidated: {EvaluatorId}", evaluatorId);
+        }
+
+        public async Task InvalidateEvaluatorFilterOptionsCacheAsync(CancellationToken ct = default)
+        {
+            await _cacheService.RemoveAsync(CacheKeys.EvaluatorFilterOptions, ct);
+            _logger.LogInformation("Evaluator filter options cache invalidated");
+        }
+
+        public async Task InvalidateUserListCacheAsync(CancellationToken ct = default)
+        {
+            await _cacheService.RemoveByPrefixAsync(CacheKeys.UserListPrefix, ct);
+            _logger.LogInformation("User list cache invalidated");
         }
 
         public async Task InvalidateAllAsync(CancellationToken ct = default)

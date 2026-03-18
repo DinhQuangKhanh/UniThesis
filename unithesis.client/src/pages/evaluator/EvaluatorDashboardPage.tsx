@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/apiClient";
-import { useEvaluatorError } from "@/contexts/EvaluatorErrorContext";
+import { useSystemError } from "@/contexts/SystemErrorContext";
 
 interface EvaluatorStatsDto {
   totalAssigned: number;
@@ -72,7 +72,7 @@ function resultLabel(result: string): string {
 
 export function EvaluatorDashboardPage() {
   const { user } = useAuth();
-  const { showError } = useEvaluatorError();
+  const { showError } = useSystemError();
   const [data, setData] = useState<EvaluatorDashboardDto | null>(null);
   const [loading, setLoading] = useState(true);
 

@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using UniThesis.Domain.Aggregates.GroupAggregate.Events;
 using UniThesis.Domain.Enums.Notification;
-using UniThesis.Infrastructure.Services.Notification;
+using UniThesis.Application.Common.Interfaces;
 using UniThesis.Persistence.MongoDB.Documents;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
 
@@ -37,8 +37,9 @@ namespace UniThesis.Infrastructure.EventHandlers.Group
                 var log = new UserActivityLogDocument
                 {
                     UserId = notification.RemovedBy,
-                    UserRole = "mentor",
-                    Action = "MemberRemoved",
+                    ActiveRole = "mentor",
+                    Action = "Xóa thành viên khỏi nhóm",
+                    ActionCode = "MemberRemoved",
                     Category = "Group",
                     EntityType = "Group",
                     EntityId = notification.GroupId,

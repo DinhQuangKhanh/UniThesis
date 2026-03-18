@@ -1,8 +1,10 @@
 ﻿using MediatR;
 using Microsoft.Extensions.Logging;
+using UniThesis.Domain.Aggregates.EvaluationAggregate;
 using UniThesis.Domain.Aggregates.ProjectAggregate.Events;
 using UniThesis.Domain.Enums.Evaluation;
-using UniThesis.Infrastructure.Services.Notification;
+using UniThesis.Infrastructure.Caching;
+using UniThesis.Application.Common.Interfaces;
 using UniThesis.Persistence.MongoDB.Documents;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
 
@@ -13,43 +15,65 @@ namespace UniThesis.Infrastructure.EventHandlers.Project
         private readonly INotificationService _notificationService;
         private readonly IEvaluationLogRepository _evaluationLogRepository;
         private readonly IUserActivityLogRepository _activityLogRepository;
+        private readonly IProjectEvaluatorAssignmentRepository _assignmentRepository;
+        private readonly ICacheInvalidationService _cacheInvalidation;
         private readonly ILogger<ProjectSubmittedEventHandler> _logger;
 
         public ProjectSubmittedEventHandler(
             INotificationService notificationService,
             IEvaluationLogRepository evaluationLogRepository,
             IUserActivityLogRepository activityLogRepository,
+            IProjectEvaluatorAssignmentRepository assignmentRepository,
+            ICacheInvalidationService cacheInvalidation,
             ILogger<ProjectSubmittedEventHandler> logger)
         {
             _notificationService = notificationService;
             _evaluationLogRepository = evaluationLogRepository;
             _activityLogRepository = activityLogRepository;
+            _assignmentRepository = assignmentRepository;
+            _cacheInvalidation = cacheInvalidation;
             _logger = logger;
         }
 
         public async Task Handle(ProjectSubmittedEvent notification, CancellationToken cancellationToken)
         {
-            await _evaluationLogRepository.AddAsync(new EvaluationLogDocument
+            try
             {
-                ProjectId = notification.ProjectId,
-                Action = EvaluationAction.Submitted,
-                PerformedBy = notification.SubmittedBy,
-                PerformedAt = DateTime.UtcNow,
-            }, cancellationToken);
+                await _evaluationLogRepository.AddAsync(new EvaluationLogDocument
+                {
+                    ProjectId = notification.ProjectId,
+                    Action = EvaluationAction.Submitted,
+                    PerformedBy = notification.SubmittedBy,
+                    PerformedAt = DateTime.UtcNow,
+                }, cancellationToken);
 
-            await _activityLogRepository.AddAsync(new UserActivityLogDocument
+                await _activityLogRepository.AddAsync(new UserActivityLogDocument
+                {
+                    UserId   = notification.SubmittedBy,
+                    ActiveRole = "student",
+                    Action   = "Nộp đồ án",
+                    ActionCode = "ProjectSubmitted",
+                    Category = "Project",
+                    EntityType = "Project",
+                    EntityId = notification.ProjectId,
+                    Severity = "info",
+                    Timestamp = DateTime.UtcNow,
+                }, cancellationToken);
+
+                // Invalidate cache for all evaluators assigned to this project
+                var assignments = await _assignmentRepository.GetActiveByProjectIdAsync(notification.ProjectId, cancellationToken);
+                foreach (var assignment in assignments)
+                {
+                    await _cacheInvalidation.InvalidateEvaluatorCacheAsync(assignment.EvaluatorId, cancellationToken);
+                }
+
+                _logger.LogInformation("Project submitted for evaluation: {ProjectId}", notification.ProjectId);
+            }
+            catch (Exception ex)
             {
-                UserId   = notification.SubmittedBy,
-                UserRole = "student",
-                Action   = "ProjectSubmitted",
-                Category = "Project",
-                EntityType = "Project",
-                EntityId = notification.ProjectId,
-                Severity = "info",
-                Timestamp = DateTime.UtcNow,
-            }, cancellationToken);
-
-            _logger.LogInformation("Project submitted for evaluation: {ProjectId}", notification.ProjectId);
+                _logger.LogError(ex, "Error handling {Event} for Project {ProjectId}",
+                    nameof(ProjectSubmittedEvent), notification.ProjectId);
+            }
         }
     }
 }

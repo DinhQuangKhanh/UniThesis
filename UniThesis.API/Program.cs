@@ -77,13 +77,6 @@ builder.Services.AddApplicationServices();  // Application Layer (MediatR, Valid
 builder.Services.AddPersistence(builder.Configuration);  // Persistence Layer (EF Core, MongoDB, Repositories)
 builder.Services.AddInfrastructure(builder.Configuration);  // Infrastructure Layer (Auth, Email, Caching, etc.)
 
-// Configure JSON serialization
-builder.Services.ConfigureHttpJsonOptions(options =>
-{
-    options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-    options.SerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-});
-
 // ForwardedHeaders: lets the app read X-Forwarded-For / X-Forwarded-Proto
 // set by reverse proxies (nginx, IIS, Azure, AWS) so RemoteIpAddress returns
 // the real client IP instead of the proxy's IP.

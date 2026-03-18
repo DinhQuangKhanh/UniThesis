@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { apiClient } from "@/lib/apiClient";
-import { useEvaluatorError } from "@/contexts/EvaluatorErrorContext";
+import { useSystemError } from "@/contexts/SystemErrorContext";
 
 const container = {
   hidden: { opacity: 0 },
@@ -59,7 +59,7 @@ export function EvaluatorHistoryPage() {
 
   const [data, setData] = useState<EvaluatorHistoryDto | null>(null);
   const [loading, setLoading] = useState(true);
-  const { showError } = useEvaluatorError();
+  const { showError } = useSystemError();
 
   useEffect(() => {
     const timeout = setTimeout(

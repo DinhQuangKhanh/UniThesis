@@ -1,0 +1,26 @@
+using MediatR;
+using UniThesis.Application.Features.Users.Commands.UnlockUser;
+
+namespace UniThesis.API.Endpoints.Admin;
+
+public class UnlockUserEndpoint : IEndpoint
+{
+    public void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        app.MapPut("/api/admin/users/{userId:guid}/unlock", async (
+                Guid userId,
+                ISender sender,
+                CancellationToken cancellationToken) =>
+            {
+                await sender.Send(new UnlockUserCommand(userId), cancellationToken);
+                return Results.NoContent();
+            })
+            .RequireAuthorization("RequireAdmin")
+            .WithTags("Admin")
+            .WithName("UnlockUser")
+            .Produces(204)
+            .Produces(400)
+            .Produces(401)
+            .Produces(404);
+    }
+}

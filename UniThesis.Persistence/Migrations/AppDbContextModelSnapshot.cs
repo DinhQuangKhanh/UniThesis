@@ -752,9 +752,6 @@ namespace UniThesis.Persistence.Migrations
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -766,8 +763,6 @@ namespace UniThesis.Persistence.Migrations
                         .IsUnique();
 
                     b.HasIndex("StartDate");
-
-                    b.HasIndex("Status");
 
                     b.ToTable("Semesters", (string)null);
                 });
@@ -838,6 +833,37 @@ namespace UniThesis.Persistence.Migrations
                     b.HasIndex("Status");
 
                     b.ToTable("SupportTickets", (string)null);
+                });
+
+            modelBuilder.Entity("UniThesis.Domain.Aggregates.SupportAggregate.TicketMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("SenderId");
+
+                    b.HasIndex("TicketId");
+
+                    b.ToTable("TicketMessages", (string)null);
                 });
 
             modelBuilder.Entity("UniThesis.Domain.Aggregates.TopicPoolAggregate.Entities.TopicRegistration", b =>
@@ -1078,6 +1104,8 @@ namespace UniThesis.Persistence.Migrations
                     b.HasIndex("FirebaseUid")
                         .IsUnique();
 
+                    b.HasIndex("FullName");
+
                     b.HasIndex("Status");
 
                     b.HasIndex("StudentCode")
@@ -1131,35 +1159,6 @@ namespace UniThesis.Persistence.Migrations
                     b.HasIndex("IsActive");
 
                     b.ToTable("Departments", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Code = "CNTT",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Khoa Công nghệ thông tin",
-                            IsActive = true,
-                            Name = "Công nghệ thông tin"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Code = "KT",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Khoa Kinh tế",
-                            IsActive = true,
-                            Name = "Kinh tế"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Code = "NNA",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Khoa Ngôn ngữ Anh",
-                            IsActive = true,
-                            Name = "Ngôn ngữ Anh"
-                        });
                 });
 
             modelBuilder.Entity("UniThesis.Domain.Entities.Major", b =>
@@ -1206,58 +1205,6 @@ namespace UniThesis.Persistence.Migrations
                     b.HasIndex("IsActive");
 
                     b.ToTable("Majors", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Code = "SE",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 1,
-                            Description = "Chuyên ngành Kỹ thuật phần mềm",
-                            IsActive = true,
-                            Name = "Kỹ thuật phần mềm"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Code = "IA",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 1,
-                            Description = "Chuyên ngành An toàn thông tin",
-                            IsActive = true,
-                            Name = "An toàn thông tin"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Code = "AI",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 1,
-                            Description = "Chuyên ngành Trí tuệ nhân tạo",
-                            IsActive = true,
-                            Name = "Trí tuệ nhân tạo"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Code = "BA",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 2,
-                            Description = "Chuyên ngành Quản trị kinh doanh",
-                            IsActive = true,
-                            Name = "Quản trị kinh doanh"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Code = "ENG",
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DepartmentId = 3,
-                            Description = "Chuyên ngành Ngôn ngữ Anh",
-                            IsActive = true,
-                            Name = "Ngôn ngữ Anh"
-                        });
                 });
 
             modelBuilder.Entity("UniThesis.Domain.Entities.ProjectArchive", b =>
@@ -1312,62 +1259,6 @@ namespace UniThesis.Persistence.Migrations
                     b.HasIndex("MajorId");
 
                     b.ToTable("ProjectArchives", (string)null);
-                });
-
-            modelBuilder.Entity("UniThesis.Domain.Entities.Report", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int?>("DepartmentId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("FilePath")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<long>("FileSize")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("Format")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("GeneratedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("GeneratedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("Parameters")
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<int?>("SemesterId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DepartmentId");
-
-                    b.HasIndex("GeneratedAt");
-
-                    b.HasIndex("GeneratedBy");
-
-                    b.HasIndex("SemesterId");
-
-                    b.HasIndex("Type");
-
-                    b.ToTable("Reports", (string)null);
                 });
 
             modelBuilder.Entity("UniThesis.Domain.Entities.SystemConfiguration", b =>
@@ -1713,6 +1604,21 @@ namespace UniThesis.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("UniThesis.Domain.Aggregates.SupportAggregate.TicketMessage", b =>
+                {
+                    b.HasOne("UniThesis.Domain.Aggregates.UserAggregate.User", null)
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("UniThesis.Domain.Aggregates.SupportAggregate.SupportTicket", null)
+                        .WithMany("Messages")
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("UniThesis.Domain.Aggregates.TopicPoolAggregate.Entities.TopicRegistration", b =>
                 {
                     b.HasOne("UniThesis.Domain.Aggregates.GroupAggregate.Group", null)
@@ -1791,25 +1697,6 @@ namespace UniThesis.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("UniThesis.Domain.Entities.Report", b =>
-                {
-                    b.HasOne("UniThesis.Domain.Entities.Department", null)
-                        .WithMany()
-                        .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("UniThesis.Domain.Aggregates.UserAggregate.User", null)
-                        .WithMany()
-                        .HasForeignKey("GeneratedBy")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("UniThesis.Domain.Aggregates.SemesterAggregate.Semester", null)
-                        .WithMany()
-                        .HasForeignKey("SemesterId")
-                        .OnDelete(DeleteBehavior.SetNull);
-                });
-
             modelBuilder.Entity("UniThesis.Domain.Aggregates.DefenseAggregate.Entities.DefenseCouncil", b =>
                 {
                     b.Navigation("Members");
@@ -1830,6 +1717,11 @@ namespace UniThesis.Persistence.Migrations
             modelBuilder.Entity("UniThesis.Domain.Aggregates.SemesterAggregate.Semester", b =>
                 {
                     b.Navigation("Phases");
+                });
+
+            modelBuilder.Entity("UniThesis.Domain.Aggregates.SupportAggregate.SupportTicket", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("UniThesis.Domain.Aggregates.UserAggregate.User", b =>

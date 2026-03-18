@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
-using UniThesis.Infrastructure.Services.Notification;
+using UniThesis.Application.Common.Interfaces;
 
 namespace UniThesis.Infrastructure.BackgroundJobs.Jobs
 {

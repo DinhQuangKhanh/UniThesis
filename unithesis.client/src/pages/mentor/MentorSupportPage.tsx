@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Header } from '@/components/layout'
+import { CreateTicketModal } from '@/components/support/CreateTicketModal'
 
 const container = {
     hidden: { opacity: 0 },
@@ -91,6 +92,7 @@ export function MentorSupportPage() {
     const [selectedTicket, setSelectedTicket] = useState(tickets[0])
     const [newMessage, setNewMessage] = useState('')
     const [filter, setFilter] = useState('all')
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
     const filteredTickets = tickets.filter((t) => {
         if (filter === 'unread') return t.status === 'Chưa đọc'
@@ -170,7 +172,10 @@ export function MentorSupportPage() {
                             </div>
                             {/* New ticket button */}
                             <div className="p-3 border-t border-slate-200 shrink-0">
-                                <button className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors">
+                                <button 
+                                    onClick={() => setIsCreateModalOpen(true)}
+                                    className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors"
+                                >
                                     <span className="material-symbols-outlined text-[18px]">add</span>
                                     Tạo yêu cầu mới
                                 </button>
@@ -250,6 +255,14 @@ export function MentorSupportPage() {
                     </motion.div>
                 </motion.div>
             </div>
+
+            <CreateTicketModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onCreated={() => {
+                    // Refetch data here later
+                }}
+            />
         </>
     )
 }

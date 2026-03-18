@@ -2,7 +2,9 @@
 using UniThesis.Domain.Aggregates.ProjectAggregate;
 using UniThesis.Domain.Aggregates.ProjectAggregate.ValueObjects;
 using UniThesis.Domain.Enums.Project;
+using UniThesis.Domain.Enums.TopicPool;
 using UniThesis.Domain.Specifications.Projects;
+using UniThesis.Domain.Specifications.TopicPools;
 using UniThesis.Persistence.Common;
 
 namespace UniThesis.Persistence.SqlServer.Repositories
@@ -124,6 +126,82 @@ namespace UniThesis.Persistence.SqlServer.Repositories
         {
             var spec = new ProjectPendingEvaluationSpec(semesterId);
             return await ListAsync(spec, cancellationToken);
+        }
+
+        public async Task<Dictionary<ProjectSourceType, int>> GetSourceTypeCountBySemesterAsync(int semesterId, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Where(p => p.SemesterId == semesterId)
+                .GroupBy(p => p.SourceType)
+                .Select(g => new { Source = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Source, x => x.Count, cancellationToken);
+        }
+
+        public async Task<int> CountActivePoolTopicsByMentorAsync(Guid topicPoolId, Guid mentorId, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Where(p => p.TopicPoolId == topicPoolId &&
+                           p.SourceType == ProjectSourceType.FromPool &&
+                           (p.PoolStatus == PoolTopicStatus.Available || p.PoolStatus == PoolTopicStatus.Reserved) &&
+                           p.Mentors.Any(m => m.MentorId == mentorId && m.IsActive))
+                .CountAsync(cancellationToken);
+        }
+
+        public async Task<Dictionary<PoolTopicStatus, int>> GetPoolStatusCountsAsync(Guid topicPoolId, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Where(p => p.TopicPoolId == topicPoolId && p.SourceType == ProjectSourceType.FromPool && p.PoolStatus.HasValue)
+                .GroupBy(p => p.PoolStatus!.Value)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
+        }
+
+        public async Task<List<Guid>> GetPoolProjectIdsAsync(Guid topicPoolId, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Where(p => p.TopicPoolId == topicPoolId && p.SourceType == ProjectSourceType.FromPool)
+                .Select(p => p.Id)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<int>> GetMentorTopicCountsInPoolAsync(Guid topicPoolId, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Where(p => p.TopicPoolId == topicPoolId && p.SourceType == ProjectSourceType.FromPool)
+                .SelectMany(p => p.Mentors.Where(m => m.IsActive))
+                .GroupBy(m => m.MentorId)
+                .Select(g => g.Count())
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<Project>> GetExpirablePoolTopicsAsync(int currentSemesterId, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Where(p => p.SourceType == ProjectSourceType.FromPool &&
+                           p.PoolStatus == PoolTopicStatus.Available &&
+                           p.ExpirationSemesterId.HasValue &&
+                           p.ExpirationSemesterId.Value < currentSemesterId)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<Guid>> GetAvailableApprovedPoolTopicIdsAsync(Guid topicPoolId, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Where(p => p.TopicPoolId == topicPoolId &&
+                           p.SourceType == ProjectSourceType.FromPool &&
+                           p.PoolStatus == PoolTopicStatus.Available &&
+                           p.Status == ProjectStatus.Approved)
+                .Select(p => p.Id)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<Project>> GetExpiringPoolTopicsWithMentorsAsync(int currentSemesterId, CancellationToken cancellationToken = default)
+        {
+            var spec = new ExpiringTopicsInPoolSpec(currentSemesterId);
+            return await _dbSet
+                .Where(spec.Criteria)
+                .Include(p => p.Mentors)
+                .ToListAsync(cancellationToken);
         }
     }
 }

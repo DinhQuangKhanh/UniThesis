@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using UniThesis.Application.Common.Interfaces;
 
 namespace UniThesis.Infrastructure.Caching
 {

@@ -1,5 +1,8 @@
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Header } from '@/components/layout'
+import { useSystemError } from '@/contexts/SystemErrorContext'
+import { dashboardService, type AdminDashboardData, type RecentTicket } from '@/lib/dashboardService'
 
 const container = {
     hidden: { opacity: 0 },
@@ -17,6 +20,76 @@ const item = {
 }
 
 export function DashboardPage() {
+    const [data, setData] = useState<AdminDashboardData | null>(null)
+    const [loading, setLoading] = useState(true)
+    const { showError } = useSystemError()
+
+    useEffect(() => {
+        const fetchDashboard = async () => {
+            try {
+                const result = await dashboardService.getAdminDashboard()
+                setData(result)
+            } catch (err) {
+                showError(err instanceof Error ? err.message : 'Không thể tải dữ liệu dashboard.')
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchDashboard()
+    }, [showError])
+
+    if (loading) {
+        return (
+            <>
+                <Header title="Tổng Quan Hệ Thống" />
+                <div className="flex-1 overflow-y-auto p-8 scrollbar-hide bg-slate-50">
+                    <div className="space-y-6 animate-pulse">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {[...Array(4)].map((_, i) => (
+                                <div key={i} className="bento-card p-5 rounded-md h-28 bg-slate-100" />
+                            ))}
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="lg:col-span-2 bento-card p-6 rounded-md h-56 bg-slate-100" />
+                            <div className="bento-card p-6 rounded-md h-56 bg-slate-100" />
+                        </div>
+                        <div className="bento-card rounded-md h-48 bg-slate-100" />
+                    </div>
+                </div>
+            </>
+        )
+    }
+
+    if (!data) return null
+
+    const { stats, semesterProgress, approvalRate, recentTickets } = data
+
+    // Compute donut chart
+    const total = approvalRate.total || 1
+    const inProgressPct = Math.round((approvalRate.inProgress / total) * 100)
+    const approvedPct = Math.round((approvalRate.approved / total) * 100)
+    const rejectedPct = Math.round((approvalRate.rejected / total) * 100)
+
+    // conic-gradient segments: InProgress (green), Approved (blue), Rejected (red), Pending (gray)
+    const seg1 = inProgressPct
+    const seg2 = seg1 + approvedPct
+    const seg3 = seg2 + rejectedPct
+    const gradient = `conic-gradient(#5F8F61 0% ${seg1}%, #3b82f6 ${seg1}% ${seg2}%, #A64B4B ${seg2}% ${seg3}%, #94a3b8 ${seg3}% 100%)`
+
+    // Compute timeline progress
+    const completedPhases = semesterProgress?.phases.filter(p => p.status === 2).length ?? 0
+    const currentPhase = semesterProgress?.phases.find(p => p.status === 1)
+    const totalPhases = semesterProgress?.phases.length ?? 1
+    const progressWidth = Math.round(((completedPhases + (currentPhase ? 0.5 : 0)) / totalPhases) * 100)
+
+    // Days remaining for current phase
+    let daysRemaining = 0
+    if (currentPhase) {
+        const now = new Date()
+        const end = new Date(currentPhase.endDate)
+        daysRemaining = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+    }
+
     return (
         <>
             <Header title="Tổng Quan Hệ Thống" />
@@ -34,33 +107,33 @@ export function DashboardPage() {
                             icon="group"
                             iconColor="text-blue-600"
                             iconBg="bg-blue-500/10"
-                            value="2,450"
+                            value={stats.totalStudents.toLocaleString()}
                             label="Tổng Sinh Viên"
-                            change="+12% vs last term"
+                            change="Toàn hệ thống"
                         />
                         <StatsCard
                             icon="school"
                             iconColor="text-green-600"
                             iconBg="bg-green-500/10"
-                            value="142"
+                            value={stats.totalMentors.toLocaleString()}
                             label="Giảng Viên Hướng Dẫn"
-                            change="Active"
+                            change="Đang hoạt động"
                         />
                         <StatsCard
                             icon="folder_open"
                             iconColor="text-purple-600"
                             iconBg="bg-purple-500/10"
-                            value="856"
+                            value={stats.totalRegisteredTopics.toLocaleString()}
                             label="Đề Tài Đăng Ký"
-                            change="Current Sem"
+                            change="Kỳ hiện tại"
                         />
                         <StatsCard
                             icon="pending_actions"
                             iconColor="text-orange-600"
                             iconBg="bg-orange-500/10"
-                            value="45"
-                            label="Chờ Duyệt Gấp"
-                            change="High Priority"
+                            value={stats.highPriorityPending.toLocaleString()}
+                            label="Hỗ Trợ Cần Xử Lý"
+                            change="Ưu tiên cao"
                             changeColor="text-error"
                         />
                     </motion.div>
@@ -69,68 +142,95 @@ export function DashboardPage() {
                     <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Semester Progress */}
                         <div className="lg:col-span-2 bento-card p-6 rounded-md flex flex-col h-full">
-                            <div className="flex justify-between items-center mb-6">
-                                <div>
-                                    <h3 className="text-slate-800 text-lg font-bold">Tiến Độ Kỳ Học: Spring 2024</h3>
-                                    <p className="text-slate-500 text-sm">
-                                        Giai đoạn hiện tại: <span className="text-primary font-semibold">Thẩm Định Đề Tài</span>
-                                    </p>
-                                </div>
-                                <button className="flex items-center gap-2 bg-primary/5 hover:bg-primary/10 text-primary px-3 py-1.5 rounded text-sm font-medium transition-colors border border-primary/10">
-                                    <span className="material-symbols-outlined text-[18px]">edit_calendar</span>
-                                    Điều chỉnh
-                                </button>
-                            </div>
+                            {semesterProgress ? (
+                                <>
+                                    <div className="flex justify-between items-center mb-6">
+                                        <div>
+                                            <h3 className="text-slate-800 text-lg font-bold">
+                                                Tiến Độ Kỳ Học: {semesterProgress.semesterName}
+                                            </h3>
+                                            <p className="text-slate-500 text-sm">
+                                                Giai đoạn hiện tại:{' '}
+                                                <span className="text-primary font-semibold">
+                                                    {currentPhase?.name ?? 'Hoàn thành'}
+                                                </span>
+                                            </p>
+                                        </div>
+                                    </div>
 
-                            {/* Timeline */}
-                            <div className="relative py-4 px-2">
-                                <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-200 -translate-y-1/2 rounded-full z-0" />
-                                <div className="absolute top-1/2 left-0 w-[45%] h-1 bg-gradient-to-r from-blue-600 to-primary -translate-y-1/2 rounded-full z-0" />
-
-                                <div className="relative z-10 flex justify-between w-full">
-                                    <TimelineStep icon="check" label="Đăng Ký" status="completed" />
-                                    <TimelineStep icon="fact_check" label="Thẩm Định" status="current" subtitle="Đang diễn ra (12 ngày còn lại)" />
-                                    <TimelineStep icon="code" label="Thực Hiện" status="pending" />
-                                    <TimelineStep icon="shield" label="Bảo Vệ" status="pending" />
+                                    {/* Timeline */}
+                                    <div className="px-2 mt-auto">
+                                        {/* Icons row with progress bar */}
+                                        <div className="relative py-4">
+                                            <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-200 -translate-y-1/2 rounded-full" />
+                                            <div
+                                                className="absolute top-1/2 left-0 h-1 bg-gradient-to-r from-blue-600 to-primary -translate-y-1/2 rounded-full"
+                                                style={{ width: `${progressWidth}%` }}
+                                            />
+                                            <div className="relative z-10 flex justify-between w-full">
+                                                {semesterProgress.phases.map((phase) => {
+                                                    const phaseStatus =
+                                                        phase.status === 2 ? 'completed' :
+                                                        phase.status === 1 ? 'current' : 'pending'
+                                                    return (
+                                                        <TimelineIcon
+                                                            key={phase.order}
+                                                            icon={phaseIcon(phase.type)}
+                                                            status={phaseStatus}
+                                                        />
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                        {/* Labels row — outside progress bar */}
+                                        <div className="flex justify-between w-full mt-2">
+                                            {semesterProgress.phases.map((phase) => {
+                                                const phaseStatus =
+                                                    phase.status === 2 ? 'completed' :
+                                                    phase.status === 1 ? 'current' : 'pending'
+                                                return (
+                                                    <TimelineLabel
+                                                        key={phase.order}
+                                                        label={phase.name}
+                                                        status={phaseStatus}
+                                                        subtitle={
+                                                            phase.status === 1
+                                                                ? `Đang diễn ra (${daysRemaining} ngày còn lại)`
+                                                                : undefined
+                                                        }
+                                                    />
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex-1 flex items-center justify-center text-slate-400">
+                                    <p>Không có kỳ học đang hoạt động</p>
                                 </div>
-                            </div>
-
-                            {/* Info boxes */}
-                            <div className="mt-auto pt-6 border-t border-slate-100 flex gap-4">
-                                <div className="flex-1 bg-slate-50 p-3 rounded border border-slate-200">
-                                    <p className="text-xs text-slate-500 mb-1">Hạn chót thẩm định</p>
-                                    <p className="text-sm font-semibold text-slate-800">15/04/2024</p>
-                                </div>
-                                <div className="flex-1 bg-slate-50 p-3 rounded border border-slate-200">
-                                    <p className="text-xs text-slate-500 mb-1">Tổng hội đồng</p>
-                                    <p className="text-sm font-semibold text-slate-800">12 Hội đồng</p>
-                                </div>
-                                <div className="flex-1 bg-slate-50 p-3 rounded border border-slate-200">
-                                    <p className="text-xs text-slate-500 mb-1">Giảng viên phản biện</p>
-                                    <p className="text-sm font-semibold text-slate-800">45 Giảng viên</p>
-                                </div>
-                            </div>
+                            )}
                         </div>
 
                         {/* Approval Rate Chart */}
-                        <div className="bento-card p-6 rounded-md flex flex-col">
-                            <h3 className="text-slate-800 text-lg font-bold mb-4">Tỷ Lệ Duyệt Đề Tài</h3>
-                            <div className="flex-1 flex flex-col items-center justify-center relative">
+                        <div className="bento-card p-6 rounded-md flex flex-col overflow-hidden">
+                            <h3 className="text-slate-800 text-lg font-bold mb-4">Tỷ Lệ Đề Tài Kỳ Này</h3>
+                            <div className="flex-1 flex flex-col items-center justify-center relative min-h-0">
                                 <div
                                     className="relative w-40 h-40 rounded-full bg-slate-100 flex items-center justify-center"
-                                    style={{
-                                        background: 'conic-gradient(#5F8F61 0% 65%, #A64B4B 65% 75%, #2c6090 75% 100%)',
-                                    }}
+                                    style={{ background: approvalRate.total > 0 ? gradient : undefined }}
                                 >
                                     <div className="w-28 h-28 bg-white rounded-full flex flex-col items-center justify-center z-10">
-                                        <span className="text-3xl font-bold text-slate-800">65%</span>
-                                        <span className="text-[10px] text-slate-400 uppercase tracking-wide">Đã duyệt</span>
+                                        <span className="text-3xl font-bold text-slate-800">{inProgressPct}%</span>
+                                        <span className="text-[10px] text-slate-400 uppercase tracking-wide">Đang triển khai</span>
                                     </div>
                                 </div>
                                 <div className="w-full mt-6 space-y-3">
-                                    <LegendItem color="bg-success" label="Đã duyệt" value="556" />
-                                    <LegendItem color="bg-primary" label="Chờ duyệt" value="214" />
-                                    <LegendItem color="bg-error" label="Từ chối" value="86" />
+                                    <LegendItem color="bg-success" label="Đang triển khai" value={approvalRate.inProgress.toLocaleString()} />
+                                    <LegendItem color="bg-blue-500" label="Đã duyệt" value={approvalRate.approved.toLocaleString()} />
+                                    <LegendItem color="bg-error" label="Từ chối" value={approvalRate.rejected.toLocaleString()} />
+                                    {approvalRate.pending > 0 && (
+                                        <LegendItem color="bg-slate-400" label="Chờ duyệt" value={approvalRate.pending.toLocaleString()} />
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -143,9 +243,12 @@ export function DashboardPage() {
                                 <span className="material-symbols-outlined text-slate-500">health_and_safety</span>
                                 <h3 className="text-slate-800 text-lg font-bold">Hệ Thống & Yêu Cầu Hỗ Trợ</h3>
                             </div>
-                            <button className="text-xs font-medium text-primary hover:text-primary-light transition-colors">
+                            <a
+                                href="/admin/support"
+                                className="text-xs font-medium text-primary hover:text-primary-light transition-colors"
+                            >
                                 Xem tất cả
-                            </button>
+                            </a>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm text-slate-500">
@@ -160,36 +263,17 @@ export function DashboardPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    <SupportRow
-                                        id="#TICK-4923"
-                                        icon="error"
-                                        iconColor="text-error"
-                                        issue="Lỗi upload file PDF đồ án"
-                                        reporter="Nguyễn Văn A (SV)"
-                                        time="10 phút trước"
-                                        status="Chưa xử lý"
-                                        statusColor="bg-error/10 text-error border-error/20"
-                                    />
-                                    <SupportRow
-                                        id="#TICK-4922"
-                                        icon="help"
-                                        iconColor="text-blue-500"
-                                        issue="Yêu cầu đổi tên đề tài (Quá hạn)"
-                                        reporter="Trần Thị B (SV)"
-                                        time="2 giờ trước"
-                                        status="Đang xem xét"
-                                        statusColor="bg-blue-500/10 text-blue-600 border-blue-500/20"
-                                    />
-                                    <SupportRow
-                                        id="#SYS-LOG-01"
-                                        icon="warning"
-                                        iconColor="text-yellow-500"
-                                        issue="High Server Load detected"
-                                        reporter="System Monitor"
-                                        time="4 giờ trước"
-                                        status="Đã giải quyết"
-                                        statusColor="bg-success/10 text-success border-success/20"
-                                    />
+                                    {recentTickets.length > 0 ? (
+                                        recentTickets.map((ticket) => (
+                                            <SupportRow key={ticket.code} ticket={ticket} />
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={6} className="px-6 py-8 text-center text-slate-400">
+                                                Không có yêu cầu hỗ trợ nào
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -200,7 +284,58 @@ export function DashboardPage() {
     )
 }
 
-// Helper Components
+// ── Helpers ──────────────────────────────────────────
+
+function phaseIcon(type: number): string {
+    switch (type) {
+        case 0: return 'edit_calendar'  // Registration
+        case 1: return 'fact_check'     // Evaluation
+        case 2: return 'code'           // Implementation
+        case 3: return 'shield'         // Defense
+        default: return 'circle'
+    }
+}
+
+const ticketStatusLabels: Record<number, string> = {
+    0: 'Chưa xử lý',
+    1: 'Đang xem xét',
+    2: 'Đã giải quyết',
+    3: 'Đã đóng',
+}
+
+const ticketStatusColors: Record<number, string> = {
+    0: 'bg-error/10 text-error border-error/20',
+    1: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+    2: 'bg-success/10 text-success border-success/20',
+    3: 'bg-slate-100 text-slate-500 border-slate-200',
+}
+
+function ticketIcon(priority: number): { icon: string; color: string } {
+    switch (priority) {
+        case 3: return { icon: 'error', color: 'text-error' }           // Urgent
+        case 2: return { icon: 'warning', color: 'text-yellow-500' }    // High
+        case 1: return { icon: 'help', color: 'text-blue-500' }        // Medium
+        default: return { icon: 'info', color: 'text-slate-400' }      // Low
+    }
+}
+
+function formatRelativeTime(dateString: string): string {
+    const now = new Date()
+    const date = new Date(dateString)
+    const diffMs = now.getTime() - date.getTime()
+    const diffMinutes = Math.floor(diffMs / (1000 * 60))
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+    if (diffMinutes < 1) return 'Vừa xong'
+    if (diffMinutes < 60) return `${diffMinutes} phút trước`
+    if (diffHours < 24) return `${diffHours} giờ trước`
+    if (diffDays < 30) return `${diffDays} ngày trước`
+    return date.toLocaleDateString('vi-VN')
+}
+
+// ── Components ──────────────────────────────────────
+
 function StatsCard({
     icon,
     iconColor,
@@ -237,22 +372,17 @@ function StatsCard({
     )
 }
 
-function TimelineStep({
+function TimelineIcon({
     icon,
-    label,
     status,
-    subtitle,
 }: {
     icon: string
-    label: string
     status: 'completed' | 'current' | 'pending'
-    subtitle?: string
 }) {
     const isCurrent = status === 'current'
-    const isPending = status === 'pending'
 
     return (
-        <div className={`flex flex-col items-center gap-2 group cursor-pointer ${isPending ? 'opacity-50' : ''}`}>
+        <div className="flex justify-center">
             <div
                 className={`rounded-full flex items-center justify-center ${isCurrent
                     ? 'w-10 h-10 bg-primary text-white shadow-lg shadow-primary/20 ring-4 ring-white'
@@ -261,13 +391,33 @@ function TimelineStep({
                         : 'w-8 h-8 bg-white border-2 border-slate-300 text-slate-400'
                     }`}
             >
-                <span className={`material-symbols-outlined ${isCurrent ? 'text-[20px]' : 'text-[16px]'}`}>{icon}</span>
+                <span className={`material-symbols-outlined ${isCurrent ? 'text-[20px]' : 'text-[16px]'}`}>
+                    {status === 'completed' ? 'check' : icon}
+                </span>
             </div>
-            <p className={`text-xs font-medium ${isCurrent ? 'text-sm font-bold text-slate-800' : 'text-slate-500'}`}>
+        </div>
+    )
+}
+
+function TimelineLabel({
+    label,
+    status,
+    subtitle,
+}: {
+    label: string
+    status: 'completed' | 'current' | 'pending'
+    subtitle?: string
+}) {
+    const isCurrent = status === 'current'
+    const isPending = status === 'pending'
+
+    return (
+        <div className={`flex flex-col items-center gap-1 ${isPending ? 'opacity-50' : ''}`}>
+            <p className={`text-xs font-medium text-center ${isCurrent ? 'text-sm font-bold text-slate-800' : 'text-slate-500'}`}>
                 {label}
             </p>
             {subtitle && (
-                <span className="text-[10px] text-primary-light font-semibold bg-primary/10 px-2 py-0.5 rounded">
+                <span className="text-[10px] text-primary-light font-semibold bg-primary/10 px-2 py-0.5 rounded whitespace-nowrap">
                     {subtitle}
                 </span>
             )}
@@ -287,39 +437,23 @@ function LegendItem({ color, label, value }: { color: string; label: string; val
     )
 }
 
-function SupportRow({
-    id,
-    icon,
-    iconColor,
-    issue,
-    reporter,
-    time,
-    status,
-    statusColor,
-}: {
-    id: string
-    icon: string
-    iconColor: string
-    issue: string
-    reporter: string
-    time: string
-    status: string
-    statusColor: string
-}) {
+function SupportRow({ ticket }: { ticket: RecentTicket }) {
+    const { icon, color } = ticketIcon(ticket.priority)
+
     return (
         <tr className="hover:bg-slate-50 transition-colors">
-            <td className="px-6 py-4 font-mono text-xs text-slate-600">{id}</td>
+            <td className="px-6 py-4 font-mono text-xs text-slate-600">#{ticket.code}</td>
             <td className="px-6 py-4">
                 <div className="flex items-center gap-2">
-                    <span className={`material-symbols-outlined ${iconColor} text-[18px]`}>{icon}</span>
-                    <span className="text-slate-800 font-medium">{issue}</span>
+                    <span className={`material-symbols-outlined ${color} text-[18px]`}>{icon}</span>
+                    <span className="text-slate-800 font-medium">{ticket.title}</span>
                 </div>
             </td>
-            <td className="px-6 py-4 text-slate-600">{reporter}</td>
-            <td className="px-6 py-4 text-slate-600">{time}</td>
+            <td className="px-6 py-4 text-slate-600">{ticket.reporterName}</td>
+            <td className="px-6 py-4 text-slate-600">{formatRelativeTime(ticket.createdAt)}</td>
             <td className="px-6 py-4">
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border ${statusColor}`}>
-                    {status}
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border ${ticketStatusColors[ticket.status] ?? ''}`}>
+                    {ticketStatusLabels[ticket.status] ?? 'Không rõ'}
                 </span>
             </td>
             <td className="px-6 py-4 text-right">

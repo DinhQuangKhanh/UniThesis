@@ -15,6 +15,24 @@ public class EvaluatorQueryService : IEvaluatorQueryService
         _context = context;
     }
 
+    public async Task<EvaluatorFilterOptionsDto> GetFilterOptionsAsync(CancellationToken cancellationToken = default)
+    {
+        var semesters = await _context.Semesters
+            .AsNoTracking()
+            .OrderByDescending(s => s.StartDate)
+            .Select(s => new FilterOptionItemDto(s.Id, s.Name))
+            .ToListAsync(cancellationToken);
+
+        var majors = await _context.Majors
+            .AsNoTracking()
+            .Where(m => m.IsActive)
+            .OrderBy(m => m.Name)
+            .Select(m => new FilterOptionItemDto(m.Id, m.Name))
+            .ToListAsync(cancellationToken);
+
+        return new EvaluatorFilterOptionsDto(semesters, majors);
+    }
+
     public async Task<EvaluatorDashboardDto> GetDashboardAsync(Guid evaluatorId, CancellationToken cancellationToken = default)
     {
         // Get all active assignments for this evaluator
@@ -251,17 +269,19 @@ public class EvaluatorQueryService : IEvaluatorQueryService
                         && a.IndividualResult.HasValue
                         && a.IndividualResult != EvaluationResult.Pending);
 
-        var totalReviewed = await statsBase.CountAsync(cancellationToken);
-        var approvedCount = await statsBase.CountAsync(a => a.IndividualResult == EvaluationResult.Approved, cancellationToken);
-        var needsModCount = await statsBase.CountAsync(a => a.IndividualResult == EvaluationResult.NeedsModification, cancellationToken);
-        var rejectedCount = await statsBase.CountAsync(a => a.IndividualResult == EvaluationResult.Rejected, cancellationToken);
+        var resultCounts = await statsBase
+            .GroupBy(a => a.IndividualResult!.Value)
+            .Select(g => new { Result = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Result, x => x.Count, cancellationToken);
+
+        var totalReviewed = resultCounts.Values.Sum();
 
         var historyStats = new EvaluatorHistoryStatsDto
         {
             TotalReviewed = totalReviewed,
-            ApprovedCount = approvedCount,
-            NeedsModificationCount = needsModCount,
-            RejectedCount = rejectedCount,
+            ApprovedCount = resultCounts.GetValueOrDefault(EvaluationResult.Approved),
+            NeedsModificationCount = resultCounts.GetValueOrDefault(EvaluationResult.NeedsModification),
+            RejectedCount = resultCounts.GetValueOrDefault(EvaluationResult.Rejected),
         };
 
         return new EvaluatorHistoryDto
@@ -285,14 +305,6 @@ public class EvaluatorQueryService : IEvaluatorQueryService
         CancellationToken cancellationToken = default)
     {
         var now = DateTime.UtcNow;
-
-        Console.WriteLine($"[DEBUG] EvaluatorId: {evaluatorId}");
-
-        // Check how many active assignments this evaluator has
-        var assignmentCount = await _context.ProjectEvaluatorAssignments
-            .Where(a => a.EvaluatorId == evaluatorId && a.IsActive)
-            .CountAsync(cancellationToken);
-        Console.WriteLine($"[DEBUG] Active assignments: {assignmentCount}");
 
         // Base query: all active assignments for this evaluator
         var query =
@@ -428,41 +440,12 @@ public class EvaluatorQueryService : IEvaluatorQueryService
             };
         }).ToList();
 
-        // Build available filter options from ALL semesters and majors in the system
-        // (Not just from assigned projects - this allows filtering even before assignments)
-        var availableSemesters = await _context.Semesters
-            .AsNoTracking()
-            .Where(s => s.IsActive)
-            .OrderBy(s => s.Name)
-            .Select(s => new { s.Id, s.Name })
-            .ToListAsync(cancellationToken);
-
-        var availableMajors = await _context.Majors
-            .AsNoTracking()
-            .Where(m => m.IsActive)
-            .OrderBy(m => m.Name)
-            .Select(m => new { m.Id, m.Name })
-            .ToListAsync(cancellationToken);
-
-        Console.WriteLine($"[DEBUG] Available Semesters count: {availableSemesters.Count}");
-        Console.WriteLine($"[DEBUG] Available Majors count: {availableMajors.Count}");
-
         return new EvaluatorProjectsDto
         {
             Items = items,
             TotalCount = totalCount,
             Page = page,
-            PageSize = pageSize,
-            AvailableSemesters = availableSemesters.Select(s => new FilterOptionDto
-            {
-                Value = s.Id.ToString(),
-                Label = s.Name
-            }).ToList(),
-            AvailableMajors = availableMajors.Select(m => new FilterOptionDto
-            {
-                Value = m.Id.ToString(),
-                Label = m.Name
-            }).ToList()
+            PageSize = pageSize
         };
     }
 }

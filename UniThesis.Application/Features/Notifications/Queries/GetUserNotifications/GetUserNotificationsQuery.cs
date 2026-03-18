@@ -1,0 +1,9 @@
+using UniThesis.Application.Common.Abstractions;
+using UniThesis.Application.Features.Notifications.DTOs;
+
+namespace UniThesis.Application.Features.Notifications.Queries.GetUserNotifications;
+
+/// <summary>
+/// Query to get the current user's notifications.
+/// </summary>
+public record GetUserNotificationsQuery(int Limit = 50) : IQuery<NotificationListResponseDto>;

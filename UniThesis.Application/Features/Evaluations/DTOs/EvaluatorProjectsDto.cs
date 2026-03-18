@@ -16,18 +16,10 @@ public record EvaluatorProjectItemDto
     public bool IsUrgent { get; init; }
 }
 
-public record FilterOptionDto
-{
-    public string Value { get; init; } = string.Empty;
-    public string Label { get; init; } = string.Empty;
-}
-
 public record EvaluatorProjectsDto
 {
     public List<EvaluatorProjectItemDto> Items { get; init; } = [];
     public int TotalCount { get; init; }
     public int Page { get; init; }
     public int PageSize { get; init; }
-    public List<FilterOptionDto> AvailableSemesters { get; init; } = [];
-    public List<FilterOptionDto> AvailableMajors { get; init; } = [];
 }

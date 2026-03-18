@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Logging;
 using UniThesis.Domain.Aggregates.EvaluationAggregate.Events;
 using UniThesis.Domain.Enums.Evaluation;
-using UniThesis.Infrastructure.Services.Notification;
+using UniThesis.Application.Common.Interfaces;
 using UniThesis.Persistence.MongoDB.Documents;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
 
@@ -26,16 +26,24 @@ namespace UniThesis.Infrastructure.EventHandlers.Evaluation
 
         public async Task Handle(EvaluatorAssignedEvent notification, CancellationToken cancellationToken)
         {
-            await _evaluationLogRepository.AddAsync(new EvaluationLogDocument
+            try
             {
-                ProjectId = notification.ProjectId,
-                EvaluationSubmissionId = notification.SubmissionId,
-                Action = EvaluationAction.Assigned,
-                PerformedBy = notification.AssignedBy,
-                PerformedAt = DateTime.UtcNow,
-            }, cancellationToken);
+                await _evaluationLogRepository.AddAsync(new EvaluationLogDocument
+                {
+                    ProjectId = notification.ProjectId,
+                    EvaluationSubmissionId = notification.SubmissionId,
+                    Action = EvaluationAction.Assigned,
+                    PerformedBy = notification.AssignedBy,
+                    PerformedAt = DateTime.UtcNow,
+                }, cancellationToken);
 
-            _logger.LogInformation("Evaluator assigned: {EvaluatorId} to project {ProjectId}", notification.EvaluatorId, notification.ProjectId);
+                _logger.LogInformation("Evaluator assigned: {EvaluatorId} to project {ProjectId}", notification.EvaluatorId, notification.ProjectId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling {Event} for Project {ProjectId}",
+                    nameof(EvaluatorAssignedEvent), notification.ProjectId);
+            }
         }
     }
 }

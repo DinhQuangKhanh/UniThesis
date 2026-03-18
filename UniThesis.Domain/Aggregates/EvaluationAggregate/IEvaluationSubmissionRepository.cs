@@ -10,5 +10,7 @@ namespace UniThesis.Domain.Aggregates.EvaluationAggregate
         Task<IEnumerable<EvaluationSubmission>> GetPendingAsync(CancellationToken cancellationToken = default);
         Task<IEnumerable<EvaluationSubmission>> GetInReviewAsync(CancellationToken cancellationToken = default);
         Task<int> GetSubmissionCountByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default);
+        Task<List<EvaluationSubmission>> GetBySemesterWithSnapshotAsync(int semesterId, CancellationToken cancellationToken = default);
+        Task<Dictionary<Guid, int>> GetActiveEvaluatorWorkloadCountsAsync(CancellationToken cancellationToken = default);
     }
 }

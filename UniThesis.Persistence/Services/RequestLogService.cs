@@ -8,8 +8,9 @@ using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
 namespace UniThesis.Persistence.Services
 {
   /// <summary>
-  /// Persists MediatR request pipeline logs into <c>user_activity_logs</c>
-  /// as <see cref="UserActivityLogDocument"/> with Category = "Request".
+  /// Persists MediatR command pipeline logs into <c>user_activity_logs</c>
+  /// as <see cref="UserActivityLogDocument"/>.
+  /// Only commands are logged — queries are filtered out by LoggingBehavior.
   /// </summary>
   public class RequestLogService : IRequestLogService
   {
@@ -36,26 +37,24 @@ namespace UniThesis.Persistence.Services
         var http = _httpContextAccessor.HttpContext;
         var ipAddress = http?.Connection.RemoteIpAddress?.ToString();
         var userAgent = http?.Request.Headers["User-Agent"].ToString();
+        var routePath = http?.Request.Headers["X-Route-Path"].ToString();
 
         var document = new UserActivityLogDocument
         {
           UserId = userId,
           UserName = entry.UserName ?? entry.UserEmail ?? "Anonymous",
           UserEmail = entry.UserEmail,
-          UserRole = entry.UserRole ?? "anonymous",
-          Action = entry.RequestName,
-          Category = "Request",
+          ActiveRole = ResolveActiveRole(entry.UserRole),
+          Action = entry.ActionDisplayName,
+          ActionCode = entry.RequestName,
+          Category = entry.Category,
           Severity = entry.IsSuccess ? "info" : "error",
+          RoutePath = string.IsNullOrEmpty(routePath) ? null : routePath,
           IpAddress = ipAddress,
           UserAgent = userAgent,
+          DurationMs = entry.ElapsedMilliseconds,
           Timestamp = entry.Timestamp,
-          Details = new BsonDocument
-          {
-            ["IsSuccess"] = entry.IsSuccess,
-            ["ElapsedMilliseconds"] = entry.ElapsedMilliseconds,
-            ["ErrorMessage"] = entry.ErrorMessage ?? BsonNull.Value.ToString(),
-            ["ErrorType"] = entry.ErrorType ?? BsonNull.Value.ToString(),
-          },
+          Details = BuildDetails(entry),
         };
 
         await _activityLogRepository.AddAsync(document, cancellationToken);
@@ -65,6 +64,62 @@ namespace UniThesis.Persistence.Services
         // Never let log persistence failures bubble up and break the request pipeline.
         _logger.LogError(ex, "Failed to persist request log for {RequestName} to MongoDB", entry.RequestName);
       }
+    }
+
+    /// <summary>
+    /// Determines the user's active role based on the HTTP request path.
+    /// Endpoints follow the convention /api/{role}/... so we can extract the role from the path.
+    /// Falls back to the role from JWT claims if the path doesn't match any known role prefix.
+    /// </summary>
+    private string ResolveActiveRole(string? fallbackRole)
+    {
+      var path = _httpContextAccessor.HttpContext?.Request.Path.Value;
+      if (path != null)
+      {
+        if (path.StartsWith("/api/evaluator/", StringComparison.OrdinalIgnoreCase)) return "evaluator";
+        if (path.StartsWith("/api/mentor/", StringComparison.OrdinalIgnoreCase)) return "mentor";
+        if (path.StartsWith("/api/admin/", StringComparison.OrdinalIgnoreCase)) return "admin";
+        if (path.StartsWith("/api/student/", StringComparison.OrdinalIgnoreCase)) return "student";
+      }
+      return fallbackRole ?? "anonymous";
+    }
+
+    private static BsonDocument? BuildDetails(RequestLogEntry entry)
+    {
+      if (entry.IsSuccess && (entry.RequestParameters is not { Count: > 0 }))
+        return null;
+
+      var details = new BsonDocument();
+
+      if (!entry.IsSuccess)
+      {
+        details["ErrorMessage"] = entry.ErrorMessage ?? BsonNull.Value.ToString();
+        details["ErrorType"] = entry.ErrorType ?? BsonNull.Value.ToString();
+        if (entry.StackTrace is not null)
+          details["StackTrace"] = entry.StackTrace;
+      }
+
+      if (entry.RequestParameters is { Count: > 0 })
+      {
+        var paramDoc = new BsonDocument();
+        foreach (var (key, value) in entry.RequestParameters)
+        {
+          paramDoc[key] = value switch
+          {
+            null      => BsonNull.Value,
+            int i     => new BsonInt32(i),
+            long l    => new BsonInt64(l),
+            bool b    => new BsonBoolean(b),
+            double d  => new BsonDouble(d),
+            Guid g    => new BsonString(g.ToString()),
+            DateTime dt => new BsonDateTime(dt),
+            _         => new BsonString(value.ToString() ?? string.Empty),
+          };
+        }
+        details["RequestParameters"] = paramDoc;
+      }
+
+      return details.ElementCount > 0 ? details : null;
     }
   }
 }

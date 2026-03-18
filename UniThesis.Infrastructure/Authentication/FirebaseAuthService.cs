@@ -1,6 +1,7 @@
 using FirebaseAdmin.Auth;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using UniThesis.Application.Common.Interfaces;
 
 namespace UniThesis.Infrastructure.Authentication
 {
@@ -8,7 +9,7 @@ namespace UniThesis.Infrastructure.Authentication
     /// Firebase Authentication service implementation.
     /// Relies on FirebaseApp being initialized by DependencyInjection.AddInfrastructure().
     /// </summary>
-    public class FirebaseAuthService : IFirebaseAuthService
+    public class FirebaseAuthService : IFirebaseAuthService, IAuthAccountService
     {
         private readonly FirebaseSettings _settings;
         private readonly ILogger<FirebaseAuthService> _logger;
@@ -135,5 +136,13 @@ namespace UniThesis.Infrastructure.Authentication
                 throw;
             }
         }
+
+        /// <inheritdoc cref="IAuthAccountService.DisableAccountAsync"/>
+        public Task DisableAccountAsync(string externalUid, CancellationToken ct = default)
+            => DisableUserAsync(externalUid, ct);
+
+        /// <inheritdoc cref="IAuthAccountService.EnableAccountAsync"/>
+        public Task EnableAccountAsync(string externalUid, CancellationToken ct = default)
+            => EnableUserAsync(externalUid, ct);
     }
 }

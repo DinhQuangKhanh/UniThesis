@@ -1,0 +1,37 @@
+using MediatR;
+using UniThesis.Application.Common;
+using UniThesis.Application.Features.Evaluations.DTOs;
+using UniThesis.Application.Features.Evaluations.Queries.GetEvaluatorFilterOptions;
+
+namespace UniThesis.API.Endpoints.Evaluations;
+
+public class GetEvaluatorFilterOptionsEndpoint : IEndpoint
+{
+    public void MapEndpoint(IEndpointRouteBuilder app)
+    {
+        app.MapGet("/api/evaluator/filter-options", async (
+                ISender sender,
+                ILogger<GetEvaluatorFilterOptionsEndpoint> logger,
+                CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    var result = await sender.Send(
+                        new GetEvaluatorFilterOptionsQuery(), cancellationToken);
+                    return Results.Ok(ApiResponse.Ok(result));
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Lỗi khi tải dữ liệu bộ lọc (Học kỳ, Chuyên ngành)");
+                    return Results.Json(
+                        ApiResponse.Fail("Không thể tải dữ liệu bộ lọc (Học kỳ, Chuyên ngành). Vui lòng thử lại sau."),
+                        statusCode: 500);
+                }
+            })
+            .RequireAuthorization()
+            .WithTags("Evaluator")
+            .WithName("GetEvaluatorFilterOptions")
+            .Produces<ApiResponse<EvaluatorFilterOptionsDto>>()
+            .Produces(401);
+    }
+}

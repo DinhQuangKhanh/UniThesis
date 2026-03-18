@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Logging;
+using UniThesis.Application.Common.Interfaces;
+using UniThesis.Application.Features.Notifications.DTOs;
 using UniThesis.Domain.Aggregates.ProjectAggregate;
 using UniThesis.Domain.Enums.Notification;
 using UniThesis.Infrastructure.RealTime.Models;
@@ -117,16 +119,22 @@ namespace UniThesis.Infrastructure.Services.Notification
             _logger.LogInformation("Notification sent to {Count} users: {Title}", userIdList.Count, title);
         }
 
-        public async Task<IEnumerable<NotificationDocument>> GetUserNotificationsAsync(
+        public async Task<IEnumerable<NotificationDto>> GetUserNotificationsAsync(
             Guid userId,
             int limit = 50,
             CancellationToken ct = default)
-            => await _notificationRepository.GetByUserIdAsync(userId, limit, ct);
+        {
+            var docs = await _notificationRepository.GetByUserIdAsync(userId, limit, ct);
+            return docs.Select(MapToDto);
+        }
 
-        public async Task<IEnumerable<NotificationDocument>> GetUnreadNotificationsAsync(
+        public async Task<IEnumerable<NotificationDto>> GetUnreadNotificationsAsync(
             Guid userId,
             CancellationToken ct = default)
-            => await _notificationRepository.GetUnreadByUserIdAsync(userId, ct);
+        {
+            var docs = await _notificationRepository.GetUnreadByUserIdAsync(userId, ct);
+            return docs.Select(MapToDto);
+        }
 
         public async Task<long> GetUnreadCountAsync(Guid userId, CancellationToken ct = default)
             => await _notificationRepository.GetUnreadCountAsync(userId, ct);
@@ -136,6 +144,20 @@ namespace UniThesis.Infrastructure.Services.Notification
 
         public async Task MarkAllAsReadAsync(Guid userId, CancellationToken ct = default)
             => await _notificationRepository.MarkAllAsReadAsync(userId, ct);
+
+        private static NotificationDto MapToDto(NotificationDocument n) => new()
+        {
+            Id = n.Id,
+            UserId = n.UserId,
+            Title = n.Title,
+            Content = n.Content,
+            Type = n.Type.ToString(),
+            Category = n.Category.ToString(),
+            TargetUrl = n.TargetUrl,
+            IsRead = n.IsRead,
+            ReadAt = n.ReadAt,
+            CreatedAt = n.CreatedAt
+        };
 
         public async Task NotifyProjectSubmittedAsync(
             Guid projectId,
@@ -180,14 +202,22 @@ namespace UniThesis.Infrastructure.Services.Notification
                 ct);
 
         public async Task SendTopicExpirationWarningAsync(Project topic, CancellationToken ct = default)
-            => await SendAsync(
-                (Guid)topic.SubmittedBy!,
+        {
+            if (topic.SubmittedBy is null)
+            {
+                _logger.LogWarning("Cannot send expiration warning for topic {TopicId}: SubmittedBy is null.", topic.Id);
+                return;
+            }
+
+            await SendAsync(
+                topic.SubmittedBy.Value,
                 "Đề tài sắp hết hạn",
                 $"Đề tài '{topic.NameVi}' sẽ hết hạn.",
                 NotificationType.Warning,
                 NotificationCategory.Deadline,
                 $"/topics/{topic.Id}",
                 ct);
+        }
 
         public async Task NotifyMeetingApprovedAsync(
             Guid requesterId,

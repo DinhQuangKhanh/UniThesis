@@ -18,17 +18,18 @@ using UniThesis.Infrastructure.Authorization.Policies;
 using UniThesis.Infrastructure.BackgroundJobs;
 using UniThesis.Infrastructure.BackgroundJobs.Jobs;
 using UniThesis.Infrastructure.BackgroundJobs.Scheduling;
+using StackExchange.Redis;
+using UniThesis.Application.Common.Interfaces;
 using UniThesis.Infrastructure.Caching;
 using UniThesis.Infrastructure.HealthChecks;
 using UniThesis.Infrastructure.Middleware;
-using UniThesis.Infrastructure.RealTime.Hubs;
 using UniThesis.Infrastructure.RealTime.Services;
 using UniThesis.Infrastructure.Services.DomainServices;
 using UniThesis.Infrastructure.Services.Email;
 using UniThesis.Infrastructure.Services.Email.Templates;
 using UniThesis.Infrastructure.Services.FileStorage;
 using UniThesis.Infrastructure.Services.Notification;
-using UniThesis.Infrastructure.Services.Reporting;
+using UniThesis.Persistence.SqlServer.QueryServices;
 
 namespace UniThesis.Infrastructure
 {
@@ -36,9 +37,6 @@ namespace UniThesis.Infrastructure
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
-            // MediatR - Auto-discover all handlers from this assembly
-            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
-
             // Firebase Configuration
             services.Configure<FirebaseSettings>(configuration.GetSection(FirebaseSettings.SectionName));
             var firebaseSettings = configuration.GetSection(FirebaseSettings.SectionName).Get<FirebaseSettings>();
@@ -151,6 +149,7 @@ namespace UniThesis.Infrastructure
 
             // Firebase Auth Service
             services.AddScoped<IFirebaseAuthService, FirebaseAuthService>();
+            services.AddScoped<IAuthAccountService, FirebaseAuthService>();
 
             // Domain Services
             services.AddScoped<IProjectDomainService, ProjectDomainService>();
@@ -158,6 +157,11 @@ namespace UniThesis.Infrastructure
             services.AddScoped<ITopicPoolDomainService, TopicPoolDomainService>();
             services.AddScoped<ISemesterDomainService, SemesterDomainService>();
             services.AddScoped<IGroupDomainService, GroupDomainService>();
+
+            // Query Services
+            services.AddScoped<ITopicPoolQueryService, TopicPoolQueryService>();
+            services.AddScoped<IStudentGroupQueryService, StudentGroupQueryService>();
+            services.AddScoped<IEvaluatorQueryService, EvaluatorQueryService>();
 
             // Email
             services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
@@ -169,16 +173,31 @@ namespace UniThesis.Infrastructure
             services.AddScoped<IFileStorageService, FirebaseStorageService>();
 
             // Notification & RealTime
-            services.AddScoped<INotificationService, NotificationService>();
+            services.AddScoped<UniThesis.Application.Common.Interfaces.INotificationService, NotificationService>();
+            services.AddScoped<INotificationService, NotificationService>(); // Keep the local one if others in Infra depend on it
             services.AddScoped<IRealtimeNotificationService, RealtimeNotificationService>();
 
-            // Reporting
-            services.AddScoped<IReportGeneratorService, ExcelReportService>();
-
-            // Caching
+            // Caching - L1 (Memory) + L2 (Redis) Hybrid
             services.Configure<CacheSettings>(configuration.GetSection(CacheSettings.SectionName));
             services.AddMemoryCache();
-            services.AddSingleton<ICacheService, MemoryCacheService>(); // Singleton: key tracking must persist across scopes
+            services.AddSingleton<MemoryCacheService>(); // L1 - concrete registration for HybridCacheService
+
+            var cacheSettings = configuration.GetSection(CacheSettings.SectionName).Get<CacheSettings>();
+            if (!string.IsNullOrEmpty(cacheSettings?.RedisConnectionString))
+            {
+                // Redis available → register L2 + Hybrid + pub/sub listener
+                services.AddSingleton<IConnectionMultiplexer>(sp =>
+                    ConnectionMultiplexer.Connect(cacheSettings.RedisConnectionString));
+                services.AddSingleton<RedisCacheService>();                          // L2
+                services.AddSingleton<ICacheService, HybridCacheService>();          // Hybrid = L1 + L2
+                services.AddHostedService<RedisCacheInvalidationListener>();         // Cross-instance L1 sync
+            }
+            else
+            {
+                // No Redis → fallback to Memory only (dev environment)
+                services.AddSingleton<ICacheService>(sp => sp.GetRequiredService<MemoryCacheService>());
+            }
+
             services.AddScoped<ICacheInvalidationService, CacheInvalidationService>();
 
             // Background Jobs

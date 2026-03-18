@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { apiClient } from "@/lib/apiClient";
-import { useEvaluatorError } from "@/contexts/EvaluatorErrorContext";
+import { useSystemError } from "@/contexts/SystemErrorContext";
 
 const container = {
   hidden: { opacity: 0 },
@@ -15,8 +15,13 @@ const item = {
 };
 
 interface FilterOptionDto {
-  value: string;
+  value: number;
   label: string;
+}
+
+interface FilterOptionsResponse {
+  semesters: FilterOptionDto[];
+  majors: FilterOptionDto[];
 }
 
 interface EvaluatorProjectItemDto {
@@ -39,8 +44,6 @@ interface EvaluatorProjectsDto {
   totalCount: number;
   page: number;
   pageSize: number;
-  availableSemesters: FilterOptionDto[];
-  availableMajors: FilterOptionDto[];
 }
 
 const RESULT_DISPLAY: Record<string, { label: string; colors: string; animate: boolean }> = {
@@ -62,7 +65,7 @@ function getInitials(name: string): string {
 
 export function EvaluatorProjectsPage() {
   const navigate = useNavigate();
-  const { showError } = useEvaluatorError();
+  const { showError } = useSystemError();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Đọc giá trị từ URL hoặc dùng giá trị mặc định
@@ -73,7 +76,16 @@ export function EvaluatorProjectsPage() {
   const page = parseInt(searchParams.get("page") || "1", 10);
 
   const [data, setData] = useState<EvaluatorProjectsDto | null>(null);
+  const [filterOptions, setFilterOptions] = useState<FilterOptionsResponse>({ semesters: [], majors: [] });
   const [loading, setLoading] = useState(true);
+
+  // Fetch filter options once on mount
+  useEffect(() => {
+    apiClient
+      .get<FilterOptionsResponse>("/api/evaluator/filter-options")
+      .then(setFilterOptions)
+      .catch((err) => showError(err.message));
+  }, [showError]);
 
   // Helper function để cập nhật URL params
   function updateParams(updates: Record<string, string | number | null>) {
@@ -104,16 +116,8 @@ export function EvaluatorProjectsPage() {
         setLoading(true);
         apiClient
           .get<EvaluatorProjectsDto>(`/api/evaluator/projects?${params}`)
-          .then((response) => {
-            console.log("API Response:", response);
-            console.log("Available Semesters:", response?.availableSemesters);
-            console.log("Available Majors:", response?.availableMajors);
-            setData(response);
-          })
-          .catch((err) => {
-            console.error("API Error:", err);
-            showError(err.message);
-          })
+          .then(setData)
+          .catch((err) => showError(err.message))
           .finally(() => setLoading(false));
       },
       search ? 400 : 0,
@@ -240,8 +244,8 @@ export function EvaluatorProjectsPage() {
   }
 
   const activeSemesterLabel =
-    semesterId && data?.availableSemesters
-      ? data.availableSemesters.find((s) => s.value === semesterId)?.label
+    semesterId
+      ? filterOptions.semesters.find((s) => String(s.value) === semesterId)?.label
       : null;
 
   return (
@@ -291,15 +295,14 @@ export function EvaluatorProjectsPage() {
               <div className="md:col-span-2 flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Kỳ học</label>
                 <select
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none cursor-pointer"
                   value={semesterId}
                   onChange={(e) => {
                     updateParams({ semesterId: e.target.value, page: 1 });
                   }}
-                  disabled={loading}
                 >
                   <option value="">Tất cả</option>
-                  {(data?.availableSemesters || []).map((s) => (
+                  {filterOptions.semesters.map((s) => (
                     <option key={s.value} value={s.value}>
                       {s.label}
                     </option>
@@ -309,15 +312,14 @@ export function EvaluatorProjectsPage() {
               <div className="md:col-span-2 flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Chuyên ngành</label>
                 <select
-                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none cursor-pointer"
                   value={majorId}
                   onChange={(e) => {
                     updateParams({ majorId: e.target.value, page: 1 });
                   }}
-                  disabled={loading}
                 >
                   <option value="">Tất cả</option>
-                  {(data?.availableMajors || []).map((m) => (
+                  {filterOptions.majors.map((m) => (
                     <option key={m.value} value={m.value}>
                       {m.label}
                     </option>
