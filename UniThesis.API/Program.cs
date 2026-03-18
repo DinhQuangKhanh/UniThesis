@@ -6,6 +6,10 @@ using UniThesis.Infrastructure.RealTime.Hubs;
 using UniThesis.Persistence;
 using System.Linq;
 
+// Load backend environment variables from .env files before building configuration.
+var environmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+DotEnvLoader.LoadForCurrentEnvironment(Directory.GetCurrentDirectory(), environmentName);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ============================================
