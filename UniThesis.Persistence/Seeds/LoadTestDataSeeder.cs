@@ -84,11 +84,20 @@ public static class LoadTestDataSeeder
     // ────────────────── Entry point ──────────────────
     public static async Task SeedAsync(AppDbContext context, ILogger? logger = null)
     {
-        // ┌──────────────────────────────────────────────────────────────────┐
-        // │  UNCOMMENT the line below to wipe ALL data before re-seeding.  │
-        // │  Useful when you change seed logic and need a fresh database.  │
-        // └──────────────────────────────────────────────────────────────────┘
-         await ResetDatabaseAsync(context, logger);
+        // Never reset data by default on app startup.
+        // Opt-in reset only when explicitly requested via environment variable.
+        // Example: set UNITHESIS_RESET_LOADTEST_ON_STARTUP=true
+        var resetOnStartup =
+            string.Equals(
+                Environment.GetEnvironmentVariable("UNITHESIS_RESET_LOADTEST_ON_STARTUP"),
+                "true",
+                StringComparison.OrdinalIgnoreCase);
+
+        if (resetOnStartup)
+        {
+            logger?.LogWarning("UNITHESIS_RESET_LOADTEST_ON_STARTUP=true => resetting database before load-test seeding.");
+            await ResetDatabaseAsync(context, logger);
+        }
 
         var alreadySeeded = await context.Database
             .SqlQueryRaw<int>("SELECT COUNT(*) AS [Value] FROM Users WHERE Id = {0}", AdminId(1))
@@ -1250,6 +1259,9 @@ public static class LoadTestDataSeeder
     {
         logger?.LogWarning("Resetting database — deleting ALL data...");
 
+        var originalTimeout = context.Database.GetCommandTimeout();
+        context.Database.SetCommandTimeout(TimeSpan.FromMinutes(3));
+
         // Order matters: delete children before parents to respect FK constraints.
         var tables = new[]
         {
@@ -1285,40 +1297,47 @@ public static class LoadTestDataSeeder
             "Semesters",
         };
 
-        foreach (var entry in tables)
+        try
         {
-            if (entry.StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase))
+            foreach (var entry in tables)
             {
-                await context.Database.ExecuteSqlRawAsync(entry);
+                if (entry.StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase))
+                {
+                    await context.Database.ExecuteSqlRawAsync(entry);
+                }
+                else
+                {
+                    await context.Database.ExecuteSqlRawAsync($"DELETE FROM [{entry}];");
+                }
             }
-            else
+
+            // Only RESEED tables that actually use identity columns (int Id, auto-increment).
+            // Tables with Guid PKs or ValueGeneratedNever do NOT have identity columns.
+            var identityTables = new[]
             {
-                await context.Database.ExecuteSqlRawAsync($"DELETE FROM [{entry}];");
+                "SemesterPhases", "GroupMembers", "UserRoles", "ProjectMentors", "CouncilMembers",
+                "Departments", "Majors"
+            };
+
+            foreach (var table in identityTables)
+            {
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync(
+                        $"DBCC CHECKIDENT ('[{table}]', RESEED, 0);");
+                }
+                catch
+                {
+                    // Table might not exist or might be empty — ignore.
+                }
             }
+
+            logger?.LogWarning("Database reset complete. All data deleted.");
         }
-
-        // Only RESEED tables that actually use identity columns (int Id, auto-increment).
-        // Tables with Guid PKs or ValueGeneratedNever do NOT have identity columns.
-        var identityTables = new[]
+        finally
         {
-            "SemesterPhases", "GroupMembers", "UserRoles", "ProjectMentors", "CouncilMembers",
-            "Departments", "Majors"
-        };
-
-        foreach (var table in identityTables)
-        {
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync(
-                    $"DBCC CHECKIDENT ('[{table}]', RESEED, 0);");
-            }
-            catch
-            {
-                // Table might not exist or might be empty — ignore.
-            }
+            context.Database.SetCommandTimeout(originalTimeout);
         }
-
-        logger?.LogWarning("Database reset complete. All data deleted.");
     }
 
     // ════════════════════════════════════════════════
