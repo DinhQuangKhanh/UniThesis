@@ -76,4 +76,21 @@ public class TopicRegistrationRepository : BaseRepository<TopicRegistration, Gui
             .OrderBy(tr => tr.RegisteredAt)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<int> CountPendingByProjectIdExcludingAsync(Guid projectId, Guid excludeRegistrationId, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .CountAsync(tr => tr.ProjectId == projectId &&
+                             tr.Status == TopicRegistrationStatus.Pending &&
+                             tr.Id != excludeRegistrationId, cancellationToken);
+    }
+
+    public async Task<Dictionary<TopicRegistrationStatus, int>> GetRegistrationStatusCountsByProjectIdsAsync(IEnumerable<Guid> projectIds, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Where(tr => projectIds.Contains(tr.ProjectId))
+            .GroupBy(tr => tr.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
+    }
 }

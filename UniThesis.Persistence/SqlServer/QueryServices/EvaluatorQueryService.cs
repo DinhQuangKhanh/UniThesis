@@ -269,17 +269,19 @@ public class EvaluatorQueryService : IEvaluatorQueryService
                         && a.IndividualResult.HasValue
                         && a.IndividualResult != EvaluationResult.Pending);
 
-        var totalReviewed = await statsBase.CountAsync(cancellationToken);
-        var approvedCount = await statsBase.CountAsync(a => a.IndividualResult == EvaluationResult.Approved, cancellationToken);
-        var needsModCount = await statsBase.CountAsync(a => a.IndividualResult == EvaluationResult.NeedsModification, cancellationToken);
-        var rejectedCount = await statsBase.CountAsync(a => a.IndividualResult == EvaluationResult.Rejected, cancellationToken);
+        var resultCounts = await statsBase
+            .GroupBy(a => a.IndividualResult!.Value)
+            .Select(g => new { Result = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Result, x => x.Count, cancellationToken);
+
+        var totalReviewed = resultCounts.Values.Sum();
 
         var historyStats = new EvaluatorHistoryStatsDto
         {
             TotalReviewed = totalReviewed,
-            ApprovedCount = approvedCount,
-            NeedsModificationCount = needsModCount,
-            RejectedCount = rejectedCount,
+            ApprovedCount = resultCounts.GetValueOrDefault(EvaluationResult.Approved),
+            NeedsModificationCount = resultCounts.GetValueOrDefault(EvaluationResult.NeedsModification),
+            RejectedCount = resultCounts.GetValueOrDefault(EvaluationResult.Rejected),
         };
 
         return new EvaluatorHistoryDto
