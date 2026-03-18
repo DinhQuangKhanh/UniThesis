@@ -11,7 +11,11 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
     public class Group : AggregateRoot<Guid>
     {
         private readonly List<GroupMember> _members = [];
+        private readonly List<GroupInvitation> _invitations = [];
+        private readonly List<GroupJoinRequest> _joinRequests = [];
+
         private const int DefaultMaxMembers = 5;
+        public const int MinMembers = 4;
 
         public GroupCode Code { get; private set; } = null!;
         public string? Name { get; private set; }
@@ -20,10 +24,13 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
         public Guid? LeaderId { get; private set; }
         public GroupStatus Status { get; private set; }
         public int MaxMembers { get; private set; }
+        public bool IsOpenForRequests { get; private set; } = true;
         public DateTime CreatedAt { get; private set; }
         public DateTime? UpdatedAt { get; private set; }
 
         public IReadOnlyCollection<GroupMember> Members => _members.AsReadOnly();
+        public IReadOnlyCollection<GroupInvitation> Invitations => _invitations.AsReadOnly();
+        public IReadOnlyCollection<GroupJoinRequest> JoinRequests => _joinRequests.AsReadOnly();
         public GroupMember? Leader => _members.FirstOrDefault(m => m.IsLeader);
 
         /// <summary>
@@ -93,6 +100,7 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
 
         public void AssignProject(Guid projectId)
         {
+            CheckRule(new GroupMustHaveMinMembersRule(ActiveMemberCount, MinMembers));
             ProjectId = projectId;
             UpdatedAt = DateTime.UtcNow;
         }
@@ -123,6 +131,120 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
             if (maxMembers < activeCount)
                 throw new BusinessRuleValidationException($"Cannot set max members to {maxMembers} when group has {activeCount} active members.");
             MaxMembers = maxMembers;
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+        public void SetOpenForRequests(bool isOpen) { IsOpenForRequests = isOpen; UpdatedAt = DateTime.UtcNow; }
+
+        // ── Invitation Methods ──────────────────────────────────────────
+
+        public GroupInvitation InviteMember(Guid inviterId, Guid inviteeId, string? message = null)
+        {
+            if (Status != GroupStatus.Active)
+                throw new BusinessRuleValidationException("Can only invite members to an active group.");
+
+            if (LeaderId != inviterId)
+                throw new BusinessRuleValidationException("Only the group leader can invite members.");
+
+            CheckRule(new GroupCannotExceedMaxMembersRule(ActiveMemberCount, MaxMembers));
+
+            if (_members.Any(m => m.StudentId == inviteeId && m.IsActive))
+                throw new BusinessRuleValidationException("Student is already an active member of this group.");
+
+            if (_invitations.Any(i => i.InviteeId == inviteeId && i.IsPending))
+                throw new BusinessRuleValidationException("A pending invitation already exists for this student.");
+
+            var invitation = GroupInvitation.Create(Id, inviterId, inviteeId, message);
+            _invitations.Add(invitation);
+            UpdatedAt = DateTime.UtcNow;
+            return invitation;
+        }
+
+        public void AcceptInvitation(int invitationId, Guid studentId)
+        {
+            var invitation = _invitations.FirstOrDefault(i => i.Id == invitationId && i.InviteeId == studentId)
+                ?? throw new EntityNotFoundException(nameof(GroupInvitation), invitationId);
+
+            if (!invitation.IsPending)
+                throw new BusinessRuleValidationException("Invitation is no longer pending.");
+
+            if (invitation.IsExpired)
+            {
+                invitation.Expire();
+                throw new BusinessRuleValidationException("Invitation has expired.");
+            }
+
+            CheckRule(new GroupCannotExceedMaxMembersRule(ActiveMemberCount, MaxMembers));
+
+            invitation.Accept();
+            AddMember(studentId);
+        }
+
+        public void RejectInvitation(int invitationId, Guid studentId)
+        {
+            var invitation = _invitations.FirstOrDefault(i => i.Id == invitationId && i.InviteeId == studentId)
+                ?? throw new EntityNotFoundException(nameof(GroupInvitation), invitationId);
+
+            if (!invitation.IsPending)
+                throw new BusinessRuleValidationException("Invitation is no longer pending.");
+
+            invitation.Reject();
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+        // ── Join Request Methods ────────────────────────────────────────
+
+        public GroupJoinRequest RequestToJoin(Guid studentId, string? message = null)
+        {
+            if (Status != GroupStatus.Active)
+                throw new BusinessRuleValidationException("Can only request to join an active group.");
+
+            if (!IsOpenForRequests)
+                throw new BusinessRuleValidationException("This group is not accepting join requests.");
+
+            CheckRule(new GroupCannotExceedMaxMembersRule(ActiveMemberCount, MaxMembers));
+
+            if (_members.Any(m => m.StudentId == studentId && m.IsActive))
+                throw new BusinessRuleValidationException("Student is already an active member of this group.");
+
+            if (_joinRequests.Any(r => r.StudentId == studentId && r.IsPending))
+                throw new BusinessRuleValidationException("A pending join request already exists for this student.");
+
+            var request = GroupJoinRequest.Create(Id, studentId, message);
+            _joinRequests.Add(request);
+            UpdatedAt = DateTime.UtcNow;
+            return request;
+        }
+
+        public void ApproveJoinRequest(int requestId, Guid approverId)
+        {
+            if (LeaderId != approverId)
+                throw new BusinessRuleValidationException("Only the group leader can approve join requests.");
+
+            var request = _joinRequests.FirstOrDefault(r => r.Id == requestId)
+                ?? throw new EntityNotFoundException(nameof(GroupJoinRequest), requestId);
+
+            if (!request.IsPending)
+                throw new BusinessRuleValidationException("Join request is no longer pending.");
+
+            CheckRule(new GroupCannotExceedMaxMembersRule(ActiveMemberCount, MaxMembers));
+
+            request.Approve();
+            AddMember(request.StudentId);
+        }
+
+        public void RejectJoinRequest(int requestId, Guid rejecterId)
+        {
+            if (LeaderId != rejecterId)
+                throw new BusinessRuleValidationException("Only the group leader can reject join requests.");
+
+            var request = _joinRequests.FirstOrDefault(r => r.Id == requestId)
+                ?? throw new EntityNotFoundException(nameof(GroupJoinRequest), requestId);
+
+            if (!request.IsPending)
+                throw new BusinessRuleValidationException("Join request is no longer pending.");
+
+            request.Reject();
             UpdatedAt = DateTime.UtcNow;
         }
     }

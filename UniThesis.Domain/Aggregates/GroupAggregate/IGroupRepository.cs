@@ -14,5 +14,8 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
         Task<int> GetNextSequenceAsync(int year, CancellationToken cancellationToken = default);
         Task<bool> IsStudentInActiveGroupAsync(Guid studentId, int semesterId, CancellationToken cancellationToken = default);
         Task<List<Guid>> GetActiveGroupIdsWithoutProjectAsync(int semesterId, CancellationToken cancellationToken = default);
+        Task<Group?> GetWithInvitationsAsync(Guid id, CancellationToken cancellationToken = default);
+        Task<Group?> GetWithJoinRequestsAsync(Guid id, CancellationToken cancellationToken = default);
+        Task<Group?> GetWithAllRelationsAsync(Guid id, CancellationToken cancellationToken = default);
     }
 }
