@@ -100,5 +100,30 @@ namespace UniThesis.Persistence.SqlServer.Repositories
                 .Select(g => g.Id)
                 .ToListAsync(cancellationToken);
         }
+
+        public async Task<Group?> GetWithInvitationsAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Include(g => g.Members)
+                .Include(g => g.Invitations)
+                .FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
+        }
+
+        public async Task<Group?> GetWithJoinRequestsAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Include(g => g.Members)
+                .Include(g => g.JoinRequests)
+                .FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
+        }
+
+        public async Task<Group?> GetWithAllRelationsAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Include(g => g.Members)
+                .Include(g => g.Invitations)
+                .Include(g => g.JoinRequests)
+                .FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
+        }
     }
 }

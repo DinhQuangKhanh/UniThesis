@@ -65,6 +65,14 @@ namespace UniThesis.Persistence.SqlServer.Repositories
         }
 
         /// <inheritdoc/>
+        public async Task<User?> GetByStudentCodeAsync(string studentCode, CancellationToken ct = default)
+        {
+            return await _dbSet
+                .Include(u => u.Roles)
+                .FirstOrDefaultAsync(u => u.StudentCode == studentCode, ct);
+        }
+
+        /// <inheritdoc/>
         public async Task<bool> ExistsByEmailAsync(string email, CancellationToken ct = default)
         {
             var normalizedEmail = email.ToLowerInvariant();

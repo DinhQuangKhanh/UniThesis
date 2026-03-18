@@ -48,6 +48,8 @@ public class AppDbContext : DbContext
     #region Group Aggregate
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
+    public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
+    public DbSet<GroupJoinRequest> GroupJoinRequests => Set<GroupJoinRequest>();
     #endregion
 
     #region Semester Aggregate
