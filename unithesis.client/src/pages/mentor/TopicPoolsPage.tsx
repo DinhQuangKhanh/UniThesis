@@ -1,22 +1,31 @@
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { apiClient } from '@/lib/apiClient'
 import { NotificationDropdown } from '@/components/layout'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface TopicPoolDto {
+interface TopicPoolSummaryDto {
     id: string
     code: string
     name: string
-    description: string | null
-    majorId: number
     statusName: string
-    maxActiveTopicsPerMentor: number
-    expirationSemesters: number
-    createdAt: string
-    updatedAt: string | null
+    totalTopics: number
+}
+
+interface MajorWithPoolDto {
+    majorId: number
+    majorCode: string
+    majorName: string
+    pool: TopicPoolSummaryDto | null
+}
+
+interface DepartmentWithPoolsDto {
+    departmentId: number
+    departmentCode: string
+    departmentName: string
+    majors: MajorWithPoolDto[]
 }
 
 // ─── Animation variants ───────────────────────────────────────────────────────
@@ -35,24 +44,50 @@ const item = {
 
 export function TopicPoolsPage() {
     const navigate = useNavigate()
-    const [pools, setPools] = useState<TopicPoolDto[]>([])
+    const [departments, setDepartments] = useState<DepartmentWithPoolsDto[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [search, setSearch] = useState('')
+    const [expandedDepts, setExpandedDepts] = useState<Set<number>>(new Set())
 
     useEffect(() => {
         setLoading(true)
         apiClient
-            .get<TopicPoolDto[]>('/api/topic-pools')
-            .then(setPools)
+            .get<DepartmentWithPoolsDto[]>('/api/topic-pools/by-department')
+            .then(data => {
+                setDepartments(data)
+                // Auto-expand all departments if only a few
+                if (data.length <= 3) {
+                    setExpandedDepts(new Set(data.map(d => d.departmentId)))
+                }
+            })
             .catch((err: Error) => setError(err.message))
             .finally(() => setLoading(false))
     }, [])
 
-    const filtered = pools.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.code.toLowerCase().includes(search.toLowerCase())
-    )
+    const toggleDept = (id: number) => {
+        setExpandedDepts(prev => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id)
+            else next.add(id)
+            return next
+        })
+    }
+
+    // Filter search across depts/majors/pools
+    const filtered = search.trim()
+        ? departments
+            .map(d => ({
+                ...d,
+                majors: d.majors.filter(m =>
+                    m.majorName.toLowerCase().includes(search.toLowerCase()) ||
+                    m.majorCode.toLowerCase().includes(search.toLowerCase()) ||
+                    m.pool?.name.toLowerCase().includes(search.toLowerCase()) ||
+                    d.departmentName.toLowerCase().includes(search.toLowerCase())
+                ),
+            }))
+            .filter(d => d.majors.length > 0)
+        : departments
 
     return (
         <>
@@ -73,7 +108,7 @@ export function TopicPoolsPage() {
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             className="block w-64 pl-10 pr-3 py-2 rounded-lg bg-slate-100 text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary sm:text-sm transition-all border-none"
-                            placeholder="Tìm kho đề tài..."
+                            placeholder="Tìm khoa, chuyên ngành..."
                         />
                     </div>
                     <NotificationDropdown />
@@ -85,9 +120,9 @@ export function TopicPoolsPage() {
                 <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
                     {/* Title */}
                     <motion.div variants={item} className="flex flex-col gap-1">
-                        <h1 className="text-2xl font-bold text-slate-900">Kho đề tài theo chuyên ngành</h1>
+                        <h1 className="text-2xl font-bold text-slate-900">Kho đề tài theo khoa</h1>
                         <p className="text-slate-500 text-sm">
-                            Mỗi chuyên ngành có một kho đề tài cố định. Sinh viên đăng ký đề tài từ kho để thực hiện đồ án.
+                            Chọn khoa → chuyên ngành để xem kho đề tài tương ứng.
                         </p>
                     </motion.div>
 
@@ -101,84 +136,107 @@ export function TopicPoolsPage() {
 
                     {/* Loading skeleton */}
                     {loading ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <div className="space-y-4">
                             {[1, 2, 3].map(i => (
                                 <div key={i} className="bg-white rounded-xl border border-slate-200 p-5 animate-pulse space-y-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="size-10 rounded-lg bg-slate-200" />
-                                        <div className="flex-1 space-y-2">
-                                            <div className="h-4 bg-slate-200 rounded w-2/3" />
-                                            <div className="h-3 bg-slate-200 rounded w-1/3" />
-                                        </div>
+                                    <div className="h-5 bg-slate-200 rounded w-1/3" />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                        {[1, 2].map(j => (
+                                            <div key={j} className="h-24 bg-slate-100 rounded-lg" />
+                                        ))}
                                     </div>
-                                    <div className="h-3 bg-slate-200 rounded w-full" />
-                                    <div className="h-3 bg-slate-200 rounded w-4/5" />
                                 </div>
                             ))}
                         </div>
                     ) : filtered.length === 0 ? (
                         <motion.div variants={item} className="flex flex-col items-center justify-center py-20 text-center">
-                            <span className="material-symbols-outlined text-5xl text-slate-300">library_books</span>
+                            <span className="material-symbols-outlined text-5xl text-slate-300">school</span>
                             <p className="text-slate-400 font-medium mt-3">
-                                {search ? 'Không tìm thấy kho đề tài nào' : 'Chưa có kho đề tài nào'}
+                                {search ? 'Không tìm thấy kết quả nào' : 'Chưa có dữ liệu khoa nào'}
                             </p>
                         </motion.div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {filtered.map(pool => (
-                                <motion.div
-                                    key={pool.id}
-                                    variants={item}
-                                    className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-primary/30 transition-all duration-200 flex flex-col overflow-hidden cursor-pointer group"
-                                    onClick={() => navigate(`/mentor/topic-pools/${pool.id}`)}
-                                >
-                                    <div className="p-5 flex-1">
-                                        {/* Pool header */}
-                                        <div className="flex items-start gap-3 mb-4">
+                        <div className="space-y-4">
+                            {filtered.map(dept => (
+                                <motion.div key={dept.departmentId} variants={item} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                    {/* Department header — clickable to expand */}
+                                    <button
+                                        onClick={() => toggleDept(dept.departmentId)}
+                                        className="w-full flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-3">
                                             <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
-                                                <span className="material-symbols-outlined">library_books</span>
+                                                <span className="material-symbols-outlined">school</span>
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="text-slate-900 font-bold text-sm leading-snug group-hover:text-primary transition-colors">
-                                                    {pool.name}
-                                                </h3>
-                                                <p className="text-xs font-mono text-slate-400 mt-0.5">{pool.code}</p>
-                                            </div>
-                                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold border shrink-0 ${pool.statusName === 'Active'
-                                                ? 'bg-green-50 text-green-700 border-green-100'
-                                                : 'bg-amber-50 text-amber-700 border-amber-100'}`}>
-                                                {pool.statusName === 'Active' ? 'Đang mở' : 'Tạm dừng'}
-                                            </span>
-                                        </div>
-
-                                        {/* Description */}
-                                        {pool.description && (
-                                            <p className="text-sm text-slate-500 line-clamp-2 mb-4">{pool.description}</p>
-                                        )}
-
-                                        {/* Metadata */}
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div className="flex items-center gap-2 text-xs text-slate-500">
-                                                <span className="material-symbols-outlined text-[16px] text-slate-400">person</span>
-                                                <span>Tối đa <strong className="text-slate-700">{pool.maxActiveTopicsPerMentor}</strong> đề tài/GV</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs text-slate-500">
-                                                <span className="material-symbols-outlined text-[16px] text-slate-400">schedule</span>
-                                                <span>Hết hạn sau <strong className="text-slate-700">{pool.expirationSemesters}</strong> HK</span>
+                                            <div className="text-left">
+                                                <p className="font-bold text-slate-900">{dept.departmentName}</p>
+                                                <p className="text-xs font-mono text-slate-400">{dept.departmentCode} · {dept.majors.length} chuyên ngành</p>
                                             </div>
                                         </div>
-                                    </div>
-
-                                    {/* Footer */}
-                                    <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                                        <span className="text-xs text-slate-400">
-                                            Mã chuyên ngành #{pool.majorId}
+                                        <span className={`material-symbols-outlined text-slate-400 transition-transform duration-200 ${expandedDepts.has(dept.departmentId) ? 'rotate-180' : ''}`}>
+                                            expand_more
                                         </span>
-                                        <button className="text-primary text-xs font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
-                                            Xem chi tiết
-                                            <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                                        </button>
-                                    </div>
+                                    </button>
+
+                                    {/* Majors grid — collapsible */}
+                                    <AnimatePresence initial={false}>
+                                        {expandedDepts.has(dept.departmentId) && (
+                                            <motion.div
+                                                key="content"
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="overflow-hidden"
+                                            >
+                                                <div className="px-6 pb-5 pt-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 border-t border-slate-100">
+                                                    {dept.majors.map(major => (
+                                                        <div
+                                                            key={major.majorId}
+                                                            onClick={() => major.pool && navigate(`/mentor/topic-pools/${major.pool.id}`)}
+                                                            className={`rounded-xl border p-4 transition-all duration-200 flex flex-col gap-2 ${major.pool
+                                                                ? 'border-slate-200 hover:border-primary/40 hover:shadow-md cursor-pointer group'
+                                                                : 'border-dashed border-slate-200 opacity-60 cursor-default'
+                                                                }`}
+                                                        >
+                                                            <div className="flex items-start justify-between gap-2">
+                                                                <div>
+                                                                    <p className={`text-sm font-semibold leading-snug ${major.pool ? 'text-slate-800 group-hover:text-primary transition-colors' : 'text-slate-500'}`}>
+                                                                        {major.majorName}
+                                                                    </p>
+                                                                    <p className="text-xs font-mono text-slate-400 mt-0.5">{major.majorCode}</p>
+                                                                </div>
+                                                                {major.pool ? (
+                                                                    <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-bold border ${major.pool.statusName === 'Active'
+                                                                        ? 'bg-green-50 text-green-700 border-green-100'
+                                                                        : 'bg-amber-50 text-amber-700 border-amber-100'
+                                                                        }`}>
+                                                                        {major.pool.statusName === 'Active' ? 'Đang mở' : 'Tạm dừng'}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="shrink-0 px-2 py-0.5 rounded-full text-xs border border-slate-200 text-slate-400">
+                                                                        Chưa có kho
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            {major.pool && (
+                                                                <div className="flex items-center justify-between mt-1">
+                                                                    <div className="flex items-center gap-1 text-xs text-slate-500">
+                                                                        <span className="material-symbols-outlined text-[14px] text-slate-400">description</span>
+                                                                        <span><strong className="text-slate-700">{major.pool.totalTopics}</strong> đề tài</span>
+                                                                    </div>
+                                                                    <span className="text-primary text-xs font-semibold flex items-center gap-0.5 group-hover:gap-1.5 transition-all">
+                                                                        Xem kho
+                                                                        <span className="material-symbols-outlined text-[13px]">arrow_forward</span>
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </motion.div>
                             ))}
                         </div>
