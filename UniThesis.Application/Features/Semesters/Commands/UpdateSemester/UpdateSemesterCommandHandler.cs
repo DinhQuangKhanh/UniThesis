@@ -28,6 +28,10 @@ public class UpdateSemesterCommandHandler : ICommandHandler<UpdateSemesterComman
         var semester = await _semesterRepository.GetByIdAsync(request.Id, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Semester), request.Id);
 
+        // Validate no overlapping semesters (exclude current semester)
+        if (await _semesterRepository.HasOverlappingAsync(request.StartDate, request.EndDate, request.Id, cancellationToken))
+            throw new BusinessRuleValidationException("Khoảng thời gian học kỳ bị trùng lặp với một học kỳ khác đã tồn tại.");
+
         // Domain guards will throw if semester is not Upcoming
         semester.UpdateDetails(request.Name, request.Description);
         semester.UpdateDates(request.StartDate, request.EndDate);
