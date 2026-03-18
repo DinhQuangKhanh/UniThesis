@@ -85,28 +85,16 @@ namespace UniThesis.Persistence.SqlServer.Repositories
         public async Task<int> GetNextSequenceAsync(int year, CancellationToken cancellationToken = default)
         {
             var prefix = $"TK-{year}-";
-            // Load all tickets, filter by year in memory to avoid ValueConverter issue with WHERE clause
-            var allTickets = await _dbSet
-                .OrderByDescending(t => t.CreatedAt)
-                .Take(1000) // Limit to recent tickets for performance
-                .ToListAsync(cancellationToken);
+            var lastCode = await _dbSet
+                .Where(t => t.CreatedAt.Year == year)
+                .OrderByDescending(t => t.Code)
+                .Select(t => t.Code)
+                .FirstOrDefaultAsync(cancellationToken);
 
-            var lastTicket = allTickets
-                .FirstOrDefault(t => t.Code.Value.StartsWith(prefix));
+            if (lastCode == null) return 1;
 
-            if (lastTicket == null) return 1;
-
-            var lastCode = lastTicket.Code.Value;
-            var sequencePart = lastCode.Replace(prefix, "");
+            var sequencePart = lastCode.Value.Replace(prefix, "");
             return int.TryParse(sequencePart, out var seq) ? seq + 1 : 1;
-        }
-
-        public async Task<Dictionary<TicketStatus, int>> GetStatusCountAsync(CancellationToken cancellationToken = default)
-        {
-            return await _dbSet
-                .GroupBy(t => t.Status)
-                .Select(g => new { Status = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
         }
 
         /// <summary>
@@ -120,6 +108,15 @@ namespace UniThesis.Persistence.SqlServer.Repositories
                 .OrderBy(t => t.Priority)
                 .ThenBy(t => t.CreatedAt)
                 .ToListAsync(cancellationToken);
+        }
+
+        public async Task<Dictionary<TicketStatus, int>> GetStatusCountAsync(CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .AsNoTracking()
+                .GroupBy(t => t.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
         }
     }
 }
