@@ -41,6 +41,7 @@ namespace UniThesis.Persistence.MongoDB
             public const string Messages = "messages";
             public const string UserActivityLogs = "user_activity_logs";
             public const string SystemAuditLogs = "system_audit_logs";
+            public const string ErrorLogs = "error_logs";
         }
     }
 }

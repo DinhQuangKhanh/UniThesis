@@ -69,7 +69,7 @@ namespace UniThesis.Persistence.MongoDB.Repositories.Implementation
                     ["_id"] = new BsonDocument
                     {
                         ["userId"] = "$UserId",
-                        ["userRole"] = "$UserRole",
+                        ["userRole"] = new BsonDocument("$ifNull", new BsonArray { "$ActiveRole", "$UserRole" }),
                         ["action"] = "$Action",
                         ["category"] = "$Category"
                     },
@@ -134,7 +134,7 @@ namespace UniThesis.Persistence.MongoDB.Repositories.Implementation
                     items.Add(new GroupedActivityLogResult
                     {
                         UserId = SafeParseGuid(id["userId"]),
-                        UserRole = id["userRole"].AsString,
+                        ActiveRole = id.GetValue("userRole", BsonNull.Value) is BsonString s ? s.AsString : "unknown",
                         Action = id["action"].AsString,
                         Category = id["category"].IsBsonNull ? null : id["category"].AsString,
                         UserName = doc["userName"].AsString,
@@ -161,7 +161,7 @@ namespace UniThesis.Persistence.MongoDB.Repositories.Implementation
                 new BsonDocument("$match", roleMatchDoc),
                 new BsonDocument("$group", new BsonDocument
                 {
-                    ["_id"] = "$UserRole",
+                    ["_id"] = new BsonDocument("$ifNull", new BsonArray { "$ActiveRole", "$UserRole" }),
                     ["count"] = new BsonDocument("$sum", 1)
                 })
             };
@@ -240,6 +240,47 @@ namespace UniThesis.Persistence.MongoDB.Repositories.Implementation
             }).ToList();
         }
 
+        public async Task<SeverityCountsResult> GetSeveritySummaryAsync(
+            string? role = null,
+            DateTime? from = null,
+            DateTime? to = null,
+            CancellationToken ct = default)
+        {
+            var matchDoc = BuildMatchBsonDocument(role, severity: null, searchTerm: null, from, to);
+
+            var pipeline = new[]
+            {
+                new BsonDocument("$match", matchDoc),
+                new BsonDocument("$group", new BsonDocument
+                {
+                    ["_id"] = "$Severity",
+                    ["count"] = new BsonDocument("$sum", 1)
+                })
+            };
+
+            var cursor = await _collection.AggregateAsync<BsonDocument>(
+                PipelineDefinition<UserActivityLogDocument, BsonDocument>.Create(pipeline),
+                cancellationToken: ct);
+
+            var results = await cursor.ToListAsync(ct);
+
+            var summary = new SeverityCountsResult();
+            foreach (var doc in results)
+            {
+                var key = doc["_id"].IsBsonNull ? "info" : doc["_id"].AsString;
+                var count = doc["count"].AsInt32;
+                switch (key.ToLowerInvariant())
+                {
+                    case "info": summary.Info = count; break;
+                    case "warning": summary.Warning = count; break;
+                    case "error": summary.Error = count; break;
+                    case "critical": summary.Critical = count; break;
+                }
+            }
+
+            return summary;
+        }
+
         // ── Shared Helpers ──────────────────────────────────────────
 
         private static FilterDefinition<UserActivityLogDocument> BuildFilter(
@@ -252,7 +293,7 @@ namespace UniThesis.Persistence.MongoDB.Repositories.Implementation
             if (!string.IsNullOrWhiteSpace(role))
             {
                 var roleRegex = new BsonRegularExpression($"^{Regex.Escape(role)}$", "i");
-                filters.Add(builder.Regex(x => x.UserRole, roleRegex));
+                filters.Add(builder.Regex(x => x.ActiveRole, roleRegex));
             }
 
             if (!string.IsNullOrWhiteSpace(category))
@@ -297,7 +338,7 @@ namespace UniThesis.Persistence.MongoDB.Repositories.Implementation
             var match = new BsonDocument();
 
             if (!string.IsNullOrWhiteSpace(role))
-                match["UserRole"] = new BsonRegularExpression($"^{Regex.Escape(role)}$", "i");
+                match["ActiveRole"] = new BsonRegularExpression($"^{Regex.Escape(role)}$", "i");
 
             if (!string.IsNullOrWhiteSpace(severity))
                 match["Severity"] = severity;

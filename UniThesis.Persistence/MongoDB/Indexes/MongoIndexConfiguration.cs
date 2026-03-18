@@ -19,6 +19,7 @@ namespace UniThesis.Persistence.MongoDB.Indexes
             await CreateConversationIndexesAsync(context);
             await CreateMessageIndexesAsync(context);
             await CreateUserActivityLogIndexesAsync(context);
+            await CreateErrorLogIndexesAsync(context);
             await CreateSystemAuditLogIndexesAsync(context);
         }
 
@@ -104,6 +105,13 @@ namespace UniThesis.Persistence.MongoDB.Indexes
 
         private static async Task CreateUserActivityLogIndexesAsync(MongoDbContext context)
         {
+            // One-time migration: rename old "UserRole" field → "ActiveRole" for pre-redesign documents
+            var rawCollection = context.GetCollection<global::MongoDB.Bson.BsonDocument>(
+                MongoDbContext.Collections.UserActivityLogs);
+            await rawCollection.UpdateManyAsync(
+                Builders<global::MongoDB.Bson.BsonDocument>.Filter.Exists("UserRole"),
+                Builders<global::MongoDB.Bson.BsonDocument>.Update.Rename("UserRole", "ActiveRole"));
+
             var collection = context.GetCollection<UserActivityLogDocument>(MongoDbContext.Collections.UserActivityLogs);
             var indexKeys = Builders<UserActivityLogDocument>.IndexKeys;
 
@@ -119,12 +127,35 @@ namespace UniThesis.Persistence.MongoDB.Indexes
                     new CreateIndexOptions { ExpireAfter = TimeSpan.FromDays(365) }), // TTL - auto delete after 1 year
                 // Compound index for admin log listing: filter by role, sort by time
                 new CreateIndexModel<UserActivityLogDocument>(indexKeys.Combine(
-                    indexKeys.Ascending(x => x.UserRole),
+                    indexKeys.Ascending(x => x.ActiveRole),
                     indexKeys.Descending(x => x.Timestamp))),
                 // Index for category filtering
                 new CreateIndexModel<UserActivityLogDocument>(indexKeys.Ascending(x => x.Category)),
                 // Index for severity filtering
                 new CreateIndexModel<UserActivityLogDocument>(indexKeys.Ascending(x => x.Severity)),
+                // Index for error drill-down (links to error_logs)
+                new CreateIndexModel<UserActivityLogDocument>(indexKeys.Ascending(x => x.ErrorLogId)),
+                // Index for ActionCode lookups
+                new CreateIndexModel<UserActivityLogDocument>(indexKeys.Ascending(x => x.ActionCode)),
+            ]);
+        }
+
+        private static async Task CreateErrorLogIndexesAsync(MongoDbContext context)
+        {
+            var collection = context.GetCollection<ErrorLogDocument>(MongoDbContext.Collections.ErrorLogs);
+            var indexKeys = Builders<ErrorLogDocument>.IndexKeys;
+
+            await collection.Indexes.CreateManyAsync(
+            [
+                new CreateIndexModel<ErrorLogDocument>(
+                    indexKeys.Descending(x => x.Timestamp),
+                    new CreateIndexOptions { ExpireAfter = TimeSpan.FromDays(365) }), // TTL - auto delete after 1 year
+                new CreateIndexModel<ErrorLogDocument>(indexKeys.Combine(
+                    indexKeys.Ascending(x => x.Severity),
+                    indexKeys.Descending(x => x.Timestamp))),
+                new CreateIndexModel<ErrorLogDocument>(indexKeys.Combine(
+                    indexKeys.Ascending(x => x.ActionCode),
+                    indexKeys.Descending(x => x.Timestamp))),
             ]);
         }
 

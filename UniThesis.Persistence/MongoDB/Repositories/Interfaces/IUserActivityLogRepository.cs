@@ -45,5 +45,14 @@ namespace UniThesis.Persistence.MongoDB.Repositories.Interfaces
             DateTime? from = null,
             DateTime? to = null,
             CancellationToken ct = default);
+
+        /// <summary>
+        /// Returns aggregate counts per severity level (info, warning, error, critical).
+        /// </summary>
+        Task<SeverityCountsResult> GetSeveritySummaryAsync(
+            string? role = null,
+            DateTime? from = null,
+            DateTime? to = null,
+            CancellationToken ct = default);
     }
 }

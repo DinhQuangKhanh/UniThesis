@@ -8,8 +8,9 @@ using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
 namespace UniThesis.Persistence.Services
 {
   /// <summary>
-  /// Persists MediatR request pipeline logs into <c>user_activity_logs</c>
-  /// as <see cref="UserActivityLogDocument"/> with Category = "Request".
+  /// Persists MediatR command pipeline logs into <c>user_activity_logs</c>
+  /// as <see cref="UserActivityLogDocument"/>.
+  /// Only commands are logged — queries are filtered out by LoggingBehavior.
   /// </summary>
   public class RequestLogService : IRequestLogService
   {
@@ -36,18 +37,22 @@ namespace UniThesis.Persistence.Services
         var http = _httpContextAccessor.HttpContext;
         var ipAddress = http?.Connection.RemoteIpAddress?.ToString();
         var userAgent = http?.Request.Headers["User-Agent"].ToString();
+        var routePath = http?.Request.Headers["X-Route-Path"].ToString();
 
         var document = new UserActivityLogDocument
         {
           UserId = userId,
           UserName = entry.UserName ?? entry.UserEmail ?? "Anonymous",
           UserEmail = entry.UserEmail,
-          UserRole = ResolveActiveRole(entry.UserRole),
-          Action = entry.RequestName,
-          Category = "Request",
+          ActiveRole = ResolveActiveRole(entry.UserRole),
+          Action = entry.ActionDisplayName,
+          ActionCode = entry.RequestName,
+          Category = entry.Category,
           Severity = entry.IsSuccess ? "info" : "error",
+          RoutePath = string.IsNullOrEmpty(routePath) ? null : routePath,
           IpAddress = ipAddress,
           UserAgent = userAgent,
+          DurationMs = entry.ElapsedMilliseconds,
           Timestamp = entry.Timestamp,
           Details = BuildDetails(entry),
         };
@@ -79,15 +84,20 @@ namespace UniThesis.Persistence.Services
       return fallbackRole ?? "anonymous";
     }
 
-    private static BsonDocument BuildDetails(RequestLogEntry entry)
+    private static BsonDocument? BuildDetails(RequestLogEntry entry)
     {
-      var details = new BsonDocument
+      if (entry.IsSuccess && (entry.RequestParameters is not { Count: > 0 }))
+        return null;
+
+      var details = new BsonDocument();
+
+      if (!entry.IsSuccess)
       {
-        ["IsSuccess"] = entry.IsSuccess,
-        ["ElapsedMilliseconds"] = entry.ElapsedMilliseconds,
-        ["ErrorMessage"] = entry.ErrorMessage ?? BsonNull.Value.ToString(),
-        ["ErrorType"] = entry.ErrorType ?? BsonNull.Value.ToString(),
-      };
+        details["ErrorMessage"] = entry.ErrorMessage ?? BsonNull.Value.ToString();
+        details["ErrorType"] = entry.ErrorType ?? BsonNull.Value.ToString();
+        if (entry.StackTrace is not null)
+          details["StackTrace"] = entry.StackTrace;
+      }
 
       if (entry.RequestParameters is { Count: > 0 })
       {
@@ -109,7 +119,7 @@ namespace UniThesis.Persistence.Services
         details["RequestParameters"] = paramDoc;
       }
 
-      return details;
+      return details.ElementCount > 0 ? details : null;
     }
   }
 }
