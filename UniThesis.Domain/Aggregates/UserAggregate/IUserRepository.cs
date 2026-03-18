@@ -49,5 +49,12 @@ namespace UniThesis.Domain.Aggregates.UserAggregate
         /// Checks if a user with the given Firebase UID exists.
         /// </summary>
         Task<bool> ExistsByFirebaseUidAsync(string firebaseUid, CancellationToken ct = default);
+
+        /// <summary>
+        /// Gets a paginated list of users, optionally filtered by role and search term.
+        /// Search matches against FullName, Email, StudentCode, and EmployeeCode.
+        /// </summary>
+        Task<(IEnumerable<User> Items, int TotalCount)> GetPagedAsync(
+            string? role, string? search, int page, int pageSize, CancellationToken ct = default);
     }
 }

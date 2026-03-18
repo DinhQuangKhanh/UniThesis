@@ -32,7 +32,7 @@ public class GetUserActivityLogsEndpoint : IEndpoint
               UserId = i.UserId.ToString(),
               i.UserName,
               i.UserEmail,
-              i.UserRole,
+              i.ActiveRole,
               i.Action,
               i.Category,
               i.EntityType,

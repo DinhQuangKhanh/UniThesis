@@ -1,4 +1,5 @@
 using UniThesis.Application.Common.Abstractions;
+using UniThesis.Application.Common.Attributes;
 
 namespace UniThesis.Application.Features.Departments.Commands.AssignEvaluator;
 
@@ -9,6 +10,7 @@ namespace UniThesis.Application.Features.Departments.Commands.AssignEvaluator;
 /// - Evaluator cannot evaluate a project they are mentoring
 /// - Maximum 3 evaluators per project
 /// </summary>
+[ActionLog("Assign Evaluator", "Department")]
 public record AssignEvaluatorCommand(
     Guid ProjectId,
     Guid EvaluatorId,

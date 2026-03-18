@@ -40,8 +40,9 @@ namespace UniThesis.Infrastructure.EventHandlers.Meeting
                 {
                     UserId   = Guid.Empty,
                     UserName = "System",
-                    UserRole = "system",
-                    Action   = "MeetingCompleted",
+                    ActiveRole = "mentor",
+                    Action   = "Hoàn thành buổi họp",
+                    ActionCode = "MeetingCompleted",
                     Category = "Meeting",
                     EntityType = "Meeting",
                     EntityId = notification.MeetingId,

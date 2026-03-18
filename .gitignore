@@ -363,3 +363,22 @@ MigrationBackup/
 FodyWeavers.xsd
 nul
 UniThesis.API/appsettings.Development.json
+
+# Local environment files and secrets
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.sample
+!**/.env.template
+
+# ASP.NET local/development secret-style configs
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/appsettings.*.local.json
+**/appsettings.Secrets.json
+**/appsettings.*.Secrets.json
+
+# Common secret file naming
+**/*secret*.json
+**/*secret*.yml
+**/*secret*.yaml

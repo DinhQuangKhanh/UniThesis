@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Header } from '@/components/layout'
 import { CreateSemesterModal } from '@/components/admin/CreateSemesterModal'
 import { EditSemesterModal } from '@/components/admin/EditSemesterModal'
@@ -64,6 +64,9 @@ export function SemestersPage() {
     const [selectedSemester, setSelectedSemester] = useState<SemesterDto | null>(null)
     const [statusFilter, setStatusFilter] = useState<string>('')
     const [openDropdownId, setOpenDropdownId] = useState<number | null>(null)
+    const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string } | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
+    const [deleteError, setDeleteError] = useState<string | null>(null)
 
     const fetchSemesters = useCallback(async () => {
         try {
@@ -83,13 +86,24 @@ export function SemestersPage() {
         fetchSemesters()
     }, [fetchSemesters])
 
-    const handleDelete = async (id: number) => {
-        if (!window.confirm('Bạn có chắc chắn muốn xóa kỳ học này? Chỉ có thể xóa kỳ học Chưa bắt đầu.')) return
+    const openDeleteConfirm = (semester: SemesterDto) => {
+        setDeleteError(null)
+        setDeleteConfirm({ id: semester.id, name: semester.name })
+        setOpenDropdownId(null)
+    }
+
+    const handleDelete = async () => {
+        if (!deleteConfirm) return
+        setIsDeleting(true)
+        setDeleteError(null)
         try {
-            await apiClient.delete('/api/admin/semesters/' + id)
+            await apiClient.delete('/api/admin/semesters/' + deleteConfirm.id)
+            setDeleteConfirm(null)
             fetchSemesters()
         } catch (err: any) {
-            alert(err.message || 'Xóa thất bại')
+            setDeleteError(err.message || 'Xóa thất bại')
+        } finally {
+            setIsDeleting(false)
         }
     }
 
@@ -235,7 +249,7 @@ export function SemestersPage() {
                                                                     <button onClick={() => handleEdit(semester)} className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
                                                                         <span className="material-symbols-outlined text-[18px]">edit</span> Sửa thông tin
                                                                     </button>
-                                                                    <button onClick={() => { handleDelete(semester.id); setOpenDropdownId(null); }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+                                                                    <button onClick={() => openDeleteConfirm(semester)} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
                                                                         <span className="material-symbols-outlined text-[18px]">delete</span> Xóa kỳ học
                                                                     </button>
                                                                 </>
@@ -329,6 +343,70 @@ export function SemestersPage() {
                 onUpdated={fetchSemesters}
                 initialData={selectedSemester}
             />
+
+            {/* Delete Confirmation Modal */}
+            <AnimatePresence>
+                {deleteConfirm && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
+                        onClick={() => !isDeleting && setDeleteConfirm(null)}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden"
+                        >
+                            <div className="p-6">
+                                <div className="flex items-center gap-4 mb-4">
+                                    <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                                        <span className="material-symbols-outlined text-red-600 text-[28px]">delete_forever</span>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-800">Xóa kỳ học</h3>
+                                        <p className="text-sm text-slate-500 mt-0.5">Hành động này không thể hoàn tác.</p>
+                                    </div>
+                                </div>
+                                <p className="text-sm text-slate-600 mb-1">
+                                    Bạn có chắc chắn muốn xóa kỳ học <strong className="text-slate-800">{deleteConfirm.name}</strong>?
+                                </p>
+                                <p className="text-xs text-slate-400">Chỉ có thể xóa kỳ học chưa bắt đầu.</p>
+                                {deleteError && (
+                                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-start gap-2">
+                                        <span className="material-symbols-outlined text-red-600 text-[18px] mt-0.5">error</span>
+                                        <p className="text-sm text-red-800">{deleteError}</p>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-50/50">
+                                <button
+                                    onClick={() => setDeleteConfirm(null)}
+                                    disabled={isDeleting}
+                                    className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 transition-colors disabled:opacity-50"
+                                >
+                                    Hủy bỏ
+                                </button>
+                                <button
+                                    onClick={handleDelete}
+                                    disabled={isDeleting}
+                                    className="px-5 py-2 bg-red-600 text-white rounded-md text-sm font-bold shadow-lg shadow-red-600/20 hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                >
+                                    {isDeleting ? (
+                                        <><span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>Đang xóa...</>
+                                    ) : (
+                                        <><span className="material-symbols-outlined text-[18px]">delete</span>Xóa kỳ học</>
+                                    )}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </>
     )
 }

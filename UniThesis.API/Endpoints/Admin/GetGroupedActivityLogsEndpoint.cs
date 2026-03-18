@@ -30,7 +30,7 @@ public class GetGroupedActivityLogsEndpoint : IEndpoint
                         UserId = i.UserId.ToString(),
                         i.UserName,
                         i.UserEmail,
-                        i.UserRole,
+                        i.ActiveRole,
                         i.Action,
                         i.Category,
                         i.TotalCount,

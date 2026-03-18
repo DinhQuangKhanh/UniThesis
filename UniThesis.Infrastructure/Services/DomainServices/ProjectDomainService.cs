@@ -1,11 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
-using UniThesis.Application.Common.Interfaces;
+﻿using UniThesis.Application.Common.Interfaces;
 using UniThesis.Domain.Aggregates.EvaluationAggregate.ValueObjects;
 using UniThesis.Domain.Aggregates.GroupAggregate;
 using UniThesis.Domain.Aggregates.ProjectAggregate;
 using UniThesis.Domain.Enums.Project;
 using UniThesis.Domain.Services;
-using UniThesis.Persistence.SqlServer;
 
 namespace UniThesis.Infrastructure.Services.DomainServices
 {
@@ -14,18 +12,15 @@ namespace UniThesis.Infrastructure.Services.DomainServices
         private readonly IProjectRepository _projectRepository;
         private readonly IGroupRepository _groupRepository;
         private readonly IDateTimeService _dateTimeService;
-        private readonly AppDbContext _context;
 
         public ProjectDomainService(
             IProjectRepository projectRepository,
             IGroupRepository groupRepository,
-            IDateTimeService dateTimeService,
-            AppDbContext context)
+            IDateTimeService dateTimeService)
         {
             _projectRepository = projectRepository;
             _groupRepository = groupRepository;
             _dateTimeService = dateTimeService;
-            _context = context;
         }
 
         public async Task<string> GenerateProjectCodeAsync(int year, CancellationToken ct = default)
@@ -82,17 +77,9 @@ namespace UniThesis.Infrastructure.Services.DomainServices
 
         public async Task<ProjectStatistics> GetStatisticsAsync(int semesterId, CancellationToken ct = default)
         {
-            var statusCounts = await _context.Projects
-                .Where(p => p.SemesterId == semesterId)
-                .GroupBy(p => p.Status)
-                .Select(g => new { Status = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.Status, x => x.Count, ct);
+            var statusCounts = await _projectRepository.GetStatusCountBySemesterAsync(semesterId, ct);
 
-            var sourceCounts = await _context.Projects
-                .Where(p => p.SemesterId == semesterId)
-                .GroupBy(p => p.SourceType)
-                .Select(g => new { Source = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.Source, x => x.Count, ct);
+            var sourceCounts = await _projectRepository.GetSourceTypeCountBySemesterAsync(semesterId, ct);
 
             int Count(ProjectStatus s) => statusCounts.GetValueOrDefault(s);
 

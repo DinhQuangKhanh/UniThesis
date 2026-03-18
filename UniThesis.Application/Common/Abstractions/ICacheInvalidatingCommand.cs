@@ -12,3 +12,15 @@ public interface ICacheInvalidatingCommand : ICommand
     /// </summary>
     IReadOnlyCollection<string> CachePrefixesToInvalidate { get; }
 }
+
+/// <summary>
+/// Generic variant for commands that return a result and should also invalidate cache entries.
+/// </summary>
+/// <typeparam name="TResponse">The type of the command result.</typeparam>
+public interface ICacheInvalidatingCommand<TResponse> : ICommand<TResponse>
+{
+    /// <summary>
+    /// Cache key prefixes to invalidate from both L1 and L2 after command succeeds.
+    /// </summary>
+    IReadOnlyCollection<string> CachePrefixesToInvalidate { get; }
+}

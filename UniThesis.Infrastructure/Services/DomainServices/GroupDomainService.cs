@@ -1,9 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
-using UniThesis.Domain.Aggregates.GroupAggregate;
+﻿using UniThesis.Domain.Aggregates.GroupAggregate;
 using UniThesis.Domain.Aggregates.ProjectAggregate;
-using UniThesis.Domain.Enums.Group;
 using UniThesis.Domain.Services;
-using UniThesis.Persistence.SqlServer;
 
 namespace UniThesis.Infrastructure.Services.DomainServices
 {
@@ -11,16 +8,13 @@ namespace UniThesis.Infrastructure.Services.DomainServices
     {
         private readonly IGroupRepository _groupRepository;
         private readonly IProjectRepository _projectRepository;
-        private readonly AppDbContext _context;
 
         public GroupDomainService(
             IGroupRepository groupRepository,
-            IProjectRepository projectRepository,
-            AppDbContext context)
+            IProjectRepository projectRepository)
         {
             _groupRepository = groupRepository;
             _projectRepository = projectRepository;
-            _context = context;
         }
 
         public async Task<string> GenerateGroupCodeAsync(int year, CancellationToken ct = default)
@@ -40,14 +34,7 @@ namespace UniThesis.Infrastructure.Services.DomainServices
 
         public async Task<IEnumerable<Guid>> GetGroupsWithoutProjectAsync(int semesterId, CancellationToken ct = default)
         {
-            var groups = await _context.Groups
-                .Where(g => g.SemesterId == semesterId &&
-                           g.Status == GroupStatus.Active &&
-                           g.ProjectId == null)
-                .Select(g => g.Id)
-                .ToListAsync(ct);
-
-            return groups;
+            return await _groupRepository.GetActiveGroupIdsWithoutProjectAsync(semesterId, ct);
         }
     }
 }

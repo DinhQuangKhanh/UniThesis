@@ -1,4 +1,5 @@
 using UniThesis.Application.Common.Abstractions;
+using UniThesis.Application.Common.Attributes;
 
 namespace UniThesis.Application.Features.Departments.Commands.SetDepartmentHead;
 
@@ -7,7 +8,11 @@ namespace UniThesis.Application.Features.Departments.Commands.SetDepartmentHead;
 /// This will remove the DepartmentHead role from the previous head (if any)
 /// and assign it to the new user.
 /// </summary>
+[ActionLog("Set Department Head", "Department")]
 public record SetDepartmentHeadCommand(
     int DepartmentId,
     Guid UserId
-) : ICommand;
+) : ICacheInvalidatingCommand
+{
+    public IReadOnlyCollection<string> CachePrefixesToInvalidate => ["users:list:"];
+}

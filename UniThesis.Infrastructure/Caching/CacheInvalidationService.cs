@@ -54,6 +54,12 @@ namespace UniThesis.Infrastructure.Caching
             _logger.LogInformation("Evaluator filter options cache invalidated");
         }
 
+        public async Task InvalidateUserListCacheAsync(CancellationToken ct = default)
+        {
+            await _cacheService.RemoveByPrefixAsync(CacheKeys.UserListPrefix, ct);
+            _logger.LogInformation("User list cache invalidated");
+        }
+
         public async Task InvalidateAllAsync(CancellationToken ct = default)
         {
             await _cacheService.RemoveByPrefixAsync("", ct);

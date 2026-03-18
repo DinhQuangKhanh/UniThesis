@@ -24,6 +24,9 @@
         public static string ProjectStats(int semesterId) => $"stats:project:{semesterId}";
         public static string EvaluationStats(int semesterId) => $"stats:evaluation:{semesterId}";
 
+        // User management
+        public const string UserListPrefix = "users:list:";
+
         // Evaluator
         public const string EvaluatorPrefix = "evaluator:";
         public static string EvaluatorFilterOptions => "evaluator:filter-options";
