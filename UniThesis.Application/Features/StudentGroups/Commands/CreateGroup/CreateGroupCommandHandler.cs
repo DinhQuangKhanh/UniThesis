@@ -1,0 +1,56 @@
+using UniThesis.Application.Common.Abstractions;
+using UniThesis.Domain.Aggregates.GroupAggregate;
+using UniThesis.Domain.Aggregates.GroupAggregate.ValueObjects;
+using UniThesis.Domain.Aggregates.SemesterAggregate;
+using UniThesis.Domain.Common.Exceptions;
+using UniThesis.Domain.Common.Interfaces;
+using ICurrentUserService = UniThesis.Application.Common.Interfaces.ICurrentUserService;
+
+namespace UniThesis.Application.Features.StudentGroups.Commands.CreateGroup;
+
+public class CreateGroupCommandHandler : ICommandHandler<CreateGroupCommand, Guid>
+{
+    private readonly IGroupRepository _groupRepository;
+    private readonly ISemesterRepository _semesterRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUser;
+
+    public CreateGroupCommandHandler(
+        IGroupRepository groupRepository,
+        ISemesterRepository semesterRepository,
+        IUnitOfWork unitOfWork,
+        ICurrentUserService currentUser)
+    {
+        _groupRepository = groupRepository;
+        _semesterRepository = semesterRepository;
+        _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
+    }
+
+    public async Task<Guid> Handle(CreateGroupCommand request, CancellationToken cancellationToken)
+    {
+        var studentId = _currentUser.UserId
+            ?? throw new UnauthorizedAccessException("User is not authenticated.");
+
+        // Get active semester
+        var activeSemester = await _semesterRepository.GetActiveAsync(cancellationToken)
+            ?? throw new BusinessRuleValidationException("No active semester found.");
+
+        // Check if student is already in an active group this semester
+        if (await _groupRepository.IsStudentInActiveGroupAsync(studentId, activeSemester.Id, cancellationToken))
+            throw new BusinessRuleValidationException("Student is already in an active group this semester.");
+
+        // Generate group code
+        var year = DateTime.UtcNow.Year;
+        var seq = await _groupRepository.GetNextSequenceAsync(year, cancellationToken);
+        var code = GroupCode.Generate(year, seq);
+
+        // Create group with current student as leader
+        var group = Group.Create(code, activeSemester.Id, studentId, request.Name);
+
+        await _groupRepository.AddAsync(group, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return group.Id;
+    }
+}
