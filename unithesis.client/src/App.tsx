@@ -1,5 +1,4 @@
 import { NotFoundPage, AccessDeniedPage } from "@/pages/errors";
-
 import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";

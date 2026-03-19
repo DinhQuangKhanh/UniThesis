@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { NotificationDropdown } from '@/components/layout'
+import { studentGroupService, type StudentGroupDto } from '@/lib/studentGroupService'
 
 const container = {
     hidden: { opacity: 0 },
@@ -27,6 +29,17 @@ const deadlines = [
 
 export function StudentDashboardPage() {
     const navigate = useNavigate()
+    const [myGroup, setMyGroup] = useState<StudentGroupDto | null>(null)
+    const [loadingGroup, setLoadingGroup] = useState(true)
+
+    useEffect(() => {
+        studentGroupService.getMyGroup()
+            .then(data => setMyGroup(data))
+            .catch((error) => {
+                console.error('Error fetching student group:', error)
+            })
+            .finally(() => setLoadingGroup(false))
+    }, [])
 
     return (
         <>
@@ -60,9 +73,12 @@ export function StudentDashboardPage() {
                     {/* Welcome Section */}
                     <motion.section variants={item} className="bg-white rounded-xl p-6 border border-[#e9ecf1] shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
                         <div className="flex flex-col gap-2">
-                            <h2 className="text-2xl font-bold text-[#101319]">Chào buổi sáng, An! 👋</h2>
+                            <h2 className="text-2xl font-bold text-[#101319]">Chào mừng bạn trở lại!</h2>
                             <p className="text-[#58698d] text-sm">
-                                Bạn có <span className="text-primary font-bold underline cursor-pointer hover:text-primary-light">2 thông báo mới</span> từ giảng viên cần phản hồi trước 20/10.
+                                {myGroup?.projectName
+                                    ? <>Đề tài: <span className="text-primary font-bold">{myGroup.projectName}</span></>
+                                    : 'Hãy tham gia hoặc tạo nhóm để bắt đầu.'
+                                }
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-3">
@@ -94,31 +110,63 @@ export function StudentDashboardPage() {
                                     <span className="material-symbols-outlined text-[18px]">arrow_right_alt</span>
                                 </button>
                             </div>
-                            <div className="flex flex-col gap-5">
-                                <div>
-                                    <h4 className="text-xl font-bold text-[#101319] leading-tight mb-2">
-                                        Xây dựng hệ thống quản lý thư viện số
-                                    </h4>
-                                    <p className="text-sm text-[#58698d] mb-1">
-                                        GVHD: <span className="font-semibold text-gray-700">TS. Trần Minh Tuấn</span>
-                                    </p>
+
+                            {loadingGroup ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
                                 </div>
-                                <div className="bg-gray-50 p-5 rounded-lg border border-gray-100">
-                                    <p className="text-sm text-gray-600 leading-relaxed">
-                                        Nghiên cứu và phát triển giải pháp quản lý tài liệu số hóa, tích hợp công nghệ nhận dạng ký tự quang học (OCR) và module gợi ý sách dựa trên lịch sử đọc.
-                                    </p>
+                            ) : myGroup?.projectName ? (
+                                <div className="flex flex-col gap-5">
+                                    <div>
+                                        <h4 className="text-xl font-bold text-[#101319] leading-tight mb-2">
+                                            {myGroup.projectName}
+                                        </h4>
+                                        {myGroup.mentorName && (
+                                            <p className="text-sm text-[#58698d] mb-1">
+                                                GVHD: <span className="font-semibold text-gray-700">{myGroup.mentorName}</span>
+                                            </p>
+                                        )}
+                                        {myGroup.projectCode && (
+                                            <p className="text-xs text-[#58698d]">
+                                                Mã: {myGroup.projectCode}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-3 mt-auto">
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                                            myGroup.projectStatus === 'InProgress' ? 'bg-green-50 text-green-700 border-green-100' :
+                                            myGroup.projectStatus === 'Completed' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                            'bg-gray-50 text-gray-600 border-gray-200'
+                                        }`}>
+                                            <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                                            {myGroup.projectStatus === 'InProgress' ? 'Đang thực hiện' :
+                                             myGroup.projectStatus === 'Completed' ? 'Hoàn thành' :
+                                             myGroup.projectStatus ?? 'Chưa xác định'}
+                                        </span>
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-gray-600 border border-gray-200">
+                                            <span className="material-symbols-outlined text-[14px]">group</span>
+                                            {(myGroup.members?.length ?? 0)}/{myGroup.maxMembers} thành viên
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-3 mt-auto">
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-100">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                                        Đang thực hiện
-                                    </span>
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-gray-600 border border-gray-200">
-                                        <span className="material-symbols-outlined text-[14px]">schedule</span>
-                                        Còn 38 ngày
-                                    </span>
+                            ) : myGroup ? (
+                                <div className="flex flex-col items-center justify-center py-8 text-center">
+                                    <span className="material-symbols-outlined text-4xl text-[#58698d] mb-2">topic</span>
+                                    <p className="text-[#58698d] text-sm">Nhóm <strong>{myGroup.groupName ?? myGroup.groupCode}</strong> chưa được gán đề tài.</p>
+                                    <p className="text-xs text-[#58698d] mt-1">{(myGroup.members?.length ?? 0)}/{myGroup.maxMembers} thành viên</p>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-8 text-center">
+                                    <span className="material-symbols-outlined text-4xl text-[#58698d] mb-2">group_add</span>
+                                    <p className="text-[#58698d] text-sm mb-3">Bạn chưa tham gia nhóm nào.</p>
+                                    <button
+                                        onClick={() => navigate('/student/topics')}
+                                        className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary-light transition-colors"
+                                    >
+                                        Tìm nhóm / Tạo nhóm
+                                    </button>
+                                </div>
+                            )}
                         </motion.div>
 
                         {/* Quick Access */}
@@ -199,7 +247,7 @@ export function StudentDashboardPage() {
 
                     {/* Footer */}
                     <div className="mt-12 pt-6 border-t border-[#e9ecf1] flex flex-col md:flex-row justify-between items-center text-[#58698d] text-sm pb-8">
-                        <p>© 2023 University Thesis Management System.</p>
+                        <p>&copy; 2025 University Thesis Management System.</p>
                         <div className="flex gap-4 mt-2 md:mt-0">
                             <a className="hover:text-primary" href="#">Quy định bảo mật</a>
                             <a className="hover:text-primary" href="#">Điều khoản sử dụng</a>
