@@ -73,6 +73,12 @@ namespace UniThesis.Persistence.SqlServer.Repositories
                 .AnyAsync(g => g.Members.Any(m => m.StudentId == studentId && m.Status == GroupMemberStatus.Active), cancellationToken);
         }
 
+        public async Task<bool> IsLeaderOfGroupAsync(Guid leaderId, Guid groupId, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .AnyAsync(g => g.Id == groupId && g.LeaderId == leaderId, cancellationToken);
+        }
+
         /// <summary>
         /// Gets groups by leader using specification.
         /// </summary>
@@ -99,6 +105,31 @@ namespace UniThesis.Persistence.SqlServer.Repositories
                            g.ProjectId == null)
                 .Select(g => g.Id)
                 .ToListAsync(cancellationToken);
+        }
+
+        public async Task<Group?> GetWithInvitationsAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Include(g => g.Members)
+                .Include(g => g.Invitations)
+                .FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
+        }
+
+        public async Task<Group?> GetWithJoinRequestsAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Include(g => g.Members)
+                .Include(g => g.JoinRequests)
+                .FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
+        }
+
+        public async Task<Group?> GetWithAllRelationsAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Include(g => g.Members)
+                .Include(g => g.Invitations)
+                .Include(g => g.JoinRequests)
+                .FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
         }
     }
 }
