@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useParams, useNavigate } from 'react-router-dom'
 import { apiClient } from '@/lib/apiClient'
@@ -475,15 +475,6 @@ export function TopicPoolDetailPage() {
     const [showProposeModal, setShowProposeModal] = useState(false)
     const [proposeSuccess, setProposeSuccess] = useState(false)
 
-    // Hover-to-preview debounce
-    const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-    const handleTopicMouseEnter = (topicId: string) => {
-        hoverTimer.current = setTimeout(() => setSelectedTopicId(topicId), 300)
-    }
-    const handleTopicMouseLeave = () => {
-        if (hoverTimer.current) clearTimeout(hoverTimer.current)
-    }
-
     // Load pool + stats once
     useEffect(() => {
         if (!id) return
@@ -717,8 +708,6 @@ export function TopicPoolDetailPage() {
                                                 <div
                                                     key={t.id}
                                                     className="px-6 py-4 hover:bg-slate-50 transition-colors flex items-center gap-4 group cursor-pointer"
-                                                    onMouseEnter={() => handleTopicMouseEnter(t.id)}
-                                                    onMouseLeave={handleTopicMouseLeave}
                                                     onClick={() => setSelectedTopicId(t.id)}
                                                 >
                                                     <div className="size-9 flex-shrink-0 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
