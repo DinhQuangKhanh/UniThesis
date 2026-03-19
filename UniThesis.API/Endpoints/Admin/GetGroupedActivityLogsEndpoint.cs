@@ -1,4 +1,6 @@
+using UniThesis.API.Extensions;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Admin;
 
@@ -44,7 +46,7 @@ public class GetGroupedActivityLogsEndpoint : IEndpoint
                     RoleCounts = roleCounts,
                 };
 
-                return Results.Ok(result);
+                return Ok(result);
             })
             .RequireAuthorization()
             .WithTags("Admin")

@@ -1,6 +1,8 @@
 using MediatR;
+using UniThesis.API.Extensions;
 using UniThesis.Application.Features.TopicPools.DTOs;
 using UniThesis.Application.Features.TopicPools.Queries.GetPoolTopicDetail;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.TopicPools;
 
@@ -18,7 +20,7 @@ public class GetPoolTopicDetailEndpoint : IEndpoint
                     cancellationToken);
 
                 return result is not null
-                    ? Results.Ok(result)
+                    ? Ok(result)
                     : Results.NotFound();
             })
             .RequireAuthorization()

@@ -1,7 +1,9 @@
 using MediatR;
+using UniThesis.API.Extensions;
 using UniThesis.Application.Common;
 using UniThesis.Application.Features.Evaluations.DTOs;
 using UniThesis.Application.Features.Evaluations.Queries.GetEvaluatorDashboard;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Evaluations;
 
@@ -17,7 +19,7 @@ public class GetEvaluatorDashboardEndpoint : IEndpoint
                 try
                 {
                     var result = await sender.Send(new GetEvaluatorDashboardQuery(), cancellationToken);
-                    return Results.Ok(ApiResponse.Ok(result));
+                    return Ok(result);
                 }
                 catch (UnauthorizedAccessException)
                 {

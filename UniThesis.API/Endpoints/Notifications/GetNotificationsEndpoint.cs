@@ -1,6 +1,8 @@
 using MediatR;
+using UniThesis.API.Extensions;
 using UniThesis.Application.Features.Notifications.DTOs;
 using UniThesis.Application.Features.Notifications.Queries.GetUserNotifications;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Notifications;
 
@@ -21,7 +23,7 @@ public class GetNotificationsEndpoint : IEndpoint
 
                 var result = await sender.Send(
                     new GetUserNotificationsQuery(limit), cancellationToken);
-                return Results.Ok(result);
+                return Ok(result);
             })
             .RequireAuthorization()
             .WithTags("Notifications")

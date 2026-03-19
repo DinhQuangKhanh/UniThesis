@@ -1,5 +1,7 @@
 using MediatR;
+using UniThesis.API.Extensions;
 using UniThesis.Application.Features.TopicPools.Commands.ProposeTopicToPool;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.TopicPools;
 
@@ -41,7 +43,7 @@ public class ProposeTopicToPoolEndpoint : IEndpoint
                     MaxStudents: body.MaxStudents);
 
                 var projectId = await sender.Send(command, cancellationToken);
-                return Results.Created($"/api/topic-pools/topics/{projectId}", new { id = projectId });
+                return Created($"/api/topic-pools/topics/{projectId}", new { id = projectId }, "Tạo mới thành công.");
             })
             .RequireAuthorization()
             .WithTags("TopicPools")

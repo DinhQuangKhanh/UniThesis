@@ -1,5 +1,7 @@
 using MediatR;
+using UniThesis.API.Extensions;
 using UniThesis.Application.Features.TopicPools.Commands.ConfirmRegistration;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.TopicPools;
 
@@ -17,7 +19,7 @@ public class ConfirmTopicRegistrationEndpoint : IEndpoint
                 CancellationToken cancellationToken) =>
             {
                 await sender.Send(new ConfirmTopicRegistrationCommand(id), cancellationToken);
-                return Results.NoContent();
+                return NoContent("Xác nhận thành công.");
             })
             .RequireAuthorization()
             .WithTags("TopicPools")

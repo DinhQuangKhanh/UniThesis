@@ -1,7 +1,9 @@
 using MediatR;
+using UniThesis.API.Extensions;
 using UniThesis.Application.Common;
 using UniThesis.Application.Features.Dashboard.DTOs;
 using UniThesis.Application.Features.Dashboard.Queries.GetAdminDashboard;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Admin;
 
@@ -15,7 +17,7 @@ public class GetAdminDashboardEndpoint : IEndpoint
             {
                 var result = await sender.Send(
                     new GetAdminDashboardQuery(), cancellationToken);
-                return Results.Ok(ApiResponse.Ok(result));
+                return Ok(result);
             })
             .RequireAuthorization("RequireAdmin")
             .WithTags("Admin")
