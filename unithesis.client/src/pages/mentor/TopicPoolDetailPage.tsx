@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useParams, useNavigate } from 'react-router-dom'
 import { apiClient } from '@/lib/apiClient'
@@ -109,6 +109,22 @@ function ProposeTopicModal({ poolId, onClose, onSuccess }: ProposeTopicModalProp
     })
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [attachments, setAttachments] = useState<File[]>([])
+
+    const ACCEPTED_TYPES = [
+        '.pdf', '.doc', '.docx', '.xls', '.xlsx',
+        '.ppt', '.pptx', '.zip', '.rar',
+        '.jpg', '.jpeg', '.png',
+    ]
+
+    const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files) return
+        setAttachments(prev => [...prev, ...Array.from(e.target.files!)])
+        e.target.value = '' // allow re-selecting same file
+    }
+
+    const removeFile = (idx: number) =>
+        setAttachments(prev => prev.filter((_, i) => i !== idx))
 
     const set = (field: string, val: string | number) =>
         setForm(prev => ({ ...prev, [field]: val }))
@@ -118,12 +134,19 @@ function ProposeTopicModal({ poolId, onClose, onSuccess }: ProposeTopicModalProp
         setSubmitting(true)
         setError(null)
         try {
-            await apiClient.post(`/api/topic-pools/${poolId}/propose`, {
-                nameVi: form.nameVi, nameEn: form.nameEn, nameAbbr: form.nameAbbr,
-                description: form.description, objectives: form.objectives,
-                scope: form.scope || null, technologies: form.technologies || null,
-                expectedResults: form.expectedResults || null, maxStudents: form.maxStudents,
-            })
+            const formData = new FormData()
+            formData.append('nameVi', form.nameVi)
+            formData.append('nameEn', form.nameEn)
+            formData.append('nameAbbr', form.nameAbbr)
+            formData.append('description', form.description)
+            formData.append('objectives', form.objectives)
+            if (form.scope) formData.append('scope', form.scope)
+            if (form.technologies) formData.append('technologies', form.technologies)
+            if (form.expectedResults) formData.append('expectedResults', form.expectedResults)
+            formData.append('maxStudents', form.maxStudents.toString())
+            attachments.forEach(f => formData.append('attachments', f))
+
+            await apiClient.postForm(`/api/topic-pools/${poolId}/propose`, formData)
             onSuccess()
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Đề xuất thất bại')
@@ -216,6 +239,45 @@ function ProposeTopicModal({ poolId, onClose, onSuccess }: ProposeTopicModalProp
                         <label className="block text-xs font-semibold text-slate-600 mb-1">Kết quả dự kiến (tùy chọn)</label>
                         <textarea rows={2} value={form.expectedResults} onChange={e => set('expectedResults', e.target.value)}
                             className="input-field w-full resize-none" placeholder="Sản phẩm, báo cáo..." />
+                    </div>
+
+                    {/* ── File attachments ───────────────────────────── */}
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1">
+                            Tài liệu đính kèm
+                            <span className="ml-1 font-normal text-slate-400">(tùy chọn)</span>
+                        </label>
+                        <label className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer px-4 py-5 text-center">
+                            <span className="material-symbols-outlined text-2xl text-slate-400">upload_file</span>
+                            <span className="text-xs text-slate-500">
+                                Kéo thả hoặc <span className="text-primary font-semibold">nhấn để chọn file</span>
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                                PDF, Word, Excel, PPT, ZIP, RAR, JPG, PNG
+                            </span>
+                            <input
+                                type="file"
+                                multiple
+                                accept={ACCEPTED_TYPES.join(',')}
+                                onChange={handleFiles}
+                                className="sr-only"
+                            />
+                        </label>
+
+                        {attachments.length > 0 && (
+                            <ul className="mt-2 space-y-1">
+                                {attachments.map((f, i) => (
+                                    <li key={i} className="flex items-center gap-2 text-xs text-slate-700 bg-slate-50 rounded-lg px-3 py-1.5 border border-slate-100">
+                                        <span className="material-symbols-outlined text-[14px] text-primary">attach_file</span>
+                                        <span className="flex-1 truncate">{f.name}</span>
+                                        <span className="text-slate-400 flex-shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
+                                        <button type="button" onClick={() => removeFile(i)} className="text-slate-400 hover:text-red-500 transition-colors">
+                                            <span className="material-symbols-outlined text-[14px]">close</span>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                     </div>
 
                     <div className="flex justify-end gap-3 pt-2">
@@ -412,6 +474,15 @@ export function TopicPoolDetailPage() {
     const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null)
     const [showProposeModal, setShowProposeModal] = useState(false)
     const [proposeSuccess, setProposeSuccess] = useState(false)
+
+    // Hover-to-preview debounce
+    const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const handleTopicMouseEnter = (topicId: string) => {
+        hoverTimer.current = setTimeout(() => setSelectedTopicId(topicId), 300)
+    }
+    const handleTopicMouseLeave = () => {
+        if (hoverTimer.current) clearTimeout(hoverTimer.current)
+    }
 
     // Load pool + stats once
     useEffect(() => {
@@ -643,7 +714,13 @@ export function TopicPoolDetailPage() {
                                         {topics.map(t => {
                                             const st = POOL_STATUS_LABELS[t.poolStatus] ?? POOL_STATUS_LABELS[0]
                                             return (
-                                                <div key={t.id} className="px-6 py-4 hover:bg-slate-50 transition-colors flex items-center gap-4 group">
+                                                <div
+                                                    key={t.id}
+                                                    className="px-6 py-4 hover:bg-slate-50 transition-colors flex items-center gap-4 group cursor-pointer"
+                                                    onMouseEnter={() => handleTopicMouseEnter(t.id)}
+                                                    onMouseLeave={handleTopicMouseLeave}
+                                                    onClick={() => setSelectedTopicId(t.id)}
+                                                >
                                                     <div className="size-9 flex-shrink-0 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                                                         <span className="material-symbols-outlined text-[18px]">description</span>
                                                     </div>
