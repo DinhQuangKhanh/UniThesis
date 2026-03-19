@@ -105,6 +105,7 @@ export function SemestersPage() {
       await apiClient.delete("/api/admin/semesters/" + deleteConfirm.id);
       setDeleteConfirm(null);
       fetchSemesters();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setDeleteError(err.message || "Xóa thất bại");
     } finally {
@@ -132,246 +133,205 @@ export function SemestersPage() {
         searchPlaceholder="Tìm kiếm kỳ học..."
       />
 
-      <div className="flex-1 p-8 overflow-y-auto scrollbar-hide bg-slate-50">
-        <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-          {/* Header */}
-          <motion.div variants={item} className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight text-slate-800">Danh Sách Kỳ Học</h2>
-              <p className="mt-1 text-sm text-slate-500">Quản lý các kỳ bảo vệ đồ án, tiến độ và mốc thời gian.</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-white border border-slate-200 text-sm font-semibold text-slate-700 px-4 py-2.5 rounded-lg hover:bg-slate-50 transition-colors shadow-sm outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="">Tất cả trạng thái</option>
-                <option value="Ongoing">Đang diễn ra</option>
-                <option value="Upcoming">Sắp tới</option>
-                <option value="Ended">Đã kết thúc</option>
-              </select>
-              <button className="flex items-center gap-2 bg-white border border-slate-200 text-sm font-semibold text-slate-700 px-4 py-2.5 rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
-                <span className="material-symbols-outlined text-[18px]">filter_list</span>
-                Báo cáo
-              </button>
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2.5 rounded-md shadow-sm transition-all font-medium text-sm"
-              >
-                <span className="material-symbols-outlined text-[20px]">add</span>
-                Tạo kỳ học mới
-              </button>
-            </div>
-          </motion.div>
+      {/* Loading */}
+      {isLoading && (
+        <motion.div variants={item} className="flex flex-col items-center justify-center gap-3 py-16">
+          <span className="text-4xl material-symbols-outlined animate-spin text-primary">progress_activity</span>
+          <p className="text-sm text-slate-500">Đang tải danh sách kỳ học...</p>
+        </motion.div>
+      )}
 
-          {/* Loading */}
-          {isLoading && (
-            <motion.div variants={item} className="flex flex-col items-center justify-center gap-3 py-16">
-              <span className="text-4xl material-symbols-outlined animate-spin text-primary">progress_activity</span>
-              <p className="text-sm text-slate-500">Đang tải danh sách kỳ học...</p>
-            </motion.div>
-          )}
-
-          {/* Error */}
-          {error && !isLoading && (
-            <motion.div
-              variants={item}
-              className="flex items-start gap-3 p-4 border border-red-200 rounded-lg bg-red-50"
+      {/* Error */}
+      {error && !isLoading && (
+        <motion.div variants={item} className="flex items-start gap-3 p-4 border border-red-200 rounded-lg bg-red-50">
+          <span className="material-symbols-outlined text-red-600 text-[20px] mt-0.5">error</span>
+          <div>
+            <p className="text-sm font-semibold text-red-800">Lỗi tải dữ liệu</p>
+            <p className="mt-1 text-xs text-red-600">{error}</p>
+            <button
+              onClick={fetchSemesters}
+              className="mt-2 text-xs font-semibold text-red-700 underline hover:text-red-900"
             >
-              <span className="material-symbols-outlined text-red-600 text-[20px] mt-0.5">error</span>
-              <div>
-                <p className="text-sm font-semibold text-red-800">Lỗi tải dữ liệu</p>
-                <p className="mt-1 text-xs text-red-600">{error}</p>
-                <button
-                  onClick={fetchSemesters}
-                  className="mt-2 text-xs font-semibold text-red-700 underline hover:text-red-900"
-                >
-                  Thử lại
-                </button>
-              </div>
-            </motion.div>
-          )}
+              Thử lại
+            </button>
+          </div>
+        </motion.div>
+      )}
 
-          {/* Empty state */}
-          {!isLoading && !error && semesters.length === 0 && (
-            <motion.div variants={item} className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-slate-100">
-                <span className="text-4xl material-symbols-outlined text-slate-400">calendar_month</span>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-slate-700">Chưa có kỳ học nào</p>
-                <p className="mt-1 text-sm text-slate-500">Bấm "Tạo kỳ học mới" để bắt đầu.</p>
-              </div>
-            </motion.div>
-          )}
+      {/* Empty state */}
+      {!isLoading && !error && semesters.length === 0 && (
+        <motion.div variants={item} className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-slate-100">
+            <span className="text-4xl material-symbols-outlined text-slate-400">calendar_month</span>
+          </div>
+          <div>
+            <p className="text-lg font-bold text-slate-700">Chưa có kỳ học nào</p>
+            <p className="mt-1 text-sm text-slate-500">Bấm "Tạo kỳ học mới" để bắt đầu.</p>
+          </div>
+        </motion.div>
+      )}
 
-          {/* Semester Cards */}
-          {!isLoading && !error && semesters.length > 0 && (
-            <div className="space-y-6">
-              {semesters.map((semester) => {
-                const badge = statusBadge(semester.status);
-                const isActive = semester.status === "Ongoing";
-                const currentPhase = semester.phases.find(
-                  (p: SemesterPhaseDto) => p.status === "Ongoing" || p.status === "InProgress",
-                );
+      {/* Semester Cards */}
+      {!isLoading && !error && semesters.length > 0 && (
+        <div className="space-y-6">
+          {semesters.map((semester) => {
+            const badge = statusBadge(semester.status);
+            const isActive = semester.status === "Ongoing";
+            const currentPhase = semester.phases.find(
+              (p: SemesterPhaseDto) => p.status === "Ongoing" || p.status === "InProgress",
+            );
 
-                return (
-                  <motion.div
-                    key={semester.id}
-                    variants={item}
-                    className={`bento-card rounded-lg overflow-hidden transition-all hover:shadow-md ${isActive ? "border-l-4 border-l-primary" : "opacity-90 hover:opacity-100"}`}
-                  >
-                    <div className="p-6">
-                      {/* Card Header */}
-                      <div className="flex flex-col justify-between gap-4 mb-6 lg:flex-row lg:items-start">
-                        <div className="flex items-start gap-4">
-                          <div
-                            className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 border ${isActive ? "bg-primary/10 text-primary border-primary/20" : "bg-slate-100 text-slate-500 border-slate-200"}`}
-                          >
-                            <span className="material-symbols-outlined text-[28px]">
-                              {isActive ? "calendar_month" : "history"}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="flex flex-wrap items-center gap-3">
-                              <h3 className={`text-xl font-bold ${isActive ? "text-slate-800" : "text-slate-700"}`}>
-                                {semester.name}
-                              </h3>
-                              <span
-                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${badge.bg}`}
-                              >
-                                {badge.dot && <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}></span>}
-                                {badge.label}
-                              </span>
-                              <span className="font-mono text-xs text-slate-400">{semester.code}</span>
-                            </div>
-                            <p className="mt-1 text-sm text-slate-500">
-                              Thời gian:{" "}
-                              <span className="font-medium text-slate-700">
-                                {formatDate(semester.startDate)} - {formatDate(semester.endDate)}
-                              </span>
-                              {semester.academicYear && (
-                                <span className="ml-2 text-xs text-slate-400">• Năm học: {semester.academicYear}</span>
-                              )}
-                            </p>
-                            {semester.description && (
-                              <p className="mt-1 text-xs text-slate-400">{semester.description}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="relative flex items-center gap-2">
-                          <button
-                            onClick={() => toggleDropdown(semester.id)}
-                            className="p-2 transition-colors rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">more_vert</span>
-                          </button>
-
-                          {openDropdownId === semester.id && (
-                            <div className="absolute right-0 z-10 w-48 py-1 mt-1 bg-white border rounded-md shadow-lg top-10 border-slate-200">
-                              {semester.status === "Upcoming" && (
-                                <>
-                                  <button
-                                    onClick={() => handleEdit(semester)}
-                                    className="flex items-center w-full gap-2 px-4 py-2 text-sm text-left text-slate-700 hover:bg-slate-50"
-                                  >
-                                    <span className="material-symbols-outlined text-[18px]">edit</span> Sửa thông tin
-                                  </button>
-                                  <button
-                                    onClick={() => openDeleteConfirm(semester)}
-                                    className="flex items-center w-full gap-2 px-4 py-2 text-sm text-left text-red-600 hover:bg-red-50"
-                                  >
-                                    <span className="material-symbols-outlined text-[18px]">delete</span> Xóa kỳ học
-                                  </button>
-                                </>
-                              )}
-                              {semester.status !== "Upcoming" && (
-                                <p className="px-4 py-2 text-xs italic text-slate-400">
-                                  Không thể chỉnh sửa kỳ học đã bắt đầu hoặc kết thúc.
-                                </p>
-                              )}
-                            </div>
-                          )}
-                        </div>
+            return (
+              <motion.div
+                key={semester.id}
+                variants={item}
+                className={`bento-card rounded-lg overflow-hidden transition-all hover:shadow-md ${isActive ? "border-l-4 border-l-primary" : "opacity-90 hover:opacity-100"}`}
+              >
+                <div className="p-6">
+                  {/* Card Header */}
+                  <div className="flex flex-col justify-between gap-4 mb-6 lg:flex-row lg:items-start">
+                    <div className="flex items-start gap-4">
+                      <div
+                        className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 border ${isActive ? "bg-primary/10 text-primary border-primary/20" : "bg-slate-100 text-slate-500 border-slate-200"}`}
+                      >
+                        <span className="material-symbols-outlined text-[28px]">
+                          {isActive ? "calendar_month" : "history"}
+                        </span>
                       </div>
+                      <div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <h3 className={`text-xl font-bold ${isActive ? "text-slate-800" : "text-slate-700"}`}>
+                            {semester.name}
+                          </h3>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${badge.bg}`}
+                          >
+                            {badge.dot && <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}></span>}
+                            {badge.label}
+                          </span>
+                          <span className="font-mono text-xs text-slate-400">{semester.code}</span>
+                        </div>
+                        <p className="mt-1 text-sm text-slate-500">
+                          Thời gian:{" "}
+                          <span className="font-medium text-slate-700">
+                            {formatDate(semester.startDate)} - {formatDate(semester.endDate)}
+                          </span>
+                          {semester.academicYear && (
+                            <span className="ml-2 text-xs text-slate-400">• Năm học: {semester.academicYear}</span>
+                          )}
+                        </p>
+                        {semester.description && <p className="mt-1 text-xs text-slate-400">{semester.description}</p>}
+                      </div>
+                    </div>
+                    <div className="relative flex items-center gap-2">
+                      <button
+                        onClick={() => toggleDropdown(semester.id)}
+                        className="p-2 transition-colors rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">more_vert</span>
+                      </button>
 
-                      {/* Phases Timeline */}
-                      {semester.phases.length > 0 && (
-                        <div className="pt-6 border-t border-slate-100">
-                          <div className="flex items-end justify-between mb-4">
-                            <p className="flex items-center gap-2 text-xs font-semibold tracking-wider uppercase text-slate-400">
-                              <span className="material-symbols-outlined text-[16px]">timeline</span>
-                              Tiến độ giai đoạn
+                      {openDropdownId === semester.id && (
+                        <div className="absolute right-0 z-10 w-48 py-1 mt-1 bg-white border rounded-md shadow-lg top-10 border-slate-200">
+                          {semester.status === "Upcoming" && (
+                            <>
+                              <button
+                                onClick={() => handleEdit(semester)}
+                                className="flex items-center w-full gap-2 px-4 py-2 text-sm text-left text-slate-700 hover:bg-slate-50"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">edit</span> Sửa thông tin
+                              </button>
+                              <button
+                                onClick={() => openDeleteConfirm(semester)}
+                                className="flex items-center w-full gap-2 px-4 py-2 text-sm text-left text-red-600 hover:bg-red-50"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">delete</span> Xóa kỳ học
+                              </button>
+                            </>
+                          )}
+                          {semester.status !== "Upcoming" && (
+                            <p className="px-4 py-2 text-xs italic text-slate-400">
+                              Không thể chỉnh sửa kỳ học đã bắt đầu hoặc kết thúc.
                             </p>
-                            {currentPhase && (
-                              <span className="px-3 py-1 text-sm font-bold border rounded text-primary bg-primary/5 border-primary/10">
-                                Giai đoạn: {currentPhase.name}
-                              </span>
-                            )}
-                          </div>
-                          <div className="relative px-2 pt-4 pb-8">
-                            {/* Track background */}
-                            <div className="absolute left-0 z-0 w-full h-1 -translate-y-1/2 rounded-full top-1/2 bg-slate-100"></div>
-                            {/* Track progress */}
-                            {(() => {
-                              const total = semester.phases.length;
-                              let pct = 0;
-                              if (total > 1) {
-                                const currentIndex = semester.phases.findIndex(
-                                  (p: SemesterPhaseDto) => p.status === "Active" || p.status === "InProgress",
-                                );
-                                if (currentIndex !== -1) {
-                                  pct = (currentIndex / (total - 1)) * 100;
-                                } else {
-                                  const completedCount = semester.phases.filter(
-                                    (p: SemesterPhaseDto) => p.status === "Completed",
-                                  ).length;
-                                  if (completedCount === total) pct = 100;
-                                  else if (completedCount > 0)
-                                    pct = Math.round(((completedCount - 1) / (total - 1)) * 100);
-                                }
-                              } else if (total === 1) {
-                                const completedCount = semester.phases.filter(
-                                  (p: SemesterPhaseDto) => p.status === "Completed",
-                                ).length;
-                                pct = completedCount === 1 ? 100 : 0;
-                              }
-                              return (
-                                <div
-                                  className={`absolute top-1/2 left-0 h-1 -translate-y-1/2 rounded-full z-0 transition-all duration-1000 ease-in-out ${isActive ? "bg-green-600 shadow-[0_0_8px_rgba(22,163,74,0.5)]" : "bg-green-600"}`}
-                                  style={{ width: `${pct}%` }}
-                                ></div>
-                              );
-                            })()}
-                            <div className="relative z-10 flex justify-between w-full">
-                              {semester.phases.map((phase: SemesterPhaseDto) => (
-                                <TimelineStep
-                                  key={phase.id}
-                                  icon={phaseIcon(phase.type)}
-                                  label={phase.name}
-                                  status={phaseStatus(phase.status)}
-                                  info={
-                                    phase.status === "Completed"
-                                      ? "Hoàn tất " + formatDate(phase.endDate)
-                                      : phaseStatus(phase.status) === "current"
-                                        ? "Đang diễn ra"
-                                        : "Dự kiến " + formatDate(phase.startDate)
-                                  }
-                                />
-                              ))}
-                            </div>
-                          </div>
+                          )}
                         </div>
                       )}
                     </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-        </motion.div>
-      </div>
+                  </div>
+
+                  {/* Phases Timeline */}
+                  {semester.phases.length > 0 && (
+                    <div className="pt-6 border-t border-slate-100">
+                      <div className="flex items-end justify-between mb-4">
+                        <p className="flex items-center gap-2 text-xs font-semibold tracking-wider uppercase text-slate-400">
+                          <span className="material-symbols-outlined text-[16px]">timeline</span>
+                          Tiến độ giai đoạn
+                        </p>
+                        {currentPhase && (
+                          <span className="px-3 py-1 text-sm font-bold border rounded text-primary bg-primary/5 border-primary/10">
+                            Giai đoạn: {currentPhase.name}
+                          </span>
+                        )}
+                      </div>
+                      <div className="relative px-2 pt-4 pb-8">
+                        {/* Track background */}
+                        <div className="absolute left-0 z-0 w-full h-1 -translate-y-1/2 rounded-full top-1/2 bg-slate-100"></div>
+                        {/* Track progress */}
+                        {(() => {
+                          const total = semester.phases.length;
+                          let pct = 0;
+                          if (total > 1) {
+                            const currentIndex = semester.phases.findIndex(
+                              (p: SemesterPhaseDto) => p.status === "Active" || p.status === "InProgress",
+                            );
+                            if (currentIndex !== -1) {
+                              pct = (currentIndex / (total - 1)) * 100;
+                            } else {
+                              const completedCount = semester.phases.filter(
+                                (p: SemesterPhaseDto) => p.status === "Completed",
+                              ).length;
+                              if (completedCount === total) pct = 100;
+                              else if (completedCount > 0) pct = Math.round(((completedCount - 1) / (total - 1)) * 100);
+                            }
+                          } else if (total === 1) {
+                            const completedCount = semester.phases.filter(
+                              (p: SemesterPhaseDto) => p.status === "Completed",
+                            ).length;
+                            pct = completedCount === 1 ? 100 : 0;
+                          }
+                          return (
+                            <div
+                              className={`absolute top-1/2 left-0 h-1 -translate-y-1/2 rounded-full z-0 transition-all duration-1000 ease-in-out ${isActive ? "bg-green-600 shadow-[0_0_8px_rgba(22,163,74,0.5)]" : "bg-green-600"}`}
+                              style={{ width: `${pct}%` }}
+                            ></div>
+                          );
+                        })()}
+                        <div className="relative z-10 flex justify-between w-full">
+                          {semester.phases.map((phase: SemesterPhaseDto) => (
+                            <TimelineStep
+                              key={phase.id}
+                              icon={phaseIcon(phase.type)}
+                              label={phase.name}
+                              status={phaseStatus(phase.status)}
+                              info={
+                                phase.status === "Completed"
+                                  ? "Hoàn tất " + formatDate(phase.endDate)
+                                  : phaseStatus(phase.status) === "current"
+                                    ? "Đang diễn ra"
+                                    : "Dự kiến " + formatDate(phase.startDate)
+                              }
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
       {/* Create/Edit Modals */}
       <CreateSemesterModal
         isOpen={isCreateModalOpen}
