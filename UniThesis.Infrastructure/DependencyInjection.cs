@@ -145,6 +145,7 @@ namespace UniThesis.Infrastructure
             services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
             services.AddScoped<IAuthorizationHandler, ProjectOwnerAuthorizationHandler>();
             services.AddScoped<IAuthorizationHandler, GroupMemberAuthorizationHandler>();
+            services.AddScoped<IAuthorizationHandler, GroupLeaderAuthorizationHandler>();
             services.AddScoped<IAuthorizationHandler, MentorOfProjectAuthorizationHandler>();
 
             // Firebase Auth Service
@@ -158,9 +159,8 @@ namespace UniThesis.Infrastructure
             services.AddScoped<ISemesterDomainService, SemesterDomainService>();
             services.AddScoped<IGroupDomainService, GroupDomainService>();
 
-            // Query Services
+            // Query Services (note: IStudentGroupQueryService is registered in Persistence layer)
             services.AddScoped<ITopicPoolQueryService, TopicPoolQueryService>();
-            services.AddScoped<IStudentGroupQueryService, StudentGroupQueryService>();
             services.AddScoped<IEvaluatorQueryService, EvaluatorQueryService>();
 
             // Email
