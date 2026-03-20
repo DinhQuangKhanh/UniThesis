@@ -55,14 +55,14 @@ namespace UniThesis.Persistence.SqlServer.Repositories
         {
             var prefix = $"G-{year}-";
             var lastCode = await _dbSet
-                .Where(g => EF.Functions.Like(g.Code.Value, $"{prefix}%"))
+                .Where(g => g.CreatedAt.Year == year)
                 .OrderByDescending(g => g.Code)
-                .Select(g => g.Code.Value)
+                .Select(g => g.Code)
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (lastCode == null) return 1;
 
-            var sequencePart = lastCode.Replace(prefix, "");
+            var sequencePart = lastCode.Value.Replace(prefix, "");
             return int.TryParse(sequencePart, out var seq) ? seq + 1 : 1;
         }
 
