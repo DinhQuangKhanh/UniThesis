@@ -227,6 +227,13 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
             if (!request.IsPending)
                 throw new BusinessRuleValidationException("Join request is no longer pending.");
 
+            if (request.IsExpired)
+            {
+                request.Reject();
+                UpdatedAt = DateTime.UtcNow;
+                throw new BusinessRuleValidationException("Join request has expired.");
+            }
+
             CheckRule(new GroupCannotExceedMaxMembersRule(ActiveMemberCount, MaxMembers));
 
             request.Approve();
