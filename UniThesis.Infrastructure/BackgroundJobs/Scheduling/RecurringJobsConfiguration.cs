@@ -37,6 +37,12 @@ namespace UniThesis.Infrastructure.BackgroundJobs.Scheduling
                 job => job.ExecuteAsync(),
                 Cron.Hourly);
 
+            // Join request expiration - every 5 minutes
+            RecurringJob.AddOrUpdate<GroupJoinRequestExpirationJob>(
+                "group-join-request-expiration",
+                job => job.ExecuteAsync(),
+                "*/5 * * * *");
+
             // Data cleanup - weekly on Sunday at 2 AM
             RecurringJob.AddOrUpdate<DataCleanupJob>(
                 "data-cleanup",

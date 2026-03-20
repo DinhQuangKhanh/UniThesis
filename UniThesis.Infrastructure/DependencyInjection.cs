@@ -202,6 +202,7 @@ namespace UniThesis.Infrastructure
             services.AddScoped<SemesterPhaseTransitionJob>();
             services.AddScoped<DefenseScheduleReminderJob>();
             services.AddScoped<MeetingReminderJob>();
+            services.AddScoped<GroupJoinRequestExpirationJob>();
             services.AddScoped<DataCleanupJob>();
 
             var hangfireConn = configuration.GetConnectionString("HangfireConnection") ?? configuration.GetConnectionString("DefaultConnection");
