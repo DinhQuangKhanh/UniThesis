@@ -388,3 +388,4 @@ UniThesis.API/appsettings.Development.json
 **/*secret*.json
 **/*secret*.yml
 **/*secret*.yaml
+**/service-account.json
