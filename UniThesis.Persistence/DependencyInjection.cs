@@ -122,7 +122,20 @@ namespace UniThesis.Persistence
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseInit");
 
+            var pendingMigrations = (await dbContext.Database.GetPendingMigrationsAsync()).ToList();
+            if (pendingMigrations.Count == 0)
+            {
+                logger.LogInformation("No pending EF Core migrations.");
+            }
+            else
+            {
+                logger.LogWarning("Applying {Count} pending migration(s): {Migrations}",
+                    pendingMigrations.Count,
+                    string.Join(", ", pendingMigrations));
+            }
+
             await dbContext.Database.MigrateAsync();
+            logger.LogInformation("EF Core migrations applied successfully.");
 
             // Seed development data (idempotent - skips if data already exists)
             await DevelopmentDataSeeder.SeedAsync(dbContext);

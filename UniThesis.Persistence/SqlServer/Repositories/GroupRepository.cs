@@ -73,6 +73,19 @@ namespace UniThesis.Persistence.SqlServer.Repositories
                 .AnyAsync(g => g.Members.Any(m => m.StudentId == studentId && m.Status == GroupMemberStatus.Active), cancellationToken);
         }
 
+        public async Task<bool> HasPendingJoinRequestAsync(Guid studentId, int semesterId, CancellationToken cancellationToken = default)
+        {
+            return await _context.GroupJoinRequests
+                .Where(r => r.StudentId == studentId
+                         && r.Status == GroupJoinRequestStatus.Pending
+                         && r.ExpiresAt > DateTime.UtcNow)
+                .Join(_dbSet,
+                    request => request.GroupId,
+                    group => group.Id,
+                    (request, group) => new { request, group })
+                .AnyAsync(x => x.group.SemesterId == semesterId && x.group.Status == GroupStatus.Active, cancellationToken);
+        }
+
         public async Task<bool> IsLeaderOfGroupAsync(Guid leaderId, Guid groupId, CancellationToken cancellationToken = default)
         {
             return await _dbSet
