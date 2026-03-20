@@ -89,7 +89,7 @@ public static class FirebaseEmulatorSeeder
     {
         var list = new List<(string, string, string, string, string[])>();
 
-        for (var i = 1; i <= 1000; i++) // Admins
+        for (var i = 1; i <= LoadTestDataSeeder.SeededAdminCount; i++) // Admins
             list.Add((
                 LoadTestDataSeeder.AdminFirebaseUid(i),
                 LoadTestDataSeeder.AdminEmail(i),
@@ -98,7 +98,7 @@ public static class FirebaseEmulatorSeeder
                 new[] { "Admin" }
             ));
 
-        for (var i = 1; i <= 1000; i++) // DualRole (Mentor + Evaluator), lecturer 1 is also DepartmentHead
+        for (var i = 1; i <= LoadTestDataSeeder.SeededDualRoleCount; i++) // DualRole (Mentor + Evaluator), lecturer 1 is also DepartmentHead
         {
             var roles = i == 1
                 ? new[] { "Mentor", "Evaluator", "DepartmentHead" }
@@ -113,7 +113,7 @@ public static class FirebaseEmulatorSeeder
             ));
         }
 
-        for (var i = 1; i <= 1000; i++) // Students
+        for (var i = 1; i <= LoadTestDataSeeder.SeededStudentCount; i++) // Students
             list.Add((
                 LoadTestDataSeeder.StudentFirebaseUid(i),
                 LoadTestDataSeeder.StudentEmail(i),

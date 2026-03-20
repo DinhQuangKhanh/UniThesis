@@ -10,18 +10,22 @@ namespace UniThesis.Persistence.Seeds;
 /// proper FK relationships throughout.
 /// <para>Distribution:</para>
 /// <list type="bullet">
-///   <item>1000 Admins (role: Admin)</item>
-///   <item>1000 Lecturers with dual roles (roles: Mentor + Evaluator)</item>
-///   <item>1000 Students (role: Student)</item>
+///   <item>250 Admins (role: Admin)</item>
+///   <item>250 Lecturers with dual roles (roles: Mentor + Evaluator)</item>
+///   <item>360 Students (role: Student)</item>
 /// </list>
 /// Uses raw SQL to bypass domain validation. Idempotent.
 /// </summary>
 public static class LoadTestDataSeeder
 {
     // ────────────────── Distribution ──────────────────
-    private const int AdminCount = 1000;
-    private const int DualRoleCount = 1000;
-    private const int StudentCount = 1000;
+    public const int SeededAdminCount = 250;
+    public const int SeededDualRoleCount = 250;
+    public const int SeededStudentCount = 360;
+
+    private const int AdminCount = SeededAdminCount;
+    private const int DualRoleCount = SeededDualRoleCount;
+    private const int StudentCount = SeededStudentCount;
     private const int StudentsPerGroup = 4;
 
     // Semester IDs (assigned, not auto-generated)
@@ -69,7 +73,8 @@ public static class LoadTestDataSeeder
 
     // Rejected project count for Spring 2026
     private const int RejectedProjectCount = 10;
-    private const int SupportTicketCount = 50;
+    private const int SupportTicketCount = 12;
+    private const int TopicPoolProjectsPerMajor = 25;
 
     public static string AdminFirebaseUid(int i) => $"test-admin-{i:D4}";
     public static string DualRoleFirebaseUid(int i) => $"test-lecturer-{i:D4}";
@@ -328,7 +333,7 @@ public static class LoadTestDataSeeder
     }
 
     // ════════════════════════════════════════════════
-    //  TOPIC POOL PROJECTS (~100 per major = 800 total)
+    //  TOPIC POOL PROJECTS (~25 per major = 200 total)
     //  SourceType=FromPool, no GroupId
     // ════════════════════════════════════════════════
     private static async Task SeedTopicPoolProjectsAsync(AppDbContext context, ILogger? logger)
@@ -341,7 +346,12 @@ public static class LoadTestDataSeeder
             var majorCode = MajorCodes[m];
             var poolId = TopicPoolId(m);
             var topicNames = GetGeneratedTopicNames(m);
-            var topicsPerMajor = topicNames.Length; // 100
+            var topicsPerMajor = Math.Min(topicNames.Length, TopicPoolProjectsPerMajor);
+            var availableCount = (int)Math.Floor(topicsPerMajor * 0.6);
+            var expiredCount = (int)Math.Floor(topicsPerMajor * 0.2);
+            var reservedCount = (int)Math.Floor(topicsPerMajor * 0.1);
+            var reservedStart = availableCount + expiredCount;
+            var assignedStart = reservedStart + reservedCount;
 
             for (var batch = 0; batch < topicsPerMajor; batch += BatchSize)
             {
@@ -355,14 +365,14 @@ public static class LoadTestDataSeeder
                     totalCount++;
                     var (nameEn, nameVi) = topicNames[t];
 
-                    // Distribution: 60 Available, 20 Expired, 10 Reserved, 10 Assigned (but no group for pool-only)
+                    // Distribution: 60% Available, 20% Expired, 10% Reserved, remainder Assigned.
                     string poolStatus;
                     int projectStatus;
                     int? createdInSemester;
                     int? expirationSemester;
                     int semesterId;
 
-                    if (t < 60)
+                    if (t < availableCount)
                     {
                         poolStatus = "Available";
                         projectStatus = 3; // Approved
@@ -370,7 +380,7 @@ public static class LoadTestDataSeeder
                         createdInSemester = Spring2026Id;
                         expirationSemester = null;
                     }
-                    else if (t < 80)
+                    else if (t < reservedStart)
                     {
                         poolStatus = "Expired";
                         projectStatus = 3; // Approved (but expired in pool)
@@ -378,7 +388,7 @@ public static class LoadTestDataSeeder
                         createdInSemester = Fall2025Id;
                         expirationSemester = Spring2026Id;
                     }
-                    else if (t < 90)
+                    else if (t < assignedStart)
                     {
                         poolStatus = "Reserved";
                         projectStatus = 3; // Approved
@@ -1145,7 +1155,7 @@ public static class LoadTestDataSeeder
             ("Hỗ trợ cài đặt VPN truy cập hệ thống", "Sinh viên thực tập ở nước ngoài không truy cập được hệ thống, cần VPN.", 3, 1),
             ("Báo cáo spam trong hệ thống tin nhắn", "Có tài khoản gửi tin nhắn spam đến nhiều sinh viên qua hệ thống.", 3, 2),
 
-            // Additional technical (fill to 50)
+            // Additional technical
             ("Lỗi sync dữ liệu giữa mobile và web", "Dữ liệu cập nhật trên mobile không đồng bộ sang phiên bản web.", 0, 1),
             ("API response time quá chậm", "Endpoint /api/projects trả về response time > 5 giây khi có filter phức tạp.", 0, 2),
             ("Lỗi cache không invalidate", "Sau khi cập nhật thông tin đề tài, dữ liệu cũ vẫn hiển thị do cache không được xóa.", 0, 1),
@@ -1156,16 +1166,6 @@ public static class LoadTestDataSeeder
             ("Log monitoring alert: nhiều request 404", "Hệ thống monitor phát hiện 500+ request 404 trong 1 giờ qua.", 0, 1),
             ("Yêu cầu tăng kích thước upload file", "Giới hạn upload 10MB quá nhỏ, nhiều file báo cáo vượt quá giới hạn.", 1, 1),
             ("Hỏi về lịch bảo vệ đồ án", "Sinh viên hỏi lịch bảo vệ đồ án kỳ Spring 2026 đã được công bố chưa.", 1, 0),
-        };
-
-        // Assign statuses: 15 Open, 10 InProgress, 15 Resolved, 10 Closed
-        // Status: Open=0, InProgress=1, Resolved=2, Closed=3
-        var statusPattern = new int[]
-        {
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  // 15 Open
-            1,1,1,1,1,1,1,1,1,1,              // 10 InProgress
-            2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,  // 15 Resolved
-            3,3,3,3,3,3,3,3,3,3              // 10 Closed
         };
 
         var baseDate = new DateTime(2026, 2, 10, 8, 0, 0, DateTimeKind.Utc);
@@ -1179,8 +1179,15 @@ public static class LoadTestDataSeeder
 
             for (var i = batch; i < end; i++)
             {
-                var template = ticketTemplates[i];
-                var status = statusPattern[i];
+                var template = ticketTemplates[i % ticketTemplates.Length];
+                var ratio = SupportTicketCount == 0 ? 0d : (double)i / SupportTicketCount;
+                var status = ratio switch
+                {
+                    < 0.30 => 0, // Open
+                    < 0.55 => 1, // InProgress
+                    < 0.85 => 2, // Resolved
+                    _ => 3       // Closed
+                };
                 var ticketCode = $"TK-2026-{(i + 1):D4}";
                 var createdAt = baseDate.AddDays(-(SupportTicketCount - i)).AddHours(i % 12).AddMinutes(i * 7 % 60);
 
