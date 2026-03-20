@@ -7,6 +7,9 @@ const navItems = [
     { label: 'Trang chủ', icon: 'dashboard', path: '/student' },
     { label: 'Đề tài của tôi', icon: 'book_2', path: '/student/my-topic' },
     { label: 'Kho đề tài đề xuất', icon: 'inventory_2', path: '/student/topics' },
+    { label: 'Nhóm của tôi', icon: 'group', path: '/student/my-group' },
+    { label: 'Nhóm khác', icon: 'groups', path: '/student/open-groups' },
+    { label: 'Lời mời', icon: 'mail', path: '/student/invitations' },
     { label: 'Lịch trình chung', icon: 'calendar_month', path: '/student/schedule' },
     { label: 'Hỗ trợ', icon: 'support_agent', path: '/student/support', badge: '1' },
 ]

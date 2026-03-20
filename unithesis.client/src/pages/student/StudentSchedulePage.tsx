@@ -1,5 +1,7 @@
 import { motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
 import { NotificationDropdown } from '@/components/layout'
+import { studentGroupService, type StudentGroupDto } from '@/lib/studentGroupService'
 
 const container = {
     hidden: { opacity: 0 },
@@ -50,6 +52,21 @@ const upcomingEvents = [
 ]
 
 export function StudentSchedulePage() {
+    const [myGroup, setMyGroup] = useState<StudentGroupDto | null>(null)
+
+    useEffect(() => {
+        studentGroupService.getMyGroup()
+            .then(data => {
+                if (data) {
+                    setMyGroup(data)
+                }
+            })
+            .catch(err => {
+                console.warn('Student may not have a group yet:', err)
+                setMyGroup(null)
+            })
+    }, [])
+
     return (
         <>
             {/* Header */}
@@ -173,26 +190,48 @@ export function StudentSchedulePage() {
                         {/* Group Info */}
                         <div className="bg-white rounded-xl border border-[#e9ecf1] shadow-sm p-5">
                             <h3 className="font-bold text-[#101319] mb-4">Thông tin nhóm</h3>
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                                        GV
+                            {myGroup ? (
+                                <div className="space-y-4">
+                                    {myGroup.mentorName && (
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                                                GV
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-bold text-[#101319]">{myGroup.mentorName}</p>
+                                                <p className="text-[11px] text-[#58698d]">Mentor hướng dẫn</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-primary">
+                                            {myGroup?.groupCode?.slice(-2) || 'GR'}
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-sm font-bold text-[#101319]">{myGroup?.groupName ?? myGroup?.groupCode}</p>
+                                            <p className="text-[11px] text-[#58698d]">{myGroup?.members?.length ?? 0} thành viên</p>
+                                        </div>
                                     </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-bold text-[#101319]">TS. Nguyễn Văn B</p>
-                                        <p className="text-[11px] text-[#58698d]">Mentor hướng dẫn</p>
-                                    </div>
+                                    {myGroup?.members?.map(member => (
+                                        <div key={member.studentId} className="flex items-center gap-3 pl-2">
+                                            <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500">
+                                                {member.fullName.charAt(0)}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-xs font-medium text-[#101319]">
+                                                    {member.fullName}
+                                                    {member.role === 'Leader' && (
+                                                        <span className="ml-1 text-[10px] text-primary font-bold">(Trưởng nhóm)</span>
+                                                    )}
+                                                </p>
+                                                <p className="text-[10px] text-[#58698d]">{member.studentCode}</p>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-primary">
-                                        05
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-bold text-[#101319]">Nhóm 05 - CNTT</p>
-                                        <p className="text-[11px] text-[#58698d]">5 thành viên sinh viên</p>
-                                    </div>
-                                </div>
-                            </div>
+                            ) : (
+                                <p className="text-sm text-[#58698d] text-center py-4">Chưa tham gia nhóm</p>
+                            )}
                         </div>
                     </motion.div>
                 </motion.div>

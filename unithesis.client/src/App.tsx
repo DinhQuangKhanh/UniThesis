@@ -34,6 +34,9 @@ import {
   StudentTopicsPage,
   StudentMyTopicPage,
   StudentSupportPage,
+  StudentGroupDetailPage,
+  StudentOpenGroupsPage,
+  StudentGroupInvitationsPage,
   TopicPoolsPage,
   TopicPoolDetailPage,
   MaintenancePage,
@@ -159,6 +162,9 @@ function App() {
                 <Route index element={<StudentDashboardPage />} />
                 <Route path="my-topic" element={<StudentMyTopicPage />} />
                 <Route path="topics" element={<StudentTopicsPage />} />
+                <Route path="my-group" element={<StudentGroupDetailPage />} />
+                <Route path="open-groups" element={<StudentOpenGroupsPage />} />
+                <Route path="invitations" element={<StudentGroupInvitationsPage />} />
                 <Route path="schedule" element={<StudentSchedulePage />} />
                 <Route path="support" element={<StudentSupportPage />} />
               </Route>
