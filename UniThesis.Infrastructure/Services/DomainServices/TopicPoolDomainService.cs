@@ -1,10 +1,12 @@
 ﻿using Microsoft.Extensions.Logging;
+using UniThesis.Domain.Aggregates.GroupAggregate;
 using UniThesis.Domain.Aggregates.ProjectAggregate;
 using UniThesis.Domain.Aggregates.TopicPoolAggregate;
 using UniThesis.Domain.Aggregates.TopicPoolAggregate.Entities;
 using UniThesis.Domain.Common.Exceptions;
 using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Domain.Entities;
+using UniThesis.Domain.Enums.Group;
 using UniThesis.Domain.Enums.Project;
 using UniThesis.Domain.Enums.TopicPool;
 using UniThesis.Domain.Services;
@@ -19,6 +21,7 @@ public class TopicPoolDomainService : ITopicPoolDomainService
     private readonly ITopicPoolRepository _topicPoolRepository;
     private readonly ITopicRegistrationRepository _registrationRepository;
     private readonly IProjectRepository _projectRepository;
+    private readonly IGroupRepository _groupRepository;
     private readonly IMajorReadRepository _majorRepository;
     private readonly ISemesterDomainService _semesterDomainService;
     private readonly IUnitOfWork _unitOfWork;
@@ -28,6 +31,7 @@ public class TopicPoolDomainService : ITopicPoolDomainService
         ITopicPoolRepository topicPoolRepository,
         ITopicRegistrationRepository registrationRepository,
         IProjectRepository projectRepository,
+        IGroupRepository groupRepository,
         IMajorReadRepository majorRepository,
         ISemesterDomainService semesterDomainService,
         IUnitOfWork unitOfWork,
@@ -36,6 +40,7 @@ public class TopicPoolDomainService : ITopicPoolDomainService
         _topicPoolRepository = topicPoolRepository;
         _registrationRepository = registrationRepository;
         _projectRepository = projectRepository;
+        _groupRepository = groupRepository;
         _majorRepository = majorRepository;
         _semesterDomainService = semesterDomainService;
         _unitOfWork = unitOfWork;
@@ -106,6 +111,18 @@ public class TopicPoolDomainService : ITopicPoolDomainService
         string? note = null,
         CancellationToken cancellationToken = default)
     {
+        var group = await _groupRepository.GetByIdAsync(groupId, cancellationToken)
+            ?? throw new EntityNotFoundException(nameof(Group), groupId);
+
+        if (group.Status != GroupStatus.Active)
+            throw new BusinessRuleValidationException("Only active groups can register pool topics.");
+
+        if (group.LeaderId != registeredBy)
+            throw new BusinessRuleValidationException("Only the group leader can register a topic from the pool.");
+
+        if (group.ProjectId.HasValue)
+            throw new BusinessRuleValidationException("This group already has an assigned project.");
+
         var project = await _projectRepository.GetByIdAsync(projectId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Project), projectId);
 
