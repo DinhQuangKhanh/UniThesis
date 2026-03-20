@@ -75,27 +75,22 @@ export interface MajorOption {
 export const topicPoolService = {
   getTopics: (filters: PoolTopicFilters = {}): Promise<PoolTopicsResponse> => {
     const params = buildParams(filters);
-    return apiClient.get<PoolTopicsResponse>(
-      `/api/topic-pools/topics?${params.toString()}`
-    );
+    return apiClient.get<PoolTopicsResponse>(`/api/topic-pools/topics?${params.toString()}`);
   },
 
   getTopicDetail: (projectId: string): Promise<PoolTopicDetail> => {
-    return apiClient.get<PoolTopicDetail>(
-      `/api/topic-pools/topics/${projectId}`
-    );
+    return apiClient.get<PoolTopicDetail>(`/api/topic-pools/topics/${projectId}`);
   },
 
   getMajors: (): Promise<MajorOption[]> => {
     return apiClient.get<MajorOption[]>("/api/majors");
   },
 
-  registerTopic: (body: {
-    projectId: string;
-    groupId: string;
-    note?: string;
-  }) => {
-    return apiClient.post("/api/topic-pools/registrations", body);
+  registerTopic: (params: { projectId: string; groupId: string; note?: string }) => {
+    return apiClient.post(`/api/student-groups/${params.groupId}/topic-registrations`, {
+      projectId: params.projectId,
+      note: params.note,
+    });
   },
 };
 
@@ -105,8 +100,7 @@ function buildParams(filters: PoolTopicFilters): URLSearchParams {
   const params = new URLSearchParams();
   if (filters.majorId != null) params.set("majorId", String(filters.majorId));
   if (filters.search) params.set("search", filters.search);
-  if (filters.poolStatus != null)
-    params.set("poolStatus", String(filters.poolStatus));
+  if (filters.poolStatus != null) params.set("poolStatus", String(filters.poolStatus));
   if (filters.sortBy) params.set("sortBy", filters.sortBy);
   params.set("page", String(filters.page ?? 1));
   params.set("pageSize", String(filters.pageSize ?? 12));
