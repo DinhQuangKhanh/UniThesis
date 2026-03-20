@@ -41,6 +41,9 @@ public class CreateGroupCommandHandler : ICommandHandler<CreateGroupCommand, Gui
         if (await _groupRepository.IsStudentInActiveGroupAsync(studentId, activeSemester.Id, cancellationToken))
             throw new BusinessRuleValidationException("Student is already in an active group this semester.");
 
+        if (await _groupRepository.HasPendingJoinRequestAsync(studentId, activeSemester.Id, cancellationToken))
+            throw new BusinessRuleValidationException("Student has a pending join request and cannot create a new group yet.");
+
         // Generate group code
         var year = DateTime.UtcNow.Year;
         var seq = await _groupRepository.GetNextSequenceAsync(year, cancellationToken);
