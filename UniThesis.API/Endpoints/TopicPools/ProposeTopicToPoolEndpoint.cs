@@ -28,7 +28,7 @@ public class ProposeTopicToPoolEndpoint : IEndpoint
                 Guid poolId,
                 [FromForm] ProposeTopicRequest body,
                 HttpContext httpContext,
-                ITopicProposalAttachmentScanWorkflow attachmentScanWorkflow,
+                [FromServices] ITopicProposalAttachmentScanWorkflow attachmentScanWorkflow,
                 ICurrentUserService currentUser,
                 ILogger<ProposeTopicToPoolEndpoint> logger,
                 ISender sender,

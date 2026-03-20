@@ -1,3 +1,3 @@
 namespace UniThesis.API.Endpoints.TopicPools.Requests;
 
-public sealed record TopicRegistrationRequest(Guid ProjectId, Guid GroupId, string? Note);
+public sealed record TopicRegistrationRequest(Guid ProjectId, string? Note);
