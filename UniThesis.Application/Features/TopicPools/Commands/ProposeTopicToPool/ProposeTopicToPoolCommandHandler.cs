@@ -4,6 +4,7 @@ using UniThesis.Domain.Aggregates.ProjectAggregate;
 using UniThesis.Domain.Aggregates.ProjectAggregate.ValueObjects;
 using UniThesis.Domain.Aggregates.TopicPoolAggregate;
 using UniThesis.Domain.Common.Exceptions;
+using UniThesis.Domain.Services;
 using IUnitOfWork = UniThesis.Domain.Common.Interfaces.IUnitOfWork;
 
 namespace UniThesis.Application.Features.TopicPools.Commands.ProposeTopicToPool;
@@ -18,17 +19,20 @@ public class ProposeTopicToPoolCommandHandler
     private readonly ITopicPoolRepository _topicPoolRepo;
     private readonly IProjectRepository _projectRepo;
     private readonly ICurrentUserService _currentUser;
+    private readonly ISemesterDomainService _semesterDomainService;
     private readonly IUnitOfWork _unitOfWork;
 
     public ProposeTopicToPoolCommandHandler(
         ITopicPoolRepository topicPoolRepo,
         IProjectRepository projectRepo,
         ICurrentUserService currentUser,
+        ISemesterDomainService semesterDomainService,
         IUnitOfWork unitOfWork)
     {
         _topicPoolRepo = topicPoolRepo;
         _projectRepo = projectRepo;
         _currentUser = currentUser;
+        _semesterDomainService = semesterDomainService;
         _unitOfWork = unitOfWork;
     }
 
@@ -54,10 +58,16 @@ public class ProposeTopicToPoolCommandHandler
         var sequence = await _projectRepo.GetNextSequenceAsync(year, cancellationToken);
         var code = ProjectCode.Generate(year, sequence);
 
-        // 4. Compute expiration semester: current semester + pool.ExpirationSemesters
-        //    We use a simplified approach: expirationSemesterId = 0 (no expiration tracking at create time)
-        //    The actual expiration is handled by the background job based on ExpirationSemesters.
-        //    Use semesterId = 0 as a placeholder (pool topics don't belong to a specific semester).
+        // 4. Resolve created semester and expiration semester IDs.
+        var createdSemesterId = await _semesterDomainService.GetActiveSemesterIdAsync(cancellationToken)
+            ?? throw new BusinessRuleValidationException("Không tìm thấy học kỳ đang hoạt động để tạo đề tài từ topic pool.");
+
+        var expirationOffset = Math.Max(1, pool.ExpirationSemesters);
+        var expirationSemesterId = await _semesterDomainService.GetSemesterAfterAsync(
+            createdSemesterId,
+            expirationOffset,
+            cancellationToken);
+
         var project = Project.CreateFromPool(
             code: code,
             nameVi: ProjectName.Create(request.NameVi),
@@ -71,10 +81,10 @@ public class ProposeTopicToPoolCommandHandler
                 : null,
             expectedResults: request.ExpectedResults,
             majorId: pool.MajorId,
-            semesterId: 0,
+            semesterId: createdSemesterId,
             maxStudents: request.MaxStudents,
             topicPoolId: pool.Id,
-            expirationSemesterId: 0);
+            expirationSemesterId: expirationSemesterId);
 
         // 5. Assign the current mentor
         project.AddMentor(_currentUser.UserId.Value, assignedBy: _currentUser.UserId.Value);

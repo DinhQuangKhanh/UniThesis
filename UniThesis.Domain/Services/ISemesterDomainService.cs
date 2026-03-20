@@ -20,7 +20,8 @@ namespace UniThesis.Domain.Services
 
         /// <summary>
         /// Gets the semester that is N semesters after the given semester.
+        /// Returns null when the target semester does not exist yet.
         /// </summary>
-        Task<int> GetSemesterAfterAsync(int semesterId, int count, CancellationToken cancellationToken = default);
+        Task<int?> GetSemesterAfterAsync(int semesterId, int count, CancellationToken cancellationToken = default);
     }
 }

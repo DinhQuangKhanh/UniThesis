@@ -92,7 +92,7 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
         #region Factory Methods
 
         public static Project CreateFromPool(ProjectCode code, ProjectName nameVi, ProjectName nameEn, string nameAbbr, string description, string objectives,
-            string? scope, TechnologyStack? technologyStack, string? expectedResults, int majorId, int semesterId, int maxStudents, Guid topicPoolId, int expirationSemesterId)
+            string? scope, TechnologyStack? technologyStack, string? expectedResults, int majorId, int semesterId, int maxStudents, Guid topicPoolId, int? expirationSemesterId)
         {
             var project = new Project
             {
@@ -142,6 +142,18 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
                 throw new BusinessRuleValidationException("Pool status can only be set for projects from the topic pool.");
 
             PoolStatus = status;
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+        public void SetExpirationSemester(int expirationSemesterId)
+        {
+            if (SourceType != ProjectSourceType.FromPool)
+                throw new BusinessRuleValidationException("Expiration semester can only be set for projects from the topic pool.");
+
+            if (expirationSemesterId <= 0)
+                throw new BusinessRuleValidationException("Expiration semester must be a positive identifier.");
+
+            ExpirationSemesterId = expirationSemesterId;
             UpdatedAt = DateTime.UtcNow;
         }
 

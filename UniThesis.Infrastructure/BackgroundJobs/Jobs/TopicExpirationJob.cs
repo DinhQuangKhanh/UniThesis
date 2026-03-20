@@ -27,6 +27,9 @@ namespace UniThesis.Infrastructure.BackgroundJobs.Jobs
         {
             _logger.LogInformation("Starting TopicExpirationJob");
 
+            var resolvedCount = await _topicPoolService.ResolveMissingExpirationSemestersAsync();
+            _logger.LogInformation("Resolved expiration semester for {Count} topics before expiration check", resolvedCount);
+
             var currentSemesterId = await _semesterService.GetActiveSemesterIdAsync();
             if (currentSemesterId is null)
             {
