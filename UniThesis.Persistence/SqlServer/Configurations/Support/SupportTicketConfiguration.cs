@@ -60,6 +60,20 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Support
                 .HasForeignKey(t => t.AssigneeId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            // Attachments Relationship - using Owned Types
+            builder.OwnsMany(t => t.Attachments, a =>
+            {
+                a.ToTable("SupportTicketAttachments");
+                a.WithOwner().HasForeignKey("SupportTicketId");
+                a.Property<int>("Id").ValueGeneratedOnAdd();
+                a.HasKey("Id");
+
+                a.Property(att => att.FileName).HasMaxLength(255).IsRequired();
+                a.Property(att => att.FilePath).HasMaxLength(1000).IsRequired();
+                a.Property(att => att.ContentType).HasMaxLength(100).IsRequired();
+                a.Property(att => att.FileSize).IsRequired();
+            });
+
             // Messages Relationship – use backing field so EF can track adds via _messages
             builder.Navigation(t => t.Messages)
                 .UsePropertyAccessMode(PropertyAccessMode.Field);
@@ -98,6 +112,20 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Support
                 .WithMany()
                 .HasForeignKey(m => m.SenderId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Attachments Relationship - using Owned Types
+            builder.OwnsMany(m => m.Attachments, a =>
+            {
+                a.ToTable("TicketMessageAttachments");
+                a.WithOwner().HasForeignKey("TicketMessageId");
+                a.Property<int>("Id").ValueGeneratedOnAdd();
+                a.HasKey("Id");
+
+                a.Property(att => att.FileName).HasMaxLength(255).IsRequired();
+                a.Property(att => att.FilePath).HasMaxLength(1000).IsRequired();
+                a.Property(att => att.ContentType).HasMaxLength(100).IsRequired();
+                a.Property(att => att.FileSize).IsRequired();
+            });
         }
     }
 }

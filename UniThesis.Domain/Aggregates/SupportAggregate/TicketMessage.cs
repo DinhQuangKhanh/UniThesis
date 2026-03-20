@@ -1,3 +1,4 @@
+using UniThesis.Domain.Aggregates.SupportAggregate.ValueObjects;
 using UniThesis.Domain.Common.Primitives;
 
 namespace UniThesis.Domain.Aggregates.SupportAggregate
@@ -12,20 +13,30 @@ namespace UniThesis.Domain.Aggregates.SupportAggregate
         public string Content { get; private set; } = string.Empty;
         public DateTime CreatedAt { get; private set; }
 
+        private readonly List<FileAttachment> _attachments = new();
+        public IReadOnlyCollection<FileAttachment> Attachments => _attachments.AsReadOnly();
+
         private TicketMessage() { } // EF Core
 
-        internal static TicketMessage Create(Guid ticketId, Guid senderId, string content)
+        internal static TicketMessage Create(Guid ticketId, Guid senderId, string content, IEnumerable<FileAttachment>? attachments = null)
         {
             if (string.IsNullOrWhiteSpace(content))
                 throw new ArgumentException("Message content cannot be empty.", nameof(content));
 
-            return new TicketMessage
+            var message = new TicketMessage
             {
                 TicketId = ticketId,
                 SenderId = senderId,
                 Content = content.Trim(),
                 CreatedAt = DateTime.UtcNow
             };
+
+            if (attachments != null)
+            {
+                message._attachments.AddRange(attachments);
+            }
+
+            return message;
         }
     }
 }
