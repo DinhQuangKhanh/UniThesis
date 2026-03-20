@@ -47,4 +47,13 @@ public interface IStudentGroupQueryService
     Task<List<JoinRequestDto>> GetGroupJoinRequestsAsync(
         Guid groupId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the current student's pending join request in a semester.
+    /// If semesterId is null, uses the currently active semester.
+    /// </summary>
+    Task<PendingJoinRequestDto?> GetStudentPendingJoinRequestAsync(
+        Guid studentId,
+        int? semesterId,
+        CancellationToken cancellationToken = default);
 }
