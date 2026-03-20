@@ -1,6 +1,9 @@
+using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using UniThesis.Infrastructure.Authentication;
 
 namespace UniThesis.Infrastructure.Services.FileStorage
 {
@@ -15,11 +18,54 @@ namespace UniThesis.Infrastructure.Services.FileStorage
 
         public FirebaseStorageService(
             IOptions<FileStorageSettings> settings,
+            IOptions<FirebaseSettings> firebaseSettings,
+            IHostEnvironment hostEnvironment,
             ILogger<FirebaseStorageService> logger)
         {
             _settings = settings.Value;
             _logger = logger;
-            _storageClient = StorageClient.Create();
+
+            var firebaseOptions = firebaseSettings.Value;
+            GoogleCredential credential;
+
+            var storageEmulatorHost = Environment.GetEnvironmentVariable("STORAGE_EMULATOR_HOST");
+            if (firebaseOptions.UseEmulator && !string.IsNullOrWhiteSpace(storageEmulatorHost))
+            {
+                // Only use fake credentials when the Cloud Storage emulator is explicitly configured.
+                credential = GoogleCredential.FromAccessToken("emulator-fake-token");
+            }
+            else
+            {
+                if (firebaseOptions.UseEmulator && string.IsNullOrWhiteSpace(storageEmulatorHost))
+                {
+                    _logger.LogWarning(
+                        "Firebase.UseEmulator=true but STORAGE_EMULATOR_HOST is not set. Falling back to real Firebase Storage credentials.");
+                }
+
+                var serviceAccountPath = ResolveServiceAccountPath(
+                    firebaseOptions.ServiceAccountKeyPath,
+                    hostEnvironment.ContentRootPath);
+
+                credential = string.IsNullOrWhiteSpace(serviceAccountPath)
+                    ? GoogleCredential.GetApplicationDefault()
+                    : CredentialFactory.FromFile<ServiceAccountCredential>(serviceAccountPath).ToGoogleCredential();
+            }
+
+            _storageClient = StorageClient.Create(credential);
+        }
+
+        private static string ResolveServiceAccountPath(string configuredPath, string contentRootPath)
+        {
+            if (!string.IsNullOrWhiteSpace(configuredPath))
+            {
+                return Path.IsPathRooted(configuredPath)
+                    ? configuredPath
+                    : Path.GetFullPath(Path.Combine(contentRootPath, configuredPath));
+            }
+
+            // Backward-compatible fallback: keep working when key file is placed at API root.
+            var fallbackPath = Path.Combine(contentRootPath, "service-account.json");
+            return File.Exists(fallbackPath) ? fallbackPath : string.Empty;
         }
 
         /// <inheritdoc/>
@@ -27,6 +73,11 @@ namespace UniThesis.Infrastructure.Services.FileStorage
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(_settings.BucketName))
+                {
+                    return new FileUploadResult(false, null, null, "FirebaseStorage:BucketName is missing.");
+                }
+
                 // Validate file
                 var extension = Path.GetExtension(fileName).ToLowerInvariant();
                 if (!_settings.AllowedExtensions.Contains(extension))
@@ -72,6 +123,63 @@ namespace UniThesis.Infrastructure.Services.FileStorage
             {
                 _logger.LogError(ex, "Failed to upload file: {FileName}", fileName);
                 return new FileUploadResult(false, null, null, $"Upload failed: {ex.Message}");
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<FileUploadResult> MoveAsync(string sourceFilePath, string destinationFolder, CancellationToken ct = default)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(sourceFilePath))
+                {
+                    return new FileUploadResult(false, null, null, "Source file path is required.");
+                }
+
+                var destinationFileName = Path.GetFileName(sourceFilePath);
+                if (string.IsNullOrWhiteSpace(destinationFileName))
+                {
+                    return new FileUploadResult(false, null, null, "Invalid source file path.");
+                }
+
+                var destinationObjectName = string.IsNullOrWhiteSpace(destinationFolder)
+                    ? destinationFileName
+                    : $"{destinationFolder.TrimEnd('/')}/{destinationFileName}";
+
+                if (string.Equals(sourceFilePath, destinationObjectName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return new FileUploadResult(true, sourceFilePath, GetPublicUrl(sourceFilePath), null);
+                }
+
+                await _storageClient.CopyObjectAsync(
+                    sourceBucket: _settings.BucketName,
+                    sourceObjectName: sourceFilePath,
+                    destinationBucket: _settings.BucketName,
+                    destinationObjectName: destinationObjectName,
+                    cancellationToken: ct);
+
+                if (_settings.MakePublicByDefault)
+                {
+                    await MakeObjectPublicAsync(destinationObjectName, ct);
+                }
+
+                await _storageClient.DeleteObjectAsync(
+                    bucket: _settings.BucketName,
+                    objectName: sourceFilePath,
+                    cancellationToken: ct);
+
+                _logger.LogInformation("File moved successfully: {Source} -> {Destination}", sourceFilePath, destinationObjectName);
+                return new FileUploadResult(true, destinationObjectName, GetPublicUrl(destinationObjectName), null);
+            }
+            catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _logger.LogWarning("Failed to move file because source was not found: {SourceFilePath}", sourceFilePath);
+                return new FileUploadResult(false, null, null, "Source file not found for move operation.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to move file: {SourceFilePath}", sourceFilePath);
+                return new FileUploadResult(false, null, null, $"Move failed: {ex.Message}");
             }
         }
 

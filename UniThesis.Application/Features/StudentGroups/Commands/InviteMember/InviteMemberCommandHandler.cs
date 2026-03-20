@@ -1,4 +1,5 @@
 using UniThesis.Application.Common.Abstractions;
+using Microsoft.EntityFrameworkCore;
 using UniThesis.Domain.Aggregates.GroupAggregate;
 using UniThesis.Domain.Aggregates.UserAggregate;
 using UniThesis.Domain.Common.Exceptions;
@@ -45,8 +46,21 @@ public class InviteMemberCommandHandler : ICommandHandler<InviteMemberCommand, i
         // Domain logic validates leader, capacity, duplicates
         var invitation = group.InviteMember(inviterId, invitee.Id, request.Message);
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (IsPendingInvitationUniqueViolation(ex))
+        {
+            throw new BusinessRuleValidationException("A pending invitation already exists for this student.");
+        }
 
         return invitation.Id;
+    }
+
+    private static bool IsPendingInvitationUniqueViolation(DbUpdateException ex)
+    {
+        return ex.InnerException?.Message.Contains("IX_GroupInvitations_GroupId_InviteeId_Pending", StringComparison.OrdinalIgnoreCase) == true
+            || ex.Message.Contains("IX_GroupInvitations_GroupId_InviteeId_Pending", StringComparison.OrdinalIgnoreCase);
     }
 }

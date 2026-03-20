@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using UniThesis.Application.Common.Abstractions;
 using UniThesis.Domain.Aggregates.SupportAggregate;
 using UniThesis.Domain.Common.Exceptions;
@@ -24,11 +25,26 @@ public class ReplyTicketCommandHandler : ICommandHandler<ReplyTicketCommand>
 
         ticket.AddMessage(request.SenderId, request.Content);
 
-        // Optional: If Admin replies to an Open ticket, auto transition to InProgress
-        // But since we aren't passing Role in the command, we'll leave that logic for the API layer or specific admin command.
-        
+        // Explicitly mark as modified to ensure EF generates the UPDATE statement.
+        // Without this, EF may fail to detect changes to UpdatedAt (set inside AddMessage)
+        // when the entity was loaded in the same DbContext scope, causing
+        // DbUpdateConcurrencyException ("expected 1 row, affected 0").
         _repository.Update(ticket);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Row was deleted between load and save, or the entity doesn't exist in DB
+            // (e.g. seeder failed). Re-check existence to give a clear error.
+            var exists = await _repository.GetByIdAsync(request.TicketId, cancellationToken);
+            if (exists is null)
+                throw new EntityNotFoundException(nameof(SupportTicket), request.TicketId);
+
+            throw; // genuine concurrency conflict — bubble up
+        }
 
         return Unit.Value;
     }

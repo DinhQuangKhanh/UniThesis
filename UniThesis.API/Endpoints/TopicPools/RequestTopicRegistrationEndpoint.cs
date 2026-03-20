@@ -1,5 +1,8 @@
 using MediatR;
+using UniThesis.API.Extensions;
+using UniThesis.API.Endpoints.TopicPools.Requests;
 using UniThesis.Application.Features.TopicPools.Commands.RequestRegistration;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.TopicPools;
 
@@ -9,8 +12,6 @@ namespace UniThesis.API.Endpoints.TopicPools;
 /// </summary>
 public class RequestTopicRegistrationEndpoint : IEndpoint
 {
-    public sealed record TopicRegistrationRequest(Guid ProjectId, Guid GroupId, string? Note);
-
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("/api/topic-pools/registrations", async (
@@ -24,7 +25,7 @@ public class RequestTopicRegistrationEndpoint : IEndpoint
                     body.Note);
 
                 var registrationId = await sender.Send(command, cancellationToken);
-                return Results.Created($"/api/topic-pools/registrations/{registrationId}", new { id = registrationId });
+                return Created($"/api/topic-pools/registrations/{registrationId}", new { id = registrationId }, "Tạo mới thành công.");
             })
             .RequireAuthorization()
             .WithTags("TopicPools")

@@ -1,4 +1,5 @@
 using UniThesis.Application.Common.Abstractions;
+using Microsoft.EntityFrameworkCore;
 using UniThesis.Domain.Aggregates.GroupAggregate;
 using UniThesis.Domain.Aggregates.GroupAggregate.ValueObjects;
 using UniThesis.Domain.Aggregates.SemesterAggregate;
@@ -49,8 +50,22 @@ public class CreateGroupCommandHandler : ICommandHandler<CreateGroupCommand, Gui
         var group = Group.Create(code, activeSemester.Id, studentId, request.Name);
 
         await _groupRepository.AddAsync(group, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (IsGroupCodeUniqueViolation(ex))
+        {
+            throw new ConcurrencyException(nameof(Group), code.Value);
+        }
 
         return group.Id;
+    }
+
+    private static bool IsGroupCodeUniqueViolation(DbUpdateException ex)
+    {
+        return ex.InnerException?.Message.Contains("IX_Groups_Code", StringComparison.OrdinalIgnoreCase) == true
+            || ex.Message.Contains("IX_Groups_Code", StringComparison.OrdinalIgnoreCase);
     }
 }

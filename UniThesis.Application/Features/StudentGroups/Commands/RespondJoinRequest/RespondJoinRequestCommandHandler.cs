@@ -1,4 +1,5 @@
 using MediatR;
+using System.Linq;
 using UniThesis.Application.Common.Abstractions;
 using UniThesis.Domain.Aggregates.GroupAggregate;
 using UniThesis.Domain.Common.Exceptions;
@@ -32,7 +33,15 @@ public class RespondJoinRequestCommandHandler : ICommandHandler<RespondJoinReque
             ?? throw new EntityNotFoundException(nameof(Group), request.GroupId);
 
         if (request.Approve)
+        {
+            var joinRequest = group.JoinRequests.FirstOrDefault(r => r.Id == request.RequestId)
+                ?? throw new EntityNotFoundException("GroupJoinRequest", request.RequestId);
+
+            if (await _groupRepository.IsStudentInActiveGroupAsync(joinRequest.StudentId, group.SemesterId, cancellationToken))
+                throw new BusinessRuleValidationException("Student is already in an active group this semester.");
+
             group.ApproveJoinRequest(request.RequestId, leaderId);
+        }
         else
             group.RejectJoinRequest(request.RequestId, leaderId);
 

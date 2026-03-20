@@ -51,11 +51,7 @@ namespace UniThesis.Infrastructure
                     Environment.SetEnvironmentVariable("FIREBASE_AUTH_EMULATOR_HOST", firebaseSettings.EmulatorHost);
                 }
 
-                var credential = firebaseSettings.UseEmulator
-                    ? GoogleCredential.FromAccessToken("emulator-fake-token")
-                    : string.IsNullOrEmpty(firebaseSettings.ServiceAccountKeyPath)
-                        ? GoogleCredential.GetApplicationDefault()
-                        : CredentialFactory.FromFile<GoogleCredential>(firebaseSettings.ServiceAccountKeyPath);
+                var credential = BuildFirebaseCredential(firebaseSettings);
 
                 FirebaseApp.Create(new AppOptions
                 {
@@ -145,6 +141,7 @@ namespace UniThesis.Infrastructure
             services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
             services.AddScoped<IAuthorizationHandler, ProjectOwnerAuthorizationHandler>();
             services.AddScoped<IAuthorizationHandler, GroupMemberAuthorizationHandler>();
+            services.AddScoped<IAuthorizationHandler, GroupLeaderAuthorizationHandler>();
             services.AddScoped<IAuthorizationHandler, MentorOfProjectAuthorizationHandler>();
 
             // Firebase Auth Service
@@ -172,8 +169,7 @@ namespace UniThesis.Infrastructure
             services.AddScoped<IFileStorageService, FirebaseStorageService>();
 
             // Notification & RealTime
-            services.AddScoped<UniThesis.Application.Common.Interfaces.INotificationService, NotificationService>();
-            services.AddScoped<INotificationService, NotificationService>(); // Keep the local one if others in Infra depend on it
+            services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<IRealtimeNotificationService, RealtimeNotificationService>();
 
             // Caching - L1 (Memory) + L2 (Redis) Hybrid
@@ -230,6 +226,51 @@ namespace UniThesis.Infrastructure
             app.UseHangfireDashboard("/hangfire", new DashboardOptions { Authorization = [new HangfireAuthFilter()] });
             RecurringJobsConfiguration.ConfigureRecurringJobs();
             return app;
+        }
+
+        private static GoogleCredential BuildFirebaseCredential(FirebaseSettings settings)
+        {
+            if (settings.UseEmulator)
+            {
+                return GoogleCredential.FromAccessToken("emulator-fake-token");
+            }
+
+            var serviceAccountPath = ResolveServiceAccountPath(settings.ServiceAccountKeyPath);
+            if (string.IsNullOrWhiteSpace(serviceAccountPath))
+            {
+                return GoogleCredential.GetApplicationDefault();
+            }
+
+            return CredentialFactory
+                .FromFile<ServiceAccountCredential>(serviceAccountPath)
+                .ToGoogleCredential();
+        }
+
+        private static string ResolveServiceAccountPath(string configuredPath)
+        {
+            if (string.IsNullOrWhiteSpace(configuredPath))
+            {
+                return string.Empty;
+            }
+
+            if (Path.IsPathRooted(configuredPath))
+            {
+                return configuredPath;
+            }
+
+            var fromContentRoot = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), configuredPath));
+            if (File.Exists(fromContentRoot))
+            {
+                return fromContentRoot;
+            }
+
+            var fromBaseDirectory = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, configuredPath));
+            if (File.Exists(fromBaseDirectory))
+            {
+                return fromBaseDirectory;
+            }
+
+            return fromContentRoot;
         }
     }
 

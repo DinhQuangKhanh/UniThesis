@@ -86,23 +86,15 @@ namespace UniThesis.Persistence.SqlServer.Repositories
         {
             var prefix = $"TK-{year}-";
             var lastCode = await _dbSet
-                .Where(t => EF.Functions.Like(t.Code.Value, $"{prefix}%"))
+                .Where(t => t.CreatedAt.Year == year)
                 .OrderByDescending(t => t.Code)
-                .Select(t => t.Code.Value)
+                .Select(t => t.Code)
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (lastCode == null) return 1;
 
-            var sequencePart = lastCode.Replace(prefix, "");
+            var sequencePart = lastCode.Value.Replace(prefix, "");
             return int.TryParse(sequencePart, out var seq) ? seq + 1 : 1;
-        }
-
-        public async Task<Dictionary<TicketStatus, int>> GetStatusCountAsync(CancellationToken cancellationToken = default)
-        {
-            return await _dbSet
-                .GroupBy(t => t.Status)
-                .Select(g => new { Status = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
         }
 
         /// <summary>
@@ -116,6 +108,15 @@ namespace UniThesis.Persistence.SqlServer.Repositories
                 .OrderBy(t => t.Priority)
                 .ThenBy(t => t.CreatedAt)
                 .ToListAsync(cancellationToken);
+        }
+
+        public async Task<Dictionary<TicketStatus, int>> GetStatusCountAsync(CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .AsNoTracking()
+                .GroupBy(t => t.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
         }
     }
 }

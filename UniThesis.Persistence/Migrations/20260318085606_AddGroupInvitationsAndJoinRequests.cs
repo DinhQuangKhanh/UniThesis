@@ -16,7 +16,7 @@ namespace UniThesis.Persistence.Migrations
                 table: "Groups",
                 type: "bit",
                 nullable: false,
-                defaultValue: false);
+                defaultValue: true);
 
             migrationBuilder.CreateTable(
                 name: "GroupInvitations",
@@ -97,6 +97,13 @@ namespace UniThesis.Persistence.Migrations
                 columns: new[] { "GroupId", "InviteeId", "Status" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_GroupInvitations_GroupId_InviteeId_Pending",
+                table: "GroupInvitations",
+                columns: new[] { "GroupId", "InviteeId" },
+                unique: true,
+                filter: "[Status] = 0");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_GroupInvitations_InviteeId",
                 table: "GroupInvitations",
                 column: "InviteeId");
@@ -115,6 +122,13 @@ namespace UniThesis.Persistence.Migrations
                 name: "IX_GroupJoinRequests_GroupId_StudentId_Status",
                 table: "GroupJoinRequests",
                 columns: new[] { "GroupId", "StudentId", "Status" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_GroupJoinRequests_GroupId_StudentId_Pending",
+                table: "GroupJoinRequests",
+                columns: new[] { "GroupId", "StudentId" },
+                unique: true,
+                filter: "[Status] = 0");
 
             migrationBuilder.CreateIndex(
                 name: "IX_GroupJoinRequests_StudentId",

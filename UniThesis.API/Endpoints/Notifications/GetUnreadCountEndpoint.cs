@@ -1,5 +1,7 @@
 using MediatR;
+using UniThesis.API.Extensions;
 using UniThesis.Application.Features.Notifications.Queries.GetUnreadCount;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Notifications;
 
@@ -16,7 +18,7 @@ public class GetUnreadCountEndpoint : IEndpoint
                 CancellationToken cancellationToken = default) =>
             {
                 var count = await sender.Send(new GetUnreadCountQuery(), cancellationToken);
-                return Results.Ok(new { UnreadCount = count });
+                return Ok(new { UnreadCount = count });
             })
             .RequireAuthorization()
             .WithTags("Notifications")

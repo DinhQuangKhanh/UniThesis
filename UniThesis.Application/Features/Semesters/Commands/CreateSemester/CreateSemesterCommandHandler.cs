@@ -33,7 +33,11 @@ public class CreateSemesterCommandHandler : ICommandHandler<CreateSemesterComman
         if (await _semesterRepository.ExistsCodeAsync(code, cancellationToken))
             throw new BusinessRuleValidationException($"Semester code '{request.Code}' already exists.");
 
-        // 2. Create semester aggregate
+        // 2. Validate no overlapping semesters
+        if (await _semesterRepository.HasOverlappingAsync(request.StartDate, request.EndDate, cancellationToken: cancellationToken))
+            throw new BusinessRuleValidationException("Khoảng thời gian học kỳ bị trùng lặp với một học kỳ khác đã tồn tại.");
+
+        // 3. Create semester aggregate
         var nextId = await _semesterRepository.GetNextIdAsync(cancellationToken);
         var academicYear = AcademicYear.Create(request.AcademicYearStart);
 

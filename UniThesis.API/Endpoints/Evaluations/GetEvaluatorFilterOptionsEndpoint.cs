@@ -1,7 +1,9 @@
 using MediatR;
+using UniThesis.API.Extensions;
 using UniThesis.Application.Common;
 using UniThesis.Application.Features.Evaluations.DTOs;
 using UniThesis.Application.Features.Evaluations.Queries.GetEvaluatorFilterOptions;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Evaluations;
 
@@ -18,7 +20,7 @@ public class GetEvaluatorFilterOptionsEndpoint : IEndpoint
                 {
                     var result = await sender.Send(
                         new GetEvaluatorFilterOptionsQuery(), cancellationToken);
-                    return Results.Ok(ApiResponse.Ok(result));
+                    return Ok(result);
                 }
                 catch (Exception ex)
                 {

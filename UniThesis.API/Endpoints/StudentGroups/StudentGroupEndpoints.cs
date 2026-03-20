@@ -11,6 +11,9 @@ using UniThesis.Application.Features.StudentGroups.Queries.GetMyInvitations;
 using UniThesis.Application.Features.StudentGroups.Queries.GetOpenGroups;
 using UniThesis.Application.Features.StudentGroups.Queries.GetStudentGroup;
 using UniThesis.API.Endpoints.StudentGroups.Requests;
+using UniThesis.API.Extensions;
+using UniThesis.Infrastructure.Authorization.Policies;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.StudentGroups;
 
@@ -29,7 +32,7 @@ public class StudentGroupEndpoints : IEndpoint
                 CancellationToken ct) =>
             {
                 var result = await sender.Send(new GetStudentGroupQuery(semesterId), ct);
-                return Results.Ok(result);
+                return Ok(result);
             })
             .WithName("GetStudentGroup")
             .WithTags("StudentGroups")
@@ -43,7 +46,7 @@ public class StudentGroupEndpoints : IEndpoint
                 CancellationToken ct) =>
             {
                 var result = await sender.Send(new GetOpenGroupsQuery(semesterId), ct);
-                return Results.Ok(result);
+                return Ok(result);
             })
             .WithName("GetOpenGroups")
             .WithTags("StudentGroups")
@@ -56,7 +59,7 @@ public class StudentGroupEndpoints : IEndpoint
                 CancellationToken ct) =>
             {
                 var result = await sender.Send(new GetMyInvitationsQuery(), ct);
-                return Results.Ok(result);
+                return Ok(result);
             })
             .WithName("GetMyInvitations")
             .WithTags("StudentGroups")
@@ -70,8 +73,9 @@ public class StudentGroupEndpoints : IEndpoint
                 CancellationToken ct) =>
             {
                 var result = await sender.Send(new GetGroupJoinRequestsQuery(groupId), ct);
-                return Results.Ok(result);
+                return Ok(result);
             })
+            .RequireAuthorization(PolicyNames.GroupLeader)
             .WithName("GetGroupJoinRequests")
             .WithTags("StudentGroups")
             .Produces<List<JoinRequestDto>>()
@@ -86,7 +90,7 @@ public class StudentGroupEndpoints : IEndpoint
                 CancellationToken ct) =>
             {
                 var groupId = await sender.Send(new CreateGroupCommand(request.Name), ct);
-                return Results.Created($"/api/student-groups/{groupId}", new { id = groupId });
+                return Created($"/api/student-groups/{groupId}", new { id = groupId });
             })
             .WithName("CreateGroup")
             .WithTags("StudentGroups")
@@ -102,9 +106,10 @@ public class StudentGroupEndpoints : IEndpoint
             {
                 var invitationId = await sender.Send(
                     new InviteMemberCommand(groupId, request.StudentCode, request.Message), ct);
-                return Results.Created($"/api/student-groups/{groupId}/invitations/{invitationId}",
+                return Created($"/api/student-groups/{groupId}/invitations/{invitationId}",
                     new { id = invitationId });
             })
+            .RequireAuthorization(PolicyNames.GroupLeader)
             .WithName("InviteMember")
             .WithTags("StudentGroups")
             .Produces<object>(201)
@@ -118,7 +123,7 @@ public class StudentGroupEndpoints : IEndpoint
                 CancellationToken ct) =>
             {
                 await sender.Send(new RespondInvitationCommand(groupId, invitationId, Accept: true), ct);
-                return Results.NoContent();
+                return NoContent("Chấp nhận lời mời thành công.");
             })
             .WithName("AcceptInvitation")
             .WithTags("StudentGroups")
@@ -133,7 +138,7 @@ public class StudentGroupEndpoints : IEndpoint
                 CancellationToken ct) =>
             {
                 await sender.Send(new RespondInvitationCommand(groupId, invitationId, Accept: false), ct);
-                return Results.NoContent();
+                return NoContent("Từ chối lời mời thành công.");
             })
             .WithName("RejectInvitation")
             .WithTags("StudentGroups")
@@ -148,7 +153,7 @@ public class StudentGroupEndpoints : IEndpoint
                 CancellationToken ct) =>
             {
                 var requestId = await sender.Send(new RequestJoinCommand(groupId, request.Message), ct);
-                return Results.Created($"/api/student-groups/{groupId}/join-requests/{requestId}",
+                return Created($"/api/student-groups/{groupId}/join-requests/{requestId}",
                     new { id = requestId });
             })
             .WithName("RequestToJoinGroup")
@@ -164,8 +169,9 @@ public class StudentGroupEndpoints : IEndpoint
                 CancellationToken ct) =>
             {
                 await sender.Send(new RespondJoinRequestCommand(groupId, requestId, Approve: true), ct);
-                return Results.NoContent();
+                return NoContent("Chấp nhận yêu cầu tham gia thành công.");
             })
+            .RequireAuthorization(PolicyNames.GroupLeader)
             .WithName("ApproveJoinRequest")
             .WithTags("StudentGroups")
             .Produces(204)
@@ -179,8 +185,9 @@ public class StudentGroupEndpoints : IEndpoint
                 CancellationToken ct) =>
             {
                 await sender.Send(new RespondJoinRequestCommand(groupId, requestId, Approve: false), ct);
-                return Results.NoContent();
+                return NoContent("Từ chối yêu cầu tham gia thành công.");
             })
+            .RequireAuthorization(PolicyNames.GroupLeader)
             .WithName("RejectJoinRequest")
             .WithTags("StudentGroups")
             .Produces(204)

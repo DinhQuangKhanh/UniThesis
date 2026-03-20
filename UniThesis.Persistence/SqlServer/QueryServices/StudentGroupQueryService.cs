@@ -75,13 +75,14 @@ public class StudentGroupQueryService : IStudentGroupQueryService
         var targetSemesterId = await ResolveSemesterIdAsync(semesterId, cancellationToken);
         if (targetSemesterId == 0) return null;
 
-        // Find the group where this student is an active member
-        var result = await (
+        var groupData = await (
             from gm in _context.GroupMembers.AsNoTracking()
             where gm.StudentId == studentId && gm.Status == GroupMemberStatus.Active
             join g in _context.Groups on gm.GroupId equals g.Id
             where g.SemesterId == targetSemesterId && g.Status == GroupStatus.Active
-            select new StudentGroupDto
+            join p in _context.Projects.AsNoTracking() on g.ProjectId equals p.Id into projectJoin
+            from p in projectJoin.DefaultIfEmpty()
+            select new
             {
                 GroupId = g.Id,
                 GroupCode = g.Code,
@@ -90,41 +91,53 @@ public class StudentGroupQueryService : IStudentGroupQueryService
                 MaxMembers = g.MaxMembers,
                 IsOpenForRequests = g.IsOpenForRequests,
                 ProjectId = g.ProjectId,
-                ProjectName = g.ProjectId != null
-                    ? _context.Projects.Where(p => p.Id == g.ProjectId).Select(p => p.NameVi).FirstOrDefault()
-                    : null,
-                ProjectCode = g.ProjectId != null
-                    ? _context.Projects.Where(p => p.Id == g.ProjectId).Select(p => p.Code).FirstOrDefault()
-                    : null,
-                ProjectStatus = g.ProjectId != null
-                    ? _context.Projects.Where(p => p.Id == g.ProjectId).Select(p => p.Status.ToString()).FirstOrDefault()
-                    : null,
-                MentorName = g.ProjectId != null
-                    ? (from pm in _context.ProjectMentors
-                       where pm.ProjectId == g.ProjectId && pm.Status == ProjectMentorStatus.Active
-                       join u in _context.Users on pm.MentorId equals u.Id
-                       select u.FullName).FirstOrDefault()
-                    : null,
+                ProjectName = p != null ? p.NameVi : null,
+                ProjectCode = p != null ? p.Code : null,
+                ProjectStatus = p != null ? p.Status.ToString() : null,
                 CreatedAt = g.CreatedAt,
-                Members = (
-                    from m in _context.GroupMembers
-                    where m.GroupId == g.Id && m.Status == GroupMemberStatus.Active
-                    join u in _context.Users on m.StudentId equals u.Id
-                    select new GroupMemberDto
-                    {
-                        StudentId = u.Id,
-                        FullName = u.FullName,
-                        StudentCode = u.StudentCode,
-                        Email = u.Email,
-                        Role = m.Role.ToString(),
-                        Status = m.Status.ToString(),
-                        JoinedAt = m.JoinedAt
-                    }
-                ).ToList()
+                ProjectMentorName = p != null
+                    ? (from pm in _context.ProjectMentors.AsNoTracking()
+                       where pm.ProjectId == p.Id && pm.Status == ProjectMentorStatus.Active
+                       join u in _context.Users.AsNoTracking() on pm.MentorId equals u.Id
+                       select u.FullName).FirstOrDefault()
+                    : null
             }
         ).FirstOrDefaultAsync(cancellationToken);
 
-        return result;
+        if (groupData is null) return null;
+
+        var members = await (
+            from m in _context.GroupMembers.AsNoTracking()
+            where m.GroupId == groupData.GroupId && m.Status == GroupMemberStatus.Active
+            join u in _context.Users.AsNoTracking() on m.StudentId equals u.Id
+            select new GroupMemberDto
+            {
+                StudentId = u.Id,
+                FullName = u.FullName,
+                StudentCode = u.StudentCode,
+                Email = u.Email,
+                Role = m.Role.ToString(),
+                Status = m.Status.ToString(),
+                JoinedAt = m.JoinedAt
+            }
+        ).ToListAsync(cancellationToken);
+
+        return new StudentGroupDto
+        {
+            GroupId = groupData.GroupId,
+            GroupCode = groupData.GroupCode,
+            GroupName = groupData.GroupName,
+            GroupStatus = groupData.GroupStatus,
+            MaxMembers = groupData.MaxMembers,
+            IsOpenForRequests = groupData.IsOpenForRequests,
+            ProjectId = groupData.ProjectId,
+            ProjectName = groupData.ProjectName,
+            ProjectCode = groupData.ProjectCode,
+            ProjectStatus = groupData.ProjectStatus,
+            MentorName = groupData.ProjectMentorName,
+            CreatedAt = groupData.CreatedAt,
+            Members = members
+        };
     }
 
     public async Task<List<OpenGroupDto>> GetOpenGroupsAsync(
@@ -140,37 +153,56 @@ public class StudentGroupQueryService : IStudentGroupQueryService
                      && g.IsOpenForRequests)
             .Select(g => new
             {
-                Group = g,
+                g.Id,
+                g.Code,
+                g.Name,
+                g.MaxMembers,
+                g.CreatedAt,
                 ActiveMemberCount = _context.GroupMembers.Count(m => m.GroupId == g.Id && m.Status == GroupMemberStatus.Active)
             })
-            .Where(x => x.ActiveMemberCount < x.Group.MaxMembers)
-            .Select(x => new OpenGroupDto
-            {
-                GroupId = x.Group.Id,
-                GroupCode = x.Group.Code,
-                GroupName = x.Group.Name,
-                MemberCount = x.ActiveMemberCount,
-                MaxMembers = x.Group.MaxMembers,
-                CreatedAt = x.Group.CreatedAt,
-                Members = (
-                    from m in _context.GroupMembers
-                    where m.GroupId == x.Group.Id && m.Status == GroupMemberStatus.Active
-                    join u in _context.Users on m.StudentId equals u.Id
-                    select new GroupMemberDto
-                    {
-                        StudentId = u.Id,
-                        FullName = u.FullName,
-                        StudentCode = u.StudentCode,
-                        Email = u.Email,
-                        Role = m.Role.ToString(),
-                        Status = m.Status.ToString(),
-                        JoinedAt = m.JoinedAt
-                    }
-                ).ToList()
-            })
+            .Where(x => x.ActiveMemberCount < x.MaxMembers)
             .ToListAsync(cancellationToken);
 
-        return groups;
+        if (groups.Count == 0) return [];
+
+        var groupIds = groups.Select(g => g.Id).ToList();
+
+        var memberRows = await (
+            from m in _context.GroupMembers.AsNoTracking()
+            where groupIds.Contains(m.GroupId) && m.Status == GroupMemberStatus.Active
+            join u in _context.Users.AsNoTracking() on m.StudentId equals u.Id
+            select new
+            {
+                m.GroupId,
+                Member = new GroupMemberDto
+                {
+                    StudentId = u.Id,
+                    FullName = u.FullName,
+                    StudentCode = u.StudentCode,
+                    Email = u.Email,
+                    Role = m.Role.ToString(),
+                    Status = m.Status.ToString(),
+                    JoinedAt = m.JoinedAt
+                }
+            }
+        ).ToListAsync(cancellationToken);
+
+        var membersByGroupId = memberRows
+            .GroupBy(x => x.GroupId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Member).ToList());
+
+        return groups
+            .Select(g => new OpenGroupDto
+            {
+                GroupId = g.Id,
+                GroupCode = g.Code,
+                GroupName = g.Name,
+                MemberCount = g.ActiveMemberCount,
+                MaxMembers = g.MaxMembers,
+                CreatedAt = g.CreatedAt,
+                Members = membersByGroupId.TryGetValue(g.Id, out var members) ? members : []
+            })
+            .ToList();
     }
 
     public async Task<List<InvitationDto>> GetStudentInvitationsAsync(

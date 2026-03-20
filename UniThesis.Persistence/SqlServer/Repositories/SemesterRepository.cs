@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using UniThesis.Domain.Aggregates.SemesterAggregate;
 using UniThesis.Domain.Aggregates.SemesterAggregate.ValueObjects;
 using UniThesis.Domain.Specifications.Semesters;
@@ -55,6 +55,14 @@ namespace UniThesis.Persistence.SqlServer.Repositories
         public async Task<bool> ExistsCodeAsync(SemesterCode code, CancellationToken cancellationToken = default)
         {
             return await _dbSet.AnyAsync(s => s.Code == code, cancellationToken);
+        }
+
+        public async Task<bool> HasOverlappingAsync(DateTime startDate, DateTime endDate, int? excludeId = null, CancellationToken cancellationToken = default)
+        {
+            var query = _dbSet.Where(s => s.StartDate < endDate && s.EndDate > startDate);
+            if (excludeId.HasValue)
+                query = query.Where(s => s.Id != excludeId.Value);
+            return await query.AnyAsync(cancellationToken);
         }
 
         public async Task<int> GetNextIdAsync(CancellationToken cancellationToken = default)

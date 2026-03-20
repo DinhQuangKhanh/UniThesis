@@ -1,4 +1,5 @@
 using UniThesis.Application.Common.Abstractions;
+using Microsoft.EntityFrameworkCore;
 using UniThesis.Domain.Aggregates.GroupAggregate;
 using UniThesis.Domain.Common.Exceptions;
 using UniThesis.Domain.Common.Interfaces;
@@ -37,8 +38,21 @@ public class RequestJoinCommandHandler : ICommandHandler<RequestJoinCommand, int
         // Domain logic validates group status, open for requests, capacity, duplicates
         var joinRequest = group.RequestToJoin(studentId, request.Message);
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (IsPendingJoinRequestUniqueViolation(ex))
+        {
+            throw new BusinessRuleValidationException("A pending join request already exists for this student.");
+        }
 
         return joinRequest.Id;
+    }
+
+    private static bool IsPendingJoinRequestUniqueViolation(DbUpdateException ex)
+    {
+        return ex.InnerException?.Message.Contains("IX_GroupJoinRequests_GroupId_StudentId_Pending", StringComparison.OrdinalIgnoreCase) == true
+            || ex.Message.Contains("IX_GroupJoinRequests_GroupId_StudentId_Pending", StringComparison.OrdinalIgnoreCase);
     }
 }

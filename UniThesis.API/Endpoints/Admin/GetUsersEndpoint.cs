@@ -1,5 +1,7 @@
 using MediatR;
+using UniThesis.API.Extensions;
 using UniThesis.Application.Features.Users.Queries.GetUsers;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Admin;
 
@@ -17,7 +19,7 @@ public class GetUsersEndpoint : IEndpoint
             {
                 var result = await sender.Send(
                     new GetUsersQuery(role, search, page, pageSize), cancellationToken);
-                return Results.Ok(result);
+                return Ok(result);
             })
             .RequireAuthorization("RequireAdmin")
             .WithTags("Admin")

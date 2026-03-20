@@ -1,5 +1,8 @@
 using MediatR;
+using UniThesis.API.Extensions;
+using UniThesis.API.Endpoints.Admin.Requests;
 using UniThesis.Application.Features.Departments.Commands.SetDepartmentHead;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Admin;
 
@@ -15,7 +18,7 @@ public class SetDepartmentHeadEndpoint : IEndpoint
             {
                 var command = new SetDepartmentHeadCommand(departmentId, request.UserId);
                 await sender.Send(command, cancellationToken);
-                return Results.NoContent();
+                return NoContent("Thiết lập chở bộ phậm thành công.");
             })
             .RequireAuthorization("RequireAdmin")
             .WithTags("Admin")
@@ -26,8 +29,3 @@ public class SetDepartmentHeadEndpoint : IEndpoint
             .Produces(404);
     }
 }
-
-/// <summary>
-/// Request body for setting department head.
-/// </summary>
-public record SetDepartmentHeadRequest(Guid UserId);

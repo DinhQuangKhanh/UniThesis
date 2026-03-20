@@ -28,6 +28,9 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Group
             builder.HasIndex(r => r.GroupId);
             builder.HasIndex(r => r.StudentId);
             builder.HasIndex(r => new { r.GroupId, r.StudentId, r.Status });
+            builder.HasIndex(r => new { r.GroupId, r.StudentId })
+                .IsUnique()
+                .HasFilter("[Status] = 0");
 
             // Foreign key to User (Student)
             builder.HasOne<Domain.Aggregates.UserAggregate.User>()

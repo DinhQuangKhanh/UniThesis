@@ -68,7 +68,7 @@ namespace UniThesis.Persistence.SqlServer.Repositories
         public async Task<User?> GetByStudentCodeAsync(string studentCode, CancellationToken ct = default)
         {
             return await _dbSet
-                .Include(u => u.Roles)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.StudentCode == studentCode, ct);
         }
 

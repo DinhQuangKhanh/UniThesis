@@ -1,6 +1,8 @@
 using MediatR;
+using UniThesis.API.Extensions;
 using UniThesis.Application.Features.TopicPools.DTOs;
 using UniThesis.Application.Features.TopicPools.Queries.GetTopicPoolById;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.TopicPools;
 
@@ -14,7 +16,7 @@ public class GetTopicPoolByIdEndpoint : IEndpoint
                 CancellationToken cancellationToken = default) =>
             {
                 var result = await sender.Send(new GetTopicPoolByIdQuery(id), cancellationToken);
-                return Results.Ok(result);
+                return Ok(result);
             })
             .RequireAuthorization()
             .WithTags("TopicPools")

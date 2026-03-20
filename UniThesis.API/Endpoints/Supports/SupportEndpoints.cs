@@ -8,6 +8,7 @@ using UniThesis.Application.Features.Supports.Commands.UpdateTicketStatus;
 using UniThesis.Application.Features.Supports.Queries.GetTicketById;
 using UniThesis.Application.Features.Supports.Queries.GetTickets;
 using UniThesis.Application.Features.Supports.Queries.GetTicketStats;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Supports;
 
@@ -21,7 +22,7 @@ public class SupportEndpoints : IEndpoint
         group.MapGet("stats", async (ISender sender) =>
         {
             var result = await sender.Send(new GetTicketStatsQuery());
-            return Results.Ok(result);
+            return Ok(result);
         })
         .WithName("GetTicketStats")
         .WithTags("Supports");
@@ -30,7 +31,7 @@ public class SupportEndpoints : IEndpoint
         group.MapGet("", async ([AsParameters] GetTicketsRequest request, ISender sender) =>
         {
             var result = await sender.Send(new GetTicketsQuery(request.SearchTerm, request.Status, request.Priority));
-            return Results.Ok(result);
+            return Ok(result);
         })
         .WithName("GetTickets")
         .WithTags("Supports");
@@ -39,7 +40,7 @@ public class SupportEndpoints : IEndpoint
         group.MapGet("{id:guid}", async (Guid id, ISender sender) =>
         {
             var result = await sender.Send(new GetTicketByIdQuery(id));
-            return Results.Ok(result);
+            return Ok(result);
         })
         .WithName("GetTicketById")
         .WithTags("Supports");
@@ -56,7 +57,7 @@ public class SupportEndpoints : IEndpoint
                 reporterId);
 
             var ticketId = await sender.Send(command);
-            return Results.Created($"/api/supports/{ticketId}", new { Id = ticketId });
+            return Created($"/api/supports/{ticketId}", new { Id = ticketId }, "Tạo mới thành công.");
         })
         .WithName("CreateTicket")
         .WithTags("Supports");
@@ -67,7 +68,7 @@ public class SupportEndpoints : IEndpoint
             var senderId = context.User.GetUserId();
             var command = new ReplyTicketCommand(id, senderId, request.Content);
             await sender.Send(command);
-            
+
             // Auto update to InProgress if an admin replies and it's open
             if (context.User.IsInRole("Admin"))
             {
@@ -75,7 +76,7 @@ public class SupportEndpoints : IEndpoint
                 await sender.Send(new UpdateTicketStatusCommand(id, Domain.Enums.Ticket.TicketStatus.InProgress));
             }
 
-            return Results.Ok();
+            return Ok("Phản hồi thành công.");
         })
         .WithName("ReplyTicket")
         .WithTags("Supports");
@@ -85,7 +86,7 @@ public class SupportEndpoints : IEndpoint
         {
             var command = new UpdateTicketStatusCommand(id, request.Status);
             await sender.Send(command);
-            return Results.Ok();
+            return Ok("Cập nhật thành công.");
         })
         .WithName("UpdateTicketStatus")
         .WithTags("Supports");
