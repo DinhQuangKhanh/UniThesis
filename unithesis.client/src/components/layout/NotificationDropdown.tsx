@@ -96,8 +96,8 @@ export function NotificationDropdown({ isNavy = false }: NotificationDropdownPro
 
   useEffect(() => {
     fetchUnreadCount();
-    // Poll every 60s to keep badge fresh without SignalR dependency
-    const interval = setInterval(fetchUnreadCount, 60_000);
+    // Poll every 5s to keep badge fresh in realtime
+    const interval = setInterval(fetchUnreadCount, 5_000);
     return () => clearInterval(interval);
   }, [fetchUnreadCount]);
 
@@ -175,10 +175,14 @@ export function NotificationDropdown({ isNavy = false }: NotificationDropdownPro
       <button
         id="notification-bell"
         onClick={handleOpen}
-        className={`relative transition-colors ${isNavy ? "text-blue-200 hover:text-white" : "text-slate-500 hover:text-primary"}`}
+        className={`relative p-2 rounded-lg transition-all duration-200 ${
+          isNavy
+            ? "text-blue-200 hover:text-white hover:bg-white/10"
+            : "text-slate-500 hover:text-primary hover:bg-slate-100"
+        }`}
         aria-label="Mở thông báo"
       >
-        <span className="material-symbols-outlined">notifications</span>
+        <span className="material-symbols-outlined text-[24px]">notifications</span>
         {unreadCount > 0 && (
           <span
             className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold text-white rounded-full ${isNavy ? "bg-red-500" : "bg-primary"}`}
@@ -216,44 +220,6 @@ export function NotificationDropdown({ isNavy = false }: NotificationDropdownPro
               )}
             </div>
 
-            {/* Notification List */}
-            <div className="max-h-[400px] overflow-y-auto">
-              {notifications.map((notification) => (
-                <motion.div
-                  key={notification.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  onClick={() => markAsRead(notification.id, null)}
-                  className={`px-4 py-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors ${!notification.isRead ? "bg-blue-50/50" : ""}`}
-                >
-                  <div className="flex gap-3">
-                    {/* Icon */}
-                    <div
-                      className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${typeColors[notification.type].bg}`}
-                    >
-                      <span
-                        className={`material-symbols-outlined text-[20px] ${typeColors[notification.type].icon}`}
-                      ></span>
-                    </div>
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <p
-                          className={`text-sm ${!notification.isRead ? "font-bold text-slate-800" : "font-medium text-slate-700"}`}
-                        >
-                          {notification.title}
-                        </p>
-                        {!notification.isRead && (
-                          <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-1.5" />
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{notification.content}</p>
-                      <p className="text-[10px] text-slate-400 mt-1">{relativeTime(notification.createdAt)}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
             {/* Body */}
             <div className="max-h-[400px] overflow-y-auto">
               {loading ? (
