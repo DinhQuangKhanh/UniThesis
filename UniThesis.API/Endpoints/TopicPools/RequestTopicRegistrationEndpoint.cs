@@ -1,5 +1,6 @@
 using MediatR;
 using UniThesis.API.Extensions;
+using UniThesis.API.Endpoints.TopicPools.Requests;
 using UniThesis.Application.Features.TopicPools.Commands.RequestRegistration;
 using static UniThesis.API.Extensions.ApiResponseExtensions;
 
@@ -11,8 +12,6 @@ namespace UniThesis.API.Endpoints.TopicPools;
 /// </summary>
 public class RequestTopicRegistrationEndpoint : IEndpoint
 {
-    public sealed record TopicRegistrationRequest(Guid ProjectId, Guid GroupId, string? Note);
-
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("/api/topic-pools/registrations", async (

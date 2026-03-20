@@ -1,5 +1,6 @@
 using MediatR;
 using UniThesis.API.Extensions;
+using UniThesis.API.Endpoints.Admin.Requests;
 using UniThesis.Application.Features.Departments.Commands.SetDepartmentHead;
 using static UniThesis.API.Extensions.ApiResponseExtensions;
 
@@ -28,8 +29,3 @@ public class SetDepartmentHeadEndpoint : IEndpoint
             .Produces(404);
     }
 }
-
-/// <summary>
-/// Request body for setting department head.
-/// </summary>
-public record SetDepartmentHeadRequest(Guid UserId);

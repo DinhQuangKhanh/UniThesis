@@ -1,5 +1,6 @@
 using MediatR;
 using UniThesis.API.Extensions;
+using UniThesis.API.Endpoints.DepartmentHead.Requests;
 using UniThesis.Application.Features.Departments.Commands.AssignEvaluator;
 using static UniThesis.API.Extensions.ApiResponseExtensions;
 
@@ -32,8 +33,3 @@ public class AssignEvaluatorEndpoint : IEndpoint
             .Produces(404);
     }
 }
-
-/// <summary>
-/// Request body for assigning an evaluator to a project.
-/// </summary>
-public record AssignEvaluatorRequest(Guid ProjectId, Guid EvaluatorId, int EvaluatorOrder);
