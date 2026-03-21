@@ -21,5 +21,11 @@ namespace UniThesis.Domain.Aggregates.EvaluationAggregate
         /// Gets all active evaluator assignments for a project.
         /// </summary>
         Task<IEnumerable<ProjectEvaluatorAssignment>> GetActiveByProjectIdAsync(Guid projectId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets an active evaluator assignment for a specific project and evaluator.
+        /// </summary>
+        Task<ProjectEvaluatorAssignment?> GetActiveByProjectAndEvaluatorAsync(Guid projectId, Guid evaluatorId, CancellationToken cancellationToken = default);
+
     }
 }
