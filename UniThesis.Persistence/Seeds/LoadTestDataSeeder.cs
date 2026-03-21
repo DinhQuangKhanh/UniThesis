@@ -649,8 +649,12 @@ public static class LoadTestDataSeeder
     }
 
     // ════════════════════════════════════════════════
-    //  SPRING 2026 PROJECTS (40 real SE topics, InProgress)
+    //  SPRING 2026 PROJECTS (40 real SE topics)
+    //  First 20: InProgress (evaluated, approved, group assigned)
+    //  Last  20: PendingEvaluation (awaiting evaluator review, no group)
     // ════════════════════════════════════════════════
+    private const int Spring26EvaluatedCount = 20;
+
     private static async Task SeedSpring26ProjectsAsync(AppDbContext context, ILogger? logger)
     {
         var projectOffset = Fall25GroupCount; // Projects start at index 51
@@ -667,6 +671,7 @@ public static class LoadTestDataSeeder
                 var projectIndex = projectOffset + i + 1; // 51..90
                 var groupIndex = projectIndex; // Groups 51..90
                 var topic = Spring26Topics[i];
+                var isEvaluated = i < Spring26EvaluatedCount; // First 20 are evaluated & approved
 
                 var pId = $"@p{paramIndex++}";
                 var pCode = $"@p{paramIndex++}";
@@ -677,20 +682,11 @@ public static class LoadTestDataSeeder
                 var pObj = $"@p{paramIndex++}";
                 var pMajor = $"@p{paramIndex++}";
                 var pSemester = $"@p{paramIndex++}";
-                var pGroup = $"@p{paramIndex++}";
                 var pSubmittedBy = $"@p{paramIndex++}";
                 var pSubmittedAt = $"@p{paramIndex++}";
-                var pApprovedAt = $"@p{paramIndex++}";
-                var pStartDate = $"@p{paramIndex++}";
-                var pDeadline = $"@p{paramIndex++}";
                 var pDate = $"@p{paramIndex++}";
 
-                valueClauses.Add($@"({pId}, {pCode}, {pNameVi}, {pNameEn}, {pNameAbbr},
-                    {pDesc}, {pObj}, NULL, NULL, NULL,
-                    {pMajor}, {pSemester}, {pGroup}, NULL, 5, 1, 0, 5, 0,
-                    {pSubmittedAt}, {pSubmittedBy}, {pApprovedAt}, {pStartDate}, {pDeadline}, 3, 1,
-                    NULL, NULL, NULL, {pDate}, NULL)");
-
+                // Common parameters (order matches @p indices above)
                 parameters.Add(ProjectId(projectIndex));
                 parameters.Add(topic.Code);
                 parameters.Add(topic.NameVi);
@@ -700,13 +696,38 @@ public static class LoadTestDataSeeder
                 parameters.Add($"Mục tiêu: {topic.NameEn}");
                 parameters.Add(MajorSE);
                 parameters.Add(Spring2026Id);
-                parameters.Add(GroupId(groupIndex));
                 parameters.Add(DualRoleId(((projectOffset + i) % DualRoleCount) + 1));
                 parameters.Add(new DateTime(2025, 11, 10, 0, 0, 0, DateTimeKind.Utc));
-                parameters.Add(new DateTime(2025, 12, 10, 0, 0, 0, DateTimeKind.Utc));
-                parameters.Add(new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc));
-                parameters.Add(new DateTime(2026, 5, 4, 0, 0, 0, DateTimeKind.Utc));
                 parameters.Add(SeedDate);
+
+                if (isEvaluated)
+                {
+                    // InProgress: has group, approved, evaluation completed
+                    var pGroup = $"@p{paramIndex++}";
+                    var pApprovedAt = $"@p{paramIndex++}";
+                    var pStartDate = $"@p{paramIndex++}";
+                    var pDeadline = $"@p{paramIndex++}";
+
+                    valueClauses.Add($@"({pId}, {pCode}, {pNameVi}, {pNameEn}, {pNameAbbr},
+                    {pDesc}, {pObj}, NULL, NULL, NULL,
+                    {pMajor}, {pSemester}, {pGroup}, NULL, 5, 1, 0, 5, 0,
+                    {pSubmittedAt}, {pSubmittedBy}, {pApprovedAt}, {pStartDate}, {pDeadline}, 3, 1,
+                    NULL, NULL, NULL, {pDate}, NULL)");
+
+                    parameters.Add(GroupId(groupIndex));
+                    parameters.Add(new DateTime(2025, 12, 10, 0, 0, 0, DateTimeKind.Utc));
+                    parameters.Add(new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc));
+                    parameters.Add(new DateTime(2026, 5, 4, 0, 0, 0, DateTimeKind.Utc));
+                }
+                else
+                {
+                    // PendingEvaluation: no group, no approval, awaiting evaluator review
+                    valueClauses.Add($@"({pId}, {pCode}, {pNameVi}, {pNameEn}, {pNameAbbr},
+                    {pDesc}, {pObj}, NULL, NULL, NULL,
+                    {pMajor}, {pSemester}, NULL, NULL, 5, 1, 0, 1, 0,
+                    {pSubmittedAt}, {pSubmittedBy}, NULL, NULL, NULL, 1, NULL,
+                    NULL, NULL, NULL, {pDate}, NULL)");
+                }
             }
 
             var sql = $@"
@@ -720,8 +741,8 @@ public static class LoadTestDataSeeder
             await context.Database.ExecuteSqlRawAsync(sql, parameters.ToArray()!);
         }
 
-        // Update groups to reference their projects
-        for (var i = 1; i <= Spring26GroupCount; i++)
+        // Update groups to reference their projects (only evaluated projects have groups)
+        for (var i = 1; i <= Spring26EvaluatedCount; i++)
         {
             var groupIndex = Fall25GroupCount + i;
             await context.Database.ExecuteSqlRawAsync(
@@ -729,7 +750,8 @@ public static class LoadTestDataSeeder
                 ProjectId(groupIndex), GroupId(groupIndex));
         }
 
-        logger?.LogInformation("Seeded {Count} Spring 2026 projects.", Spring26Topics.Length);
+        logger?.LogInformation("Seeded {Count} Spring 2026 projects ({Evaluated} evaluated, {Pending} pending).",
+            Spring26Topics.Length, Spring26EvaluatedCount, Spring26Topics.Length - Spring26EvaluatedCount);
     }
 
     // ════════════════════════════════════════════════
@@ -803,11 +825,15 @@ public static class LoadTestDataSeeder
                             evaluatorOffset++;
                     } while (evaluatorIndex == mentorIndex);
 
-                    // Fall25: all evaluated as Approved; Spring26: pending
-                    var hasResult = isFall;
+                    // Fall25: all evaluated as Approved
+                    // Spring26 first 20 (i=51..70): evaluated as Approved
+                    // Spring26 last 20 (i=71..90): pending evaluation
+                    var hasResult = isFall || (!isFall && i <= Fall25GroupCount + Spring26EvaluatedCount);
                     var resultValue = hasResult ? (object?)1 : null; // 1=Approved
                     var evaluatedAt = hasResult
-                        ? (object?)new DateTime(2025, 12, 20, 0, 0, 0, DateTimeKind.Utc)
+                        ? (object?)(isFall
+                            ? new DateTime(2025, 12, 20, 0, 0, 0, DateTimeKind.Utc)
+                            : new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc))
                         : null;
                     var feedback = hasResult
                         ? (object?)EvaluationFeedbacks[assignmentIndex % EvaluationFeedbacks.Length]
@@ -1001,7 +1027,8 @@ public static class LoadTestDataSeeder
 
     // ════════════════════════════════════════════════
     //  SPRING 2026 TOPIC REGISTRATIONS
-    //  40 Confirmed (existing InProgress projects) + 10 Rejected (rejected projects)
+    //  20 Confirmed (evaluated InProgress projects) + 10 Rejected (rejected projects)
+    //  Last 20 Spring26 projects are PendingEvaluation — no registrations yet
     // ════════════════════════════════════════════════
     private static async Task SeedSpring26TopicRegistrationsAsync(AppDbContext context, ILogger? logger)
     {
@@ -1010,8 +1037,8 @@ public static class LoadTestDataSeeder
         var parameters = new List<object?>();
         var paramIndex = 0;
 
-        // 40 Confirmed registrations for Spring 2026 InProgress projects (ProjectId 51..90, GroupId 51..90)
-        for (var i = 1; i <= Spring26GroupCount; i++)
+        // 20 Confirmed registrations for evaluated Spring 2026 InProgress projects (ProjectId 51..70, GroupId 51..70)
+        for (var i = 1; i <= Spring26EvaluatedCount; i++)
         {
             var projectIndex = Fall25GroupCount + i; // 51..90
             var groupIndex = projectIndex;
