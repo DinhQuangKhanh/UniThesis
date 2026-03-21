@@ -261,6 +261,10 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
         /// </summary>
         public void AssignGroup(Guid groupId)
         {
+            if (Status != ProjectStatus.Approved && Status != ProjectStatus.InProgress && Status != ProjectStatus.Completed)
+                throw new BusinessRuleValidationException(
+                    "Cannot assign a group to a project that has not been approved.");
+
             if (GroupId.HasValue)
                 throw new BusinessRuleValidationException("Project already has a group assigned.");
 
