@@ -3,6 +3,7 @@ using UniThesis.Application.Common.Interfaces;
 using UniThesis.Application.Features.StudentGroups.DTOs;
 using UniThesis.Domain.Enums.Group;
 using UniThesis.Domain.Enums.Mentor;
+using UniThesis.Domain.Enums.Project;
 using UniThesis.Domain.Enums.Semester;
 
 namespace UniThesis.Persistence.SqlServer.QueryServices;
@@ -33,6 +34,9 @@ public class StudentGroupQueryService : IStudentGroupQueryService
             where pm.MentorId == mentorId && pm.Status == ProjectMentorStatus.Active
             join p in _context.Projects on pm.ProjectId equals p.Id
             where p.SemesterId == targetSemesterId && p.GroupId != null
+                  && (p.Status == ProjectStatus.Approved
+                   || p.Status == ProjectStatus.InProgress
+                   || p.Status == ProjectStatus.Completed)
             join g in _context.Groups on p.GroupId equals g.Id
             select new MentorGroupDto
             {
