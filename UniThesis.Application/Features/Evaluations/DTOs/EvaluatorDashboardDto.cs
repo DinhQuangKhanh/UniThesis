@@ -28,6 +28,7 @@ public record PendingEvaluationDto
     public string StudentName { get; init; } = string.Empty;
     public string? StudentAvatar { get; init; }
     public DateTime AssignedAt { get; init; }
+    public int DaysElapsed { get; init; }
     public bool IsUrgent { get; init; }
 }
 

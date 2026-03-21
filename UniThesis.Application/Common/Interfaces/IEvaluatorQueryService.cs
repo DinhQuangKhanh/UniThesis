@@ -26,4 +26,9 @@ public interface IEvaluatorQueryService
         int? majorId,
         string? result,
         CancellationToken cancellationToken = default);
+
+    Task<ProjectReviewDetailDto?> GetProjectForReviewAsync(
+        Guid projectId,
+        Guid evaluatorId,
+        CancellationToken cancellationToken = default);
 }

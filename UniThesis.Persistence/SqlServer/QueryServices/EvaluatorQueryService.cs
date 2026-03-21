@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using UniThesis.Application.Common.Interfaces;
 using UniThesis.Application.Features.Evaluations.DTOs;
+using UniThesis.Domain.Entities;
 using UniThesis.Domain.Enums.Evaluation;
-using UniThesis.Persistence.SqlServer;
+using UniThesis.Domain.Enums.Mentor;
 
 namespace UniThesis.Persistence.SqlServer.QueryServices;
 
@@ -41,9 +42,26 @@ public class EvaluatorQueryService : IEvaluatorQueryService
             .Where(a => a.EvaluatorId == evaluatorId && a.IsActive)
             .ToListAsync(cancellationToken);
 
-        var totalAssigned = assignments.Count;
-        var pendingAssignments = assignments.Where(a => a.IndividualResult == null || a.IndividualResult == EvaluationResult.Pending).ToList();
-        var completedAssignments = assignments.Where(a => a.IndividualResult.HasValue && a.IndividualResult != EvaluationResult.Pending).ToList();
+        // Projects where this evaluator already has ANY completed submission
+        var completedProjectIds = assignments
+            .Where(a => a.IndividualResult.HasValue && a.IndividualResult != EvaluationResult.Pending)
+            .Select(a => a.ProjectId)
+            .Distinct()
+            .ToList();
+
+        // Pending = projects with NO completed submission, one assignment per project
+        var pendingAssignments = assignments
+            .Where(a => !completedProjectIds.Contains(a.ProjectId))
+            .DistinctBy(a => a.ProjectId)
+            .ToList();
+
+        // Completed = one assignment per project (prefer the submitted one)
+        var completedAssignments = assignments
+            .Where(a => a.IndividualResult.HasValue && a.IndividualResult != EvaluationResult.Pending)
+            .DistinctBy(a => a.ProjectId)
+            .ToList();
+
+        var totalAssigned = pendingAssignments.Count + completedAssignments.Count;
 
         var approvedCount = completedAssignments.Count(a => a.IndividualResult == EvaluationResult.Approved);
         var rejectedCount = completedAssignments.Count(a => a.IndividualResult == EvaluationResult.Rejected);
@@ -69,14 +87,14 @@ public class EvaluatorQueryService : IEvaluatorQueryService
         };
 
         // Get pending evaluations with project details
-        var pendingProjectIds = pendingAssignments.Select(a => a.ProjectId).Distinct().ToList();
+        var pendingProjectIds = pendingAssignments.Select(a => a.ProjectId).ToList();
 
-        var pendingEvaluations = await (
+        var pendingEvaluationsRaw = await (
             from a in _context.ProjectEvaluatorAssignments.AsNoTracking()
             where a.EvaluatorId == evaluatorId && a.IsActive
-                  && (a.IndividualResult == null || a.IndividualResult == EvaluationResult.Pending)
+                  && pendingProjectIds.Contains(a.ProjectId)
             join p in _context.Projects.AsNoTracking() on a.ProjectId equals p.Id
-            join m in _context.Set<UniThesis.Domain.Entities.Major>().AsNoTracking() on p.MajorId equals m.Id into majors
+            join m in _context.Set<Major>().AsNoTracking() on p.MajorId equals m.Id into majors
             from m in majors.DefaultIfEmpty()
             select new
             {
@@ -89,6 +107,12 @@ public class EvaluatorQueryService : IEvaluatorQueryService
                 a.AssignedAt
             }
         ).ToListAsync(cancellationToken);
+
+        // One row per project (avoid duplicate rows from same evaluator assigned multiple times)
+        var pendingEvaluations = pendingEvaluationsRaw
+            .GroupBy(x => x.ProjectId)
+            .Select(g => g.First())
+            .ToList();
 
         // Get student names for each project's group
         var groupIds = pendingEvaluations.Where(pe => pe.GroupId != null).Select(pe => pe.GroupId!.Value).Distinct().ToList();
@@ -111,6 +135,7 @@ public class EvaluatorQueryService : IEvaluatorQueryService
                 studentAvatar = leader.AvatarUrl;
             }
 
+            var daysElapsed = (int)(now - pe.AssignedAt).TotalDays;
             return new PendingEvaluationDto
             {
                 AssignmentId = pe.Id,
@@ -121,9 +146,10 @@ public class EvaluatorQueryService : IEvaluatorQueryService
                 StudentName = studentName,
                 StudentAvatar = studentAvatar,
                 AssignedAt = pe.AssignedAt,
-                IsUrgent = (now - pe.AssignedAt).TotalDays > 5
+                DaysElapsed = daysElapsed,
+                IsUrgent = daysElapsed > 5
             };
-        }).OrderByDescending(pe => pe.IsUrgent).ThenBy(pe => pe.AssignedAt).ToList();
+        }).OrderByDescending(pe => pe.IsUrgent).ThenByDescending(pe => pe.DaysElapsed).Take(5).ToList();
 
         // Get recently reviewed projects
         var recentReviewed = await (
@@ -291,6 +317,114 @@ public class EvaluatorQueryService : IEvaluatorQueryService
             TotalCount = totalCount,
             Page = page,
             PageSize = pageSize
+        };
+    }
+
+    public async Task<ProjectReviewDetailDto?> GetProjectForReviewAsync(
+        Guid projectId,
+        Guid evaluatorId,
+        CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+
+        // Get the assignment first to verify evaluator has access
+        var assignment = await _context.ProjectEvaluatorAssignments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a =>
+                a.ProjectId == projectId && a.EvaluatorId == evaluatorId && a.IsActive,
+                cancellationToken);
+
+        if (assignment is null)
+            return null;
+
+        // Get project with major and semester
+        var projectData = await (
+            from p in _context.Projects.AsNoTracking()
+            where p.Id == projectId
+            join m in _context.Majors.AsNoTracking() on p.MajorId equals m.Id into majors
+            from m in majors.DefaultIfEmpty()
+            join s in _context.Semesters.AsNoTracking() on p.SemesterId equals s.Id into semesters
+            from s in semesters.DefaultIfEmpty()
+            select new
+            {
+                p.Id,
+                Code = p.Code.ToString(),
+                NameVi = p.NameVi.ToString(),
+                NameEn = p.NameEn.ToString(),
+                NameAbbr = p.NameAbbr,
+                Description = p.Description.ToString(),
+                Objectives = p.Objectives.ToString(),
+                p.Scope,
+                Technologies = p.Technologies != null ? p.Technologies.ToString() : null,
+                p.ExpectedResults,
+                p.MaxStudents,
+                p.SubmittedAt,
+                p.EvaluationCount,
+                p.GroupId,
+                MajorName = m != null ? m.Name : "",
+                MajorCode = m != null ? m.Code : "",
+                SemesterName = s != null ? s.Name : ""
+            }
+        ).FirstOrDefaultAsync(cancellationToken);
+
+        if (projectData is null)
+            return null;
+
+        // Get mentor name
+        var mentorName = await (
+            from pm in _context.ProjectMentors.AsNoTracking()
+            where pm.ProjectId == projectId && pm.Status == ProjectMentorStatus.Active
+            join u in _context.Users.AsNoTracking() on pm.MentorId equals u.Id
+            select u.FullName
+        ).FirstOrDefaultAsync(cancellationToken) ?? "";
+
+        // Get student (group leader) name
+        var studentName = "";
+        string? studentAvatar = null;
+        if (projectData.GroupId != null)
+        {
+            var leader = await (
+                from gm in _context.GroupMembers.AsNoTracking()
+                where gm.GroupId == projectData.GroupId.Value && gm.Role == Domain.Enums.Group.GroupMemberRole.Leader
+                join u in _context.Users.AsNoTracking() on gm.StudentId equals u.Id
+                select new { u.FullName, u.AvatarUrl }
+            ).FirstOrDefaultAsync(cancellationToken);
+
+            if (leader != null)
+            {
+                studentName = leader.FullName;
+                studentAvatar = leader.AvatarUrl;
+            }
+        }
+
+        var daysElapsed = (int)(now - assignment.AssignedAt).TotalDays;
+
+        return new ProjectReviewDetailDto
+        {
+            ProjectId = projectData.Id,
+            ProjectCode = projectData.Code,
+            NameVi = projectData.NameVi,
+            NameEn = projectData.NameEn,
+            NameAbbr = projectData.NameAbbr,
+            Description = projectData.Description,
+            Objectives = projectData.Objectives,
+            Scope = projectData.Scope,
+            Technologies = projectData.Technologies,
+            ExpectedResults = projectData.ExpectedResults,
+            MaxStudents = projectData.MaxStudents,
+            SubmittedAt = projectData.SubmittedAt,
+            EvaluationCount = projectData.EvaluationCount,
+            MajorName = projectData.MajorName,
+            MajorCode = projectData.MajorCode,
+            SemesterName = projectData.SemesterName,
+            MentorName = mentorName,
+            StudentName = studentName,
+            StudentAvatar = studentAvatar,
+            AssignmentId = assignment.Id,
+            AssignedAt = assignment.AssignedAt,
+            DaysElapsed = daysElapsed,
+            ExistingFeedback = assignment.Feedback,
+            ExistingResult = assignment.IndividualResult?.ToString()
         };
     }
 
