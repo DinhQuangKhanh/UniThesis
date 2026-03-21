@@ -24,6 +24,7 @@ using UniThesis.Infrastructure.Caching;
 using UniThesis.Infrastructure.HealthChecks;
 using UniThesis.Infrastructure.Middleware;
 using UniThesis.Infrastructure.RealTime.Services;
+using UniThesis.Infrastructure.Services;
 using UniThesis.Infrastructure.Services.DomainServices;
 using UniThesis.Infrastructure.Services.Email;
 using UniThesis.Infrastructure.Services.Email.Templates;
@@ -158,6 +159,9 @@ namespace UniThesis.Infrastructure
             // Query Services (note: IStudentGroupQueryService is registered in Persistence layer)
             services.AddScoped<ITopicPoolQueryService, TopicPoolQueryService>();
             services.AddScoped<IEvaluatorQueryService, EvaluatorQueryService>();
+
+            // Evaluation Services
+            services.AddScoped<ITitleSimilarityService, TitleSimilarityService>();
 
             // Email
             services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
