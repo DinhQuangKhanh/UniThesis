@@ -20,6 +20,7 @@ public class TopicPoolDomainService : ITopicPoolDomainService
     private readonly ITopicRegistrationRepository _registrationRepository;
     private readonly IProjectRepository _projectRepository;
     private readonly IMajorReadRepository _majorRepository;
+    private readonly ISemesterDomainService _semesterDomainService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<TopicPoolDomainService> _logger;
 
@@ -28,6 +29,7 @@ public class TopicPoolDomainService : ITopicPoolDomainService
         ITopicRegistrationRepository registrationRepository,
         IProjectRepository projectRepository,
         IMajorReadRepository majorRepository,
+        ISemesterDomainService semesterDomainService,
         IUnitOfWork unitOfWork,
         ILogger<TopicPoolDomainService> logger)
     {
@@ -35,6 +37,7 @@ public class TopicPoolDomainService : ITopicPoolDomainService
         _registrationRepository = registrationRepository;
         _projectRepository = projectRepository;
         _majorRepository = majorRepository;
+        _semesterDomainService = semesterDomainService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -273,10 +276,56 @@ public class TopicPoolDomainService : ITopicPoolDomainService
         return await _projectRepository.GetExpiringPoolTopicsWithMentorsAsync(currentSemesterId, cancellationToken);
     }
 
-    public async Task<int> CalculateExpirationSemesterAsync(int createdSemesterId, int expirationSemesters, CancellationToken cancellationToken = default)
+    public async Task<int> ResolveMissingExpirationSemestersAsync(CancellationToken cancellationToken = default)
     {
-        // Simple calculation: add N to semester ID
-        // In real implementation, you might need to look up actual semester sequence
-        return createdSemesterId + expirationSemesters;
+        var candidates = await _projectRepository.GetPoolTopicsMissingExpirationAsync(cancellationToken);
+        if (candidates.Count == 0)
+        {
+            return 0;
+        }
+
+        var resolvedCount = 0;
+        foreach (var project in candidates)
+        {
+            if (!project.TopicPoolId.HasValue || !project.CreatedInSemesterId.HasValue)
+            {
+                continue;
+            }
+
+            var pool = await _topicPoolRepository.GetByIdAsync(project.TopicPoolId.Value, cancellationToken);
+            if (pool is null)
+            {
+                continue;
+            }
+
+            var expirationOffset = Math.Max(1, pool.ExpirationSemesters);
+            var expirationSemesterId = await _semesterDomainService.GetSemesterAfterAsync(
+                project.CreatedInSemesterId.Value,
+                expirationOffset,
+                cancellationToken);
+
+            if (!expirationSemesterId.HasValue)
+            {
+                continue;
+            }
+
+            project.SetExpirationSemester(expirationSemesterId.Value);
+            _projectRepository.Update(project);
+            resolvedCount++;
+        }
+
+        if (resolvedCount > 0)
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        _logger.LogInformation("Resolved expiration semester for {Count} pool topics.", resolvedCount);
+        return resolvedCount;
+    }
+
+    public async Task<int?> CalculateExpirationSemesterAsync(int createdSemesterId, int expirationSemesters, CancellationToken cancellationToken = default)
+    {
+        var offset = Math.Max(1, expirationSemesters);
+        return await _semesterDomainService.GetSemesterAfterAsync(createdSemesterId, offset, cancellationToken);
     }
 }

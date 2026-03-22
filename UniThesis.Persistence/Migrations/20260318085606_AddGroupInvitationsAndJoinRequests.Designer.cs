@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UniThesis.Persistence.SqlServer;
 
@@ -11,9 +12,11 @@ using UniThesis.Persistence.SqlServer;
 namespace UniThesis.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260318085606_AddGroupInvitationsAndJoinRequests")]
+    partial class AddGroupInvitationsAndJoinRequests
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -303,10 +306,6 @@ namespace UniThesis.Persistence.Migrations
 
                     b.HasIndex("InviterId");
 
-                    b.HasIndex("GroupId", "InviteeId")
-                        .IsUnique()
-                        .HasFilter("[Status] = 0");
-
                     b.HasIndex("GroupId", "InviteeId", "Status");
 
                     b.ToTable("GroupInvitations", (string)null);
@@ -344,10 +343,6 @@ namespace UniThesis.Persistence.Migrations
                     b.HasIndex("GroupId");
 
                     b.HasIndex("StudentId");
-
-                    b.HasIndex("GroupId", "StudentId")
-                        .IsUnique()
-                        .HasFilter("[Status] = 0");
 
                     b.HasIndex("GroupId", "StudentId", "Status");
 
@@ -766,42 +761,6 @@ namespace UniThesis.Persistence.Migrations
                     b.HasIndex("TopicPoolId");
 
                     b.ToTable("Projects", (string)null);
-                });
-
-            modelBuilder.Entity("UniThesis.Domain.Aggregates.SemesterAggregate.Entities.EligibleStudent", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("ImportedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("ImportedBy")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("IsEligible")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("SemesterId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("StudentCode")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<Guid>("StudentId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SemesterId", "StudentId")
-                        .IsUnique();
-
-                    b.ToTable("EligibleStudents", (string)null);
                 });
 
             modelBuilder.Entity("UniThesis.Domain.Aggregates.SemesterAggregate.Entities.SemesterPhase", b =>
@@ -1748,15 +1707,6 @@ namespace UniThesis.Persistence.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
-            modelBuilder.Entity("UniThesis.Domain.Aggregates.SemesterAggregate.Entities.EligibleStudent", b =>
-                {
-                    b.HasOne("UniThesis.Domain.Aggregates.SemesterAggregate.Semester", null)
-                        .WithMany("EligibleStudents")
-                        .HasForeignKey("SemesterId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("UniThesis.Domain.Aggregates.SemesterAggregate.Entities.SemesterPhase", b =>
                 {
                     b.HasOne("UniThesis.Domain.Aggregates.SemesterAggregate.Semester", null)
@@ -1778,47 +1728,6 @@ namespace UniThesis.Persistence.Migrations
                         .HasForeignKey("ReporterId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.OwnsMany("UniThesis.Domain.Aggregates.SupportAggregate.ValueObjects.FileAttachment", "Attachments", b1 =>
-                        {
-                            b1.Property<int>("Id")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("int");
-
-                            SqlServerPropertyBuilderExtensions.UseIdentityColumn(b1.Property<int>("Id"));
-
-                            b1.Property<string>("ContentType")
-                                .IsRequired()
-                                .HasMaxLength(100)
-                                .HasColumnType("nvarchar(100)");
-
-                            b1.Property<string>("FileName")
-                                .IsRequired()
-                                .HasMaxLength(255)
-                                .HasColumnType("nvarchar(255)");
-
-                            b1.Property<string>("FilePath")
-                                .IsRequired()
-                                .HasMaxLength(1000)
-                                .HasColumnType("nvarchar(1000)");
-
-                            b1.Property<long>("FileSize")
-                                .HasColumnType("bigint");
-
-                            b1.Property<Guid>("SupportTicketId")
-                                .HasColumnType("uniqueidentifier");
-
-                            b1.HasKey("Id");
-
-                            b1.HasIndex("SupportTicketId");
-
-                            b1.ToTable("SupportTicketAttachments", (string)null);
-
-                            b1.WithOwner()
-                                .HasForeignKey("SupportTicketId");
-                        });
-
-                    b.Navigation("Attachments");
                 });
 
             modelBuilder.Entity("UniThesis.Domain.Aggregates.SupportAggregate.TicketMessage", b =>
@@ -1834,47 +1743,6 @@ namespace UniThesis.Persistence.Migrations
                         .HasForeignKey("TicketId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.OwnsMany("UniThesis.Domain.Aggregates.SupportAggregate.ValueObjects.FileAttachment", "Attachments", b1 =>
-                        {
-                            b1.Property<int>("Id")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("int");
-
-                            SqlServerPropertyBuilderExtensions.UseIdentityColumn(b1.Property<int>("Id"));
-
-                            b1.Property<string>("ContentType")
-                                .IsRequired()
-                                .HasMaxLength(100)
-                                .HasColumnType("nvarchar(100)");
-
-                            b1.Property<string>("FileName")
-                                .IsRequired()
-                                .HasMaxLength(255)
-                                .HasColumnType("nvarchar(255)");
-
-                            b1.Property<string>("FilePath")
-                                .IsRequired()
-                                .HasMaxLength(1000)
-                                .HasColumnType("nvarchar(1000)");
-
-                            b1.Property<long>("FileSize")
-                                .HasColumnType("bigint");
-
-                            b1.Property<Guid>("TicketMessageId")
-                                .HasColumnType("uniqueidentifier");
-
-                            b1.HasKey("Id");
-
-                            b1.HasIndex("TicketMessageId");
-
-                            b1.ToTable("TicketMessageAttachments", (string)null);
-
-                            b1.WithOwner()
-                                .HasForeignKey("TicketMessageId");
-                        });
-
-                    b.Navigation("Attachments");
                 });
 
             modelBuilder.Entity("UniThesis.Domain.Aggregates.TopicPoolAggregate.Entities.TopicRegistration", b =>
@@ -1978,8 +1846,6 @@ namespace UniThesis.Persistence.Migrations
 
             modelBuilder.Entity("UniThesis.Domain.Aggregates.SemesterAggregate.Semester", b =>
                 {
-                    b.Navigation("EligibleStudents");
-
                     b.Navigation("Phases");
                 });
 
