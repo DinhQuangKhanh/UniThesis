@@ -89,6 +89,7 @@ namespace UniThesis.Persistence
             services.AddScoped<IStudentGroupQueryService, StudentGroupQueryService>();
             services.AddScoped<IEvaluatorQueryService, EvaluatorQueryService>();
             services.AddScoped<ITopicPoolQueryService, TopicPoolQueryService>();
+            services.AddScoped<ITopicQueryService, TopicQueryService>();
             services.AddScoped<IAdminDashboardQueryService, AdminDashboardQueryService>();
 
             // Add MongoDB Repositories
@@ -100,6 +101,7 @@ namespace UniThesis.Persistence
             services.AddScoped<IUserActivityLogRepository, UserActivityLogRepository>();
             services.AddScoped<ISystemAuditLogRepository, SystemAuditLogRepository>();
             services.AddScoped<IErrorLogRepository, ErrorLogRepository>();
+            services.AddScoped<IQuarantinedAttachmentRepository, QuarantinedAttachmentRepository>();
 
             // Add Log Services
             services.AddScoped<IRequestLogService, RequestLogService>();
