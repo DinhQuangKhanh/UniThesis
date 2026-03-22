@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { NotificationDropdown } from '@/components/layout'
+import { Header } from '@/components/layout'
 
 const container = {
     hidden: { opacity: 0 },
@@ -26,29 +26,7 @@ const expectedResults = [
 export function StudentMyTopicPage() {
     return (
         <>
-            {/* Header */}
-            <header className="bg-primary h-16 flex items-center justify-between px-8 shrink-0 z-50 sticky top-0 shadow-md">
-                <div className="flex items-center gap-4 flex-1 max-w-xl">
-                    <div className="relative w-full group">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <span className="material-symbols-outlined text-blue-200/70 group-focus-within:text-white transition-colors">search</span>
-                        </div>
-                        <input
-                            className="block w-full pl-10 pr-3 py-2 border-none rounded-lg leading-5 bg-white/10 text-white placeholder-blue-200/70 focus:outline-none focus:bg-white/20 focus:ring-1 focus:ring-blue-300 transition-all sm:text-sm h-10"
-                            placeholder="Tìm kiếm thông tin đề tài..."
-                            type="text"
-                        />
-                    </div>
-                </div>
-                <div className="flex items-center gap-6">
-                    <NotificationDropdown role="student" isNavy={true} />
-                    <div className="h-8 w-[1px] bg-white/20" />
-                    <div className="flex items-center gap-3 text-white">
-                        <span className="text-sm font-medium">Hệ thống thẩm định ĐT</span>
-                        <span className="material-symbols-outlined">help</span>
-                    </div>
-                </div>
-            </header>
+            <Header variant="primary" title="Đề tài của tôi" searchPlaceholder="Tìm kiếm thông tin đề tài..." role="student" />
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-8">

@@ -168,7 +168,7 @@ export function StudentSupportPage() {
 
   return (
     <>
-      <Header title="Hỗ Trợ & Liên Hệ Admin" showSearch={false} />
+      <Header variant="primary" title="Hỗ trợ & Liên hệ Admin" showSearch={false} role="student" />
 
       <div className="flex-1 overflow-hidden p-8 bg-slate-50">
         <motion.div variants={container} initial="hidden" animate="show" className="flex flex-col h-full">

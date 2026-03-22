@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { NotificationDropdown } from '@/components/layout'
+import { Header } from '@/components/layout'
 import { TopicCard, TopicCardSkeleton } from '@/components/student/TopicCard'
 import { TopicDetailDrawer } from '@/components/student/TopicDetailDrawer'
 import { WishlistDrawer } from '@/components/student/WishlistDrawer'
@@ -111,31 +111,24 @@ export function StudentTopicsPage() {
 
     return (
         <>
-            {/* Header */}
-            <header className="bg-white border-b border-[#e9ecf1] h-16 flex items-center justify-between px-8 shrink-0 z-50 sticky top-0">
-                <div className="flex items-center gap-4 flex-1 max-w-xl">
-                    <div className="relative w-full group">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <span className="material-symbols-outlined text-[#58698d] group-focus-within:text-primary transition-colors">search</span>
-                        </div>
+            <Header
+                variant="primary"
+                title="Kho đề tài đề xuất"
+                showSearch={false}
+                role="student"
+                actions={
+                    <div className="relative hidden md:block w-64">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-[20px] text-blue-200">search</span>
                         <input
-                            className="block w-full pl-10 pr-3 py-2 border-none rounded-lg leading-5 bg-[#f6f7f8] text-gray-900 placeholder-[#58698d] focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary transition-all sm:text-sm h-10"
+                            className="w-full text-sm rounded-md py-2 pl-10 pr-4 focus:outline-none transition-all bg-white/10 border border-white/20 text-white placeholder-blue-200/70 focus:ring-1 focus:ring-white/40 focus:border-white/40 focus:bg-white/20"
                             placeholder="Tìm kiếm đề tài hoặc mentor..."
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                </div>
-                <div className="flex items-center gap-6">
-                    <NotificationDropdown role="student" />
-                    <div className="h-8 w-[1px] bg-[#e9ecf1]" />
-                    <button className="text-[#58698d] hover:text-primary transition-colors text-sm font-medium flex items-center gap-1">
-                        Trợ giúp
-                        <span className="material-symbols-outlined text-lg">help</span>
-                    </button>
-                </div>
-            </header>
+                }
+            />
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-8 scrollbar-hide">

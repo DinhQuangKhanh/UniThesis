@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { NotificationDropdown } from "@/components/layout";
+import { Header } from "@/components/layout";
 import { studentGroupService, type StudentGroupDto } from "@/lib/studentGroupService";
 
 const container = {
@@ -71,25 +71,24 @@ export function StudentSchedulePage() {
 
   return (
     <>
-      {/* Header */}
-      <header className="bg-white border-b border-[#e9ecf1] h-16 flex items-center justify-between px-8 shrink-0 z-50 sticky top-0">
-        <div className="flex items-center gap-4">
-          <h2 className="text-xl font-bold text-primary">Lịch Trình Chung</h2>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex p-1 bg-gray-100 rounded-lg">
-            <button className="px-3 py-1.5 rounded-md text-sm font-bold bg-white shadow-sm text-primary flex items-center gap-2">
+      <Header
+        variant="primary"
+        title="Lịch trình chung"
+        showSearch={false}
+        role="student"
+        actions={
+          <div className="flex p-1 bg-white/10 rounded-lg">
+            <button className="px-3 py-1.5 rounded-md text-sm font-bold bg-white/20 shadow-sm text-white flex items-center gap-2">
               <span className="text-lg material-symbols-outlined">calendar_view_month</span>
               Lịch
             </button>
-            <button className="px-3 py-1.5 rounded-md text-sm font-medium text-[#58698d] hover:text-primary flex items-center gap-2">
+            <button className="px-3 py-1.5 rounded-md text-sm font-medium text-blue-100/80 hover:text-white flex items-center gap-2">
               <span className="text-lg material-symbols-outlined">format_list_bulleted</span>
               Danh sách
             </button>
           </div>
-          <NotificationDropdown role="student" />
-        </div>
-      </header>
+        }
+      />
 
       {/* Content */}
       <div className="flex-1 p-8 overflow-y-auto">
