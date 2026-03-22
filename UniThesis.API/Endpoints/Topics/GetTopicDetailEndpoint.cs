@@ -1,22 +1,22 @@
 using MediatR;
 using UniThesis.API.Extensions;
-using UniThesis.Application.Features.TopicPools.DTOs;
-using UniThesis.Application.Features.TopicPools.Queries.GetPoolTopicDetail;
+using UniThesis.Application.Features.Topics.DTOs;
+using UniThesis.Application.Features.Topics.Queries.GetTopicDetail;
 using static UniThesis.API.Extensions.ApiResponseExtensions;
 
-namespace UniThesis.API.Endpoints.TopicPools;
+namespace UniThesis.API.Endpoints.Topics;
 
-public class GetPoolTopicDetailEndpoint : IEndpoint
+public class GetTopicDetailEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/topic-pools/topics/{projectId:guid}", async (
+        app.MapGet("/api/topics/{topicId:guid}", async (
                 ISender sender,
-                Guid projectId,
+                Guid topicId,
                 CancellationToken cancellationToken = default) =>
             {
                 var result = await sender.Send(
-                    new GetPoolTopicDetailQuery(projectId),
+                    new GetTopicDetailQuery(topicId),
                     cancellationToken);
 
                 return result is not null
@@ -24,9 +24,9 @@ public class GetPoolTopicDetailEndpoint : IEndpoint
                     : Results.NotFound();
             })
             .RequireAuthorization()
-            .WithTags("TopicPools")
-            .WithName("GetPoolTopicDetail")
-            .Produces<PoolTopicDetailDto>()
+            .WithTags("Topics")
+            .WithName("GetTopicDetail")
+            .Produces<TopicDetailDto>()
             .Produces(404)
             .Produces(401);
     }

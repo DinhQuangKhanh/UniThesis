@@ -1,10 +1,11 @@
-namespace UniThesis.Application.Features.TopicPools.DTOs;
+namespace UniThesis.Application.Features.Topics.DTOs;
 
 /// <summary>
-/// Full detail DTO for a single topic from the pool.
-/// Includes all fields from <see cref="PoolTopicItemDto"/> plus objectives, scope, mentors list, etc.
+/// Full detail DTO for a single thesis topic (project).
+/// Works for all source types: FromPool and DirectRegistration.
+/// Includes all fields needed for the topic detail view.
 /// </summary>
-public class PoolTopicDetailDto
+public class TopicDetailDto
 {
     public Guid Id { get; init; }
     public string Code { get; init; } = string.Empty;

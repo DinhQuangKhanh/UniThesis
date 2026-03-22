@@ -1,10 +1,10 @@
-namespace UniThesis.Application.Features.TopicPools.DTOs;
+namespace UniThesis.Application.Features.Topics.DTOs;
 
 /// <summary>
-/// Lightweight DTO for listing individual topics (projects) from the topic pool.
+/// Lightweight DTO for listing individual topics (projects) browsed from a topic pool.
 /// Used in paginated list views. Includes denormalized major and primary mentor info.
 /// </summary>
-public class PoolTopicItemDto
+public class TopicInPoolItemDto
 {
     public Guid Id { get; init; }
     public string Code { get; init; } = string.Empty;
@@ -24,10 +24,10 @@ public class PoolTopicItemDto
 }
 
 /// <summary>
-/// Paginated result for pool topic list queries.
+/// Paginated result for topics-in-pool list queries.
 /// </summary>
-public record GetPoolTopicsResult(
-    IReadOnlyList<PoolTopicItemDto> Items,
+public record GetTopicsInPoolResult(
+    IReadOnlyList<TopicInPoolItemDto> Items,
     int TotalCount,
     int Page,
     int PageSize,
