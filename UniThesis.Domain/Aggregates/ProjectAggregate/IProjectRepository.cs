@@ -1,5 +1,6 @@
 ﻿using UniThesis.Domain.Aggregates.ProjectAggregate.ValueObjects;
 using UniThesis.Domain.Common.Interfaces;
+using UniThesis.Domain.Enums.Document;
 using UniThesis.Domain.Enums.Project;
 using UniThesis.Domain.Enums.TopicPool;
 
@@ -89,5 +90,18 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
         Task<List<Guid>> GetAvailableApprovedPoolTopicIdsAsync(Guid topicPoolId, CancellationToken cancellationToken = default);
 
         Task<List<Project>> GetExpiringPoolTopicsWithMentorsAsync(int currentSemesterId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Inserts a Document row directly (bypassing the aggregate's change tracker)
+        /// and touches the Project's UpdatedAt. Used by background scan jobs to avoid
+        /// DbUpdateConcurrencyException when multiple jobs hit the same aggregate.
+        /// Returns <c>true</c> if inserted; <c>false</c> if a Document with the same
+        /// file path already exists (idempotent).
+        /// </summary>
+        Task<bool> InsertDocumentAsync(
+            Guid projectId, string fileName, string originalFileName,
+            string fileType, long fileSize, string filePath,
+            DocumentType documentType, Guid uploadedBy,
+            CancellationToken cancellationToken = default);
     }
 }

@@ -1,13 +1,12 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using System.Linq;
 using UniThesis.API.Common.Security;
 using UniThesis.API.Extensions;
 using UniThesis.Application.Common;
 using UniThesis.Application.Common.Interfaces;
 using UniThesis.API.Endpoints.TopicPools.Requests;
 using UniThesis.Application.Features.TopicPools.Commands.ProposeTopicToPool;
+using UniThesis.Domain.Enums.Document;
 using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.TopicPools;
@@ -18,9 +17,9 @@ namespace UniThesis.API.Endpoints.TopicPools;
 /// </summary>
 public class ProposeTopicToPoolEndpoint : IEndpoint
 {
-    private const long ProposeTopicMaxUploadBytes = 25 * 1024 * 1024; // 25 MB
-    private const long ProposeTopicPerFileMaxUploadBytes = 10 * 1024 * 1024; // 10 MB / file
-    private const int ProposeTopicMaxAttachmentCount = 5;
+    private const long MaxUploadBytes = 25 * 1024 * 1024; // 25 MB
+    private const long PerFileMaxBytes = 10 * 1024 * 1024; // 10 MB / file
+    private const int MaxAttachmentCount = 5;
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -28,7 +27,7 @@ public class ProposeTopicToPoolEndpoint : IEndpoint
                 Guid poolId,
                 [FromForm] ProposeTopicRequest body,
                 HttpContext httpContext,
-                [FromServices] ITopicProposalAttachmentScanWorkflow attachmentScanWorkflow,
+                [FromServices] IAttachmentScanWorkflow scanWorkflow,
                 ICurrentUserService currentUser,
                 ILogger<ProposeTopicToPoolEndpoint> logger,
                 ISender sender,
@@ -51,10 +50,10 @@ public class ProposeTopicToPoolEndpoint : IEndpoint
                     modelAttachmentsCount,
                     effectiveAttachmentsCount);
 
-                if (!TopicProposalAttachmentValidator.TryValidate(
+                if (!FileUploadValidator.TryValidate(
                         effectiveAttachments,
-                        perFileMaxBytes: ProposeTopicPerFileMaxUploadBytes,
-                        maxAttachmentCount: ProposeTopicMaxAttachmentCount,
+                        perFileMaxBytes: PerFileMaxBytes,
+                        maxAttachmentCount: MaxAttachmentCount,
                         out var attachmentError))
                 {
                     return Results.BadRequest(ApiResponse.Fail(attachmentError));
@@ -74,12 +73,15 @@ public class ProposeTopicToPoolEndpoint : IEndpoint
 
                 var projectId = await sender.Send(command, cancellationToken);
 
-                var queueResult = await attachmentScanWorkflow.QueueAsync(
-                    projectId,
-                    poolId,
-                    currentUser.UserId ?? Guid.Empty,
-                    effectiveAttachments,
-                    cancellationToken);
+                var scanContext = new AttachmentScanContext(
+                    FolderPrefix: "topic-proposals",
+                    ProjectId: projectId,
+                    UploadedBy: currentUser.UserId ?? Guid.Empty,
+                    FolderPartitionId: poolId,
+                    DocumentType: DocumentType.Proposal,
+                    ExtraMetadata: new Dictionary<string, object?> { ["poolId"] = poolId });
+
+                var queueResult = await scanWorkflow.QueueAsync(scanContext, effectiveAttachments, cancellationToken);
 
                 var message = queueResult.QueuedCount > 0
                     ? $"Tạo mới thành công. Có {queueResult.QueuedCount} tệp đang chờ quét mã độc trong nền."
@@ -96,8 +98,8 @@ public class ProposeTopicToPoolEndpoint : IEndpoint
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound)
             .Produces(StatusCodes.Status503ServiceUnavailable)
-            .WithMetadata(new RequestSizeLimitAttribute(ProposeTopicMaxUploadBytes))
-            .WithMetadata(new RequestFormLimitsAttribute { MultipartBodyLengthLimit = ProposeTopicMaxUploadBytes })
+            .WithMetadata(new RequestSizeLimitAttribute(MaxUploadBytes))
+            .WithMetadata(new RequestFormLimitsAttribute { MultipartBodyLengthLimit = MaxUploadBytes })
             .DisableAntiforgery()
             .WithRequestTimeout("ProposeTopicUploadTimeout")
             .RequireRateLimiting("ProposeTopicUploadPolicy")

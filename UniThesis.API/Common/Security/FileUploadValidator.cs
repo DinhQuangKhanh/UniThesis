@@ -2,7 +2,12 @@ using System.Text.RegularExpressions;
 
 namespace UniThesis.API.Common.Security;
 
-internal static class TopicProposalAttachmentValidator
+/// <summary>
+/// Validates uploaded files: extension whitelist, magic-byte signature,
+/// double-extension detection, and size limits.
+/// Reusable across all upload endpoints (topic proposals, topic documents, etc.).
+/// </summary>
+internal static class FileUploadValidator
 {
     private static readonly string[] AllowedExtensions =
     [
@@ -108,7 +113,6 @@ internal static class TopicProposalAttachmentValidator
     {
         if (!Signatures.TryGetValue(extension, out var signatures) || signatures.Count == 0)
         {
-            // Extensions without signature map are validated by extension and size only.
             return true;
         }
 
