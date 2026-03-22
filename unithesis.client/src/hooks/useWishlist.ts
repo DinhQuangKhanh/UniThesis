@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import type { PoolTopicItem } from "@/lib/topicPoolService";
+import type { TopicInPoolItem } from "@/lib/topicPoolService";
 
 const STORAGE_KEY = "unithesis_topic_wishlist";
 const SUMMARIES_KEY = "unithesis_topic_wishlist_summaries";
@@ -7,7 +7,7 @@ const SUMMARIES_KEY = "unithesis_topic_wishlist_summaries";
 // ── Lightweight store (persists to localStorage) ─────────────────────────────
 
 type WishlistSummary = Pick<
-  PoolTopicItem,
+  TopicInPoolItem,
   "id" | "nameVi" | "majorCode" | "mentorName" | "poolStatus" | "poolStatusName"
 >;
 
@@ -79,7 +79,7 @@ export function useWishlist() {
   const has = useCallback((id: string) => ids.includes(id), [ids]);
 
   const toggle = useCallback(
-    (id: string, topic?: PoolTopicItem) => {
+    (id: string, topic?: TopicInPoolItem) => {
       const current = readIds();
       const currentSummaries = readSummaries();
 

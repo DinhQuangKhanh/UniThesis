@@ -85,7 +85,9 @@ export const apiClient = {
   /** Send a FormData payload (file uploads). Browser sets Content-Type + boundary automatically. */
   postForm: <T>(path: string, formData: FormData): Promise<T> => {
     const token = getToken();
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = {
+      "X-Route-Path": window.location.pathname,
+    };
     if (token) headers["Authorization"] = `Bearer ${token}`;
     return fetch(`${API_BASE}${path}`, { method: "POST", headers, body: formData }).then(async (res) => {
       if (!res.ok) {
@@ -102,7 +104,16 @@ export const apiClient = {
         }
         throw new Error(message);
       }
-      return res.json() as Promise<T>;
+      const text = await res.text();
+      if (!text) return {} as T;
+      const body: unknown = JSON.parse(text);
+      if (isApiEnvelope<T>(body)) {
+        if (!body.success) {
+          throw new Error(body.message || "Đã xảy ra lỗi không xác định.");
+        }
+        return body.data as T;
+      }
+      return body as T;
     });
   },
 };

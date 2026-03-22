@@ -8,8 +8,8 @@ import { useWishlist } from '@/hooks/useWishlist'
 import { useSystemError } from '@/contexts/SystemErrorContext'
 import {
     topicPoolService,
-    type PoolTopicFilters,
-    type PoolTopicsResponse,
+    type TopicFilters,
+    type TopicsInPoolResponse,
     type MajorOption,
 } from '@/lib/topicPoolService'
 
@@ -50,9 +50,9 @@ const sortOptions = [
 
 export function StudentTopicsPage() {
     // State
-    const [filters, setFilters] = useState<PoolTopicFilters>({ page: 1, pageSize: 12 })
+    const [filters, setFilters] = useState<TopicFilters>({ page: 1, pageSize: 12 })
     const [search, setSearch] = useState('')
-    const [data, setData] = useState<PoolTopicsResponse | null>(null)
+    const [data, setData] = useState<TopicsInPoolResponse | null>(null)
     const [majors, setMajors] = useState<MajorOption[]>([])
     const [loading, setLoading] = useState(true)
     const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null)
@@ -90,7 +90,7 @@ export function StudentTopicsPage() {
 
     // Handlers
     const updateFilter = useCallback(
-        <K extends keyof PoolTopicFilters>(key: K, value: PoolTopicFilters[K]) => {
+        <K extends keyof TopicFilters>(key: K, value: TopicFilters[K]) => {
             setFilters((prev) => ({ ...prev, [key]: value, page: 1 }))
         },
         []

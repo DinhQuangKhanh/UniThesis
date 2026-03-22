@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import type { PoolTopicItem } from '@/lib/topicPoolService'
+import type { TopicInPoolItem } from '@/lib/topicPoolService'
 
 // ── Major color mapping ──────────────────────────────────────────────────────
 
@@ -43,7 +43,7 @@ function parseTechnologies(tech: string | null): string[] {
 // ── Component ────────────────────────────────────────────────────────────────
 
 interface TopicCardProps {
-    topic: PoolTopicItem
+    topic: TopicInPoolItem
     isFavorite: boolean
     onToggleFavorite: () => void
     onViewDetail: () => void

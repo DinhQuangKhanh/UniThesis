@@ -1,5 +1,11 @@
 import { motion } from 'framer-motion'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Header } from '@/components/layout'
+import { apiClient } from '@/lib/apiClient'
+import { studentGroupService, type StudentGroupDto } from '@/lib/studentGroupService'
+import { topicPoolService, type TopicDetail, type TopicDocument } from '@/lib/topicPoolService'
+import { useSystemError } from '@/contexts/SystemErrorContext'
 
 const container = {
     hidden: { opacity: 0 },
@@ -11,204 +17,571 @@ const item = {
     show: { opacity: 1, y: 0 }
 }
 
-const files = [
-    { name: 'Bao-cao-khao-sat.pdf', size: '2.4 MB', time: '2 ngày trước', type: 'pdf', color: 'red' },
-    { name: 'Nghiên cứu lý thuyết.docx', size: '1.1 MB', time: '1 tuần trước', type: 'doc', color: 'blue' },
-    { name: 'Sơ đồ hệ thống.png', size: '850 KB', time: '12/10/2023', type: 'image', color: 'green' },
-]
+function statusLabel(status: string | undefined | null): string {
+    switch (status) {
+        case 'InProgress': return 'Đang thực hiện'
+        case 'Completed': return 'Hoàn thành'
+        case 'Pending': return 'Chờ xác nhận'
+        default: return status ?? 'Chưa xác định'
+    }
+}
 
-const expectedResults = [
-    { title: 'Mô hình AI nhận dạng', icon: 'data_object', color: 'blue', description: 'Mô hình có khả năng nhận diện ký tự tiếng Việt với độ chính xác trên 95% và phân loại tài liệu vào 10 chuyên mục chính.' },
-    { title: 'Ứng dụng Web hoàn chỉnh', icon: 'web', color: 'green', description: 'Giao diện thân thiện, hỗ trợ đa nền tảng, tích hợp đầy đủ các chức năng quản lý, tìm kiếm và phân tích báo cáo.' },
-    { title: 'Báo cáo khoa học', icon: 'history_edu', color: 'orange', description: 'Cuốn báo cáo chi tiết về quy trình nghiên cứu, thiết kế hệ thống và đánh giá hiệu năng của mô hình AI.' },
-]
+function statusColor(status: string | undefined | null): string {
+    switch (status) {
+        case 'InProgress': return 'bg-green-100 text-green-700'
+        case 'Completed': return 'bg-blue-100 text-blue-700'
+        default: return 'bg-gray-100 text-gray-600'
+    }
+}
+
+function formatDate(isoString: string | null | undefined): string {
+    if (!isoString) return '—'
+    const d = new Date(isoString)
+    return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+function formatFileSize(bytes: number): string {
+    if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    return `${Math.ceil(bytes / 1024)} KB`
+}
+
+const MAX_ATTACHMENTS = 5
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
+const MAX_TOTAL_SIZE_BYTES = 25 * 1024 * 1024
+const ACCEPTED_TYPES = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.zip', '.rar', '.jpg', '.jpeg', '.png']
+const DANGEROUS_EXTENSIONS = ['php', 'phtml', 'asp', 'aspx', 'jsp', 'exe', 'dll', 'bat', 'cmd', 'ps1', 'sh', 'js']
+
+function isSuspiciousDoubleExtension(fileName: string): boolean {
+    const parts = fileName.toLowerCase().split('.').filter(Boolean)
+    if (parts.length < 3) return false
+    return DANGEROUS_EXTENSIONS.includes(parts[parts.length - 2])
+}
+
+function validateFiles(current: File[], incoming: File[]): { accepted: File[]; rejected: string[] } {
+    const accepted: File[] = []
+    const rejected: string[] = []
+    const currentTotal = current.reduce((sum, f) => sum + f.size, 0)
+    let acceptedTotal = 0
+    incoming.forEach((file) => {
+        if (current.length + accepted.length >= MAX_ATTACHMENTS) {
+            rejected.push(`Không thể thêm '${file.name}': tối đa ${MAX_ATTACHMENTS} file.`)
+            return
+        }
+        const ext = `.${file.name.split('.').pop()?.toLowerCase() ?? ''}`
+        if (!ACCEPTED_TYPES.includes(ext)) {
+            rejected.push(`'${file.name}' không đúng định dạng cho phép.`)
+            return
+        }
+        if (isSuspiciousDoubleExtension(file.name)) {
+            rejected.push(`'${file.name}' có tên file không an toàn.`)
+            return
+        }
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            rejected.push(`'${file.name}' vượt quá ${formatFileSize(MAX_FILE_SIZE_BYTES)}.`)
+            return
+        }
+        if (currentTotal + acceptedTotal + file.size > MAX_TOTAL_SIZE_BYTES) {
+            rejected.push(`Tổng dung lượng vượt quá ${formatFileSize(MAX_TOTAL_SIZE_BYTES)} khi thêm '${file.name}'.`)
+            return
+        }
+        accepted.push(file)
+        acceptedTotal += file.size
+    })
+    return { accepted, rejected }
+}
+
+const FILE_ICON_MAP: Record<string, string> = {
+    '.pdf': 'picture_as_pdf', '.doc': 'description', '.docx': 'description',
+    '.xls': 'table_chart', '.xlsx': 'table_chart', '.ppt': 'slideshow', '.pptx': 'slideshow',
+    '.zip': 'folder_zip', '.rar': 'folder_zip', '.jpg': 'image', '.jpeg': 'image', '.png': 'image',
+}
 
 export function StudentMyTopicPage() {
+    const navigate = useNavigate()
+    const { showError } = useSystemError()
+    const [loading, setLoading] = useState(true)
+    const [myGroup, setMyGroup] = useState<StudentGroupDto | null>(null)
+    const [topicDetail, setTopicDetail] = useState<TopicDetail | null>(null)
+    const [documents, setDocuments] = useState<TopicDocument[]>([])
+    const [pendingFiles, setPendingFiles] = useState<File[]>([])
+    const [fileWarnings, setFileWarnings] = useState<string[]>([])
+    const [uploading, setUploading] = useState(false)
+    const [uploadSuccess, setUploadSuccess] = useState(false)
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+    const stopPolling = useCallback(() => {
+        if (pollRef.current) {
+            clearInterval(pollRef.current)
+            pollRef.current = null
+        }
+    }, [])
+
+    const loadDocuments = useCallback((projectId: string) => {
+        topicPoolService.getTopicDocuments(projectId)
+            .then(setDocuments)
+            .catch(() => { /* silently fail — documents section just shows empty */ })
+    }, [])
+
+    useEffect(() => {
+        studentGroupService.getMyGroup()
+            .then(async (group) => {
+                setMyGroup(group)
+                if (group?.projectId) {
+                    try {
+                        const detail = await topicPoolService.getTopicDetail(group.projectId)
+                        setTopicDetail(detail)
+                    } catch (err) {
+                        console.error('Error fetching topic detail:', err)
+                        showError('Không thể tải thông tin đề tài. Vui lòng thử lại sau.')
+                    }
+                    loadDocuments(group.projectId)
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching group:', err)
+                showError('Không thể tải thông tin nhóm. Vui lòng thử lại sau.')
+            })
+            .finally(() => setLoading(false))
+    }, [])
+
+    const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files) return
+        const incoming = Array.from(e.target.files)
+        const { accepted, rejected } = validateFiles(pendingFiles, incoming)
+        if (accepted.length > 0) setPendingFiles(prev => [...prev, ...accepted])
+        setFileWarnings(rejected)
+        e.target.value = ''
+    }
+
+    const removePendingFile = (idx: number) => {
+        setPendingFiles(prev => prev.filter((_, i) => i !== idx))
+        setFileWarnings([])
+    }
+
+    const handleUpload = async () => {
+        if (pendingFiles.length === 0 || !myGroup?.projectId) return
+        setUploading(true)
+        try {
+            await topicPoolService.uploadTopicDocuments(myGroup.projectId, pendingFiles)
+            setPendingFiles([])
+            setFileWarnings([])
+            setUploadSuccess(true)
+
+            // Poll every 3s for up to 30s until new documents appear or error notification arrives
+            const prevCount = documents.length
+            const projectId = myGroup.projectId!
+            stopPolling()
+            let elapsed = 0
+            pollRef.current = setInterval(async () => {
+                elapsed += 3000
+                try {
+                    const [docs, notifs] = await Promise.all([
+                        topicPoolService.getTopicDocuments(projectId),
+                        apiClient.get<{ items: Array<{ type: string; content: string; category: string; isRead: boolean; createdAt: string }> }>(
+                            '/api/notifications?limit=5'
+                        ),
+                    ])
+                    setDocuments(docs)
+
+                    // Check if backend sent an error notification about this upload (within last 60s)
+                    const recentError = notifs.items.find(
+                        (n) => n.type === 'Error' && n.category === 'Project' && !n.isRead
+                            && Date.now() - new Date(n.createdAt).getTime() < 60_000
+                    )
+                    if (recentError) {
+                        stopPolling()
+                        setUploadSuccess(false)
+                        showError(recentError.content)
+                        return
+                    }
+
+                    if (docs.length > prevCount || elapsed >= 30000) {
+                        stopPolling()
+                        setUploadSuccess(false)
+                        if (elapsed >= 30000 && docs.length <= prevCount) {
+                            showError('File đang được xử lý. Vui lòng kiểm tra lại sau vài phút.')
+                        }
+                    }
+                } catch {
+                    /* ignore poll errors */
+                }
+            }, 3000)
+        } catch (err) {
+            showError(err instanceof Error ? err.message : 'Tải lên thất bại. Vui lòng thử lại.')
+        } finally {
+            setUploading(false)
+        }
+    }
+
+    // Cleanup polling on unmount
+    useEffect(() => stopPolling, [stopPolling])
+
     return (
         <>
             <Header variant="primary" title="Đề tài của tôi" searchPlaceholder="Tìm kiếm thông tin đề tài..." role="student" />
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-8">
-                <motion.div variants={container} initial="hidden" animate="show" className="flex flex-col gap-6">
-                    {/* Breadcrumb */}
-                    <motion.div variants={item} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <div className="flex items-center gap-2 text-sm text-[#58698d] mb-1">
-                                <span>Hệ thống</span>
-                                <span className="material-symbols-outlined text-sm">chevron_right</span>
-                                <span className="text-primary font-semibold">Đề tài của tôi</span>
-                            </div>
-                            <h2 className="text-2xl font-bold text-[#101319]">Chi tiết Nội dung Đề tài</h2>
-                        </div>
-                    </motion.div>
-
-                    {/* Topic Header Card */}
-                    <motion.section variants={item} className="bg-white rounded-xl border border-[#e9ecf1] shadow-sm overflow-hidden">
-                        <div className="p-8 border-b border-[#e9ecf1]">
-                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                                <div className="max-w-4xl">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <span className="bg-blue-100 text-primary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                                            Mã đề tài: DT2023-CNTT01
-                                        </span>
-                                        <span className="bg-green-100 text-green-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                                            Đang thực hiện
-                                        </span>
-                                    </div>
-                                    <h1 className="text-2xl font-extrabold text-[#101319] leading-tight mb-4">
-                                        Xây dựng hệ thống quản lý thư viện số tích hợp công nghệ AI nhận dạng tài liệu
-                                    </h1>
-                                    <div className="flex flex-wrap gap-6 text-sm">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-primary">
-                                                <span className="material-symbols-outlined">person</span>
-                                            </div>
-                                            <div>
-                                                <p className="text-[#58698d] text-xs">Giảng viên hướng dẫn</p>
-                                                <p className="font-bold text-[#101319]">TS. Trần Minh Tuấn</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-primary">
-                                                <span className="material-symbols-outlined">calendar_today</span>
-                                            </div>
-                                            <div>
-                                                <p className="text-[#58698d] text-xs">Thời gian bắt đầu</p>
-                                                <p className="font-bold text-[#101319]">05/09/2023</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-primary">
-                                                <span className="material-symbols-outlined">event_available</span>
-                                            </div>
-                                            <div>
-                                                <p className="text-[#58698d] text-xs">Hạn nộp bản cuối</p>
-                                                <p className="font-bold text-[#101319]">15/12/2023</p>
-                                            </div>
-                                        </div>
-                                    </div>
+                {loading ? (
+                    <div className="flex items-center justify-center h-64">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+                    </div>
+                ) : !myGroup ? (
+                    /* No group */
+                    <div className="flex flex-col items-center justify-center h-64 text-center gap-4">
+                        <span className="material-symbols-outlined text-5xl text-[#58698d]">group_add</span>
+                        <p className="text-[#101319] font-bold text-lg">Bạn chưa tham gia nhóm nào</p>
+                        <p className="text-[#58698d] text-sm">Tham gia hoặc tạo nhóm để được gán đề tài.</p>
+                        <button
+                            onClick={() => navigate('/student/groups')}
+                            className="px-5 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary-light transition-colors"
+                        >
+                            Quản lý nhóm
+                        </button>
+                    </div>
+                ) : !myGroup.projectId ? (
+                    /* Has group but no project */
+                    <div className="flex flex-col items-center justify-center h-64 text-center gap-4">
+                        <span className="material-symbols-outlined text-5xl text-[#58698d]">topic</span>
+                        <p className="text-[#101319] font-bold text-lg">
+                            Nhóm <span className="text-primary">{myGroup.groupName ?? myGroup.groupCode}</span> chưa được gán đề tài
+                        </p>
+                        <p className="text-[#58698d] text-sm">Liên hệ giảng viên hoặc chờ hệ thống phân công đề tài.</p>
+                        <button
+                            onClick={() => navigate('/student/topics')}
+                            className="px-5 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary-light transition-colors"
+                        >
+                            Xem kho đề tài
+                        </button>
+                    </div>
+                ) : (
+                    /* Full view */
+                    <motion.div variants={container} initial="hidden" animate="show" className="flex flex-col gap-6">
+                        {/* Breadcrumb */}
+                        <motion.div variants={item} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <div className="flex items-center gap-2 text-sm text-[#58698d] mb-1">
+                                    <span>Hệ thống</span>
+                                    <span className="material-symbols-outlined text-sm">chevron_right</span>
+                                    <span className="text-primary font-semibold">Đề tài của tôi</span>
                                 </div>
+                                <h2 className="text-2xl font-bold text-[#101319]">Chi tiết Nội dung Đề tài</h2>
                             </div>
-                        </div>
-                    </motion.section>
+                        </motion.div>
 
-                    {/* Main Content Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Left Column - Topic Details */}
-                        <motion.div variants={item} className="lg:col-span-2 space-y-6">
-                            <div className="bg-white rounded-xl border border-[#e9ecf1] shadow-sm flex flex-col">
-                                <div className="p-5 border-b border-[#e9ecf1] flex items-center justify-between">
-                                    <h3 className="font-bold text-[#101319] flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-primary">description</span>
-                                        Mô tả chi tiết đề tài
-                                    </h3>
-                                </div>
-                                <div className="p-8 space-y-8">
-                                    {/* Objective */}
-                                    <div>
-                                        <h4 className="text-sm font-bold text-primary uppercase tracking-wider mb-3 flex items-center gap-2">
-                                            <span className="w-1.5 h-6 bg-primary rounded-full" />
-                                            1. Mục tiêu đề tài
-                                        </h4>
-                                        <div className="text-[#101319] text-sm leading-relaxed space-y-3 pl-3.5">
-                                            <p>Nghiên cứu và phát triển một hệ thống quản lý thư viện số hiện đại, có khả năng tự động hóa việc phân loại và nhận dạng tài liệu thông qua công nghệ Trí tuệ nhân tạo (AI).</p>
-                                            <ul className="list-disc pl-5 space-y-2 text-[#58698d]">
-                                                <li>Tối ưu hóa quy trình nhập liệu và số hóa tài liệu giấy thông qua OCR.</li>
-                                                <li>Xây dựng công cụ tìm kiếm thông minh dựa trên ngữ nghĩa nội dung tài liệu.</li>
-                                                <li>Nâng cao trải nghiệm người dùng trong việc quản lý và mượn trả tài liệu trực tuyến.</li>
-                                            </ul>
+                        {/* Topic Header Card */}
+                        <motion.section variants={item} className="bg-white rounded-xl border border-[#e9ecf1] shadow-sm overflow-hidden">
+                            <div className="p-8 border-b border-[#e9ecf1]">
+                                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                                    <div className="max-w-4xl">
+                                        <div className="flex items-center gap-2 mb-3 flex-wrap">
+                                            {myGroup.projectCode && (
+                                                <span className="bg-blue-100 text-primary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                                                    Mã đề tài: {myGroup.projectCode}
+                                                </span>
+                                            )}
+                                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${statusColor(myGroup.projectStatus)}`}>
+                                                {statusLabel(myGroup.projectStatus)}
+                                            </span>
                                         </div>
-                                    </div>
-
-                                    {/* Scope */}
-                                    <div>
-                                        <h4 className="text-sm font-bold text-primary uppercase tracking-wider mb-3 flex items-center gap-2">
-                                            <span className="w-1.5 h-6 bg-primary rounded-full" />
-                                            2. Phạm vi nghiên cứu
-                                        </h4>
-                                        <div className="text-[#101319] text-sm leading-relaxed pl-3.5">
-                                            <p className="mb-3">Đề tài tập trung triển khai tại Thư viện trung tâm của Trường Đại học, tập trung vào các mảng:</p>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                                    <p className="font-bold text-xs mb-1">Công nghệ sử dụng</p>
-                                                    <p className="text-xs text-[#58698d]">Python, TensorFlow/Keras cho AI; ReactJS cho Frontend; Node.js cho Backend.</p>
-                                                </div>
-                                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                                    <p className="font-bold text-xs mb-1">Đối tượng tài liệu</p>
-                                                    <p className="text-xs text-[#58698d]">Sách chuyên khảo, Luận văn tốt nghiệp, Tạp chí khoa học định dạng PDF và hình ảnh.</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Expected Results */}
-                                    <div>
-                                        <h4 className="text-sm font-bold text-primary uppercase tracking-wider mb-3 flex items-center gap-2">
-                                            <span className="w-1.5 h-6 bg-primary rounded-full" />
-                                            3. Kết quả dự kiến
-                                        </h4>
-                                        <div className="grid grid-cols-1 gap-4 pl-3.5">
-                                            {expectedResults.map((result) => (
-                                                <div key={result.title} className="flex items-start gap-4 p-4 border border-[#e9ecf1] rounded-xl hover:bg-gray-50 transition-colors">
-                                                    <div className={`bg-${result.color}-50 p-2 rounded-lg text-${result.color}-600`}>
-                                                        <span className="material-symbols-outlined">{result.icon}</span>
+                                        <h1 className="text-2xl font-extrabold text-[#101319] leading-tight mb-4">
+                                            {topicDetail?.nameVi ?? '—'}
+                                        </h1>
+                                        <div className="flex flex-wrap gap-6 text-sm">
+                                            {myGroup.mentorName && (
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-primary">
+                                                        <span className="material-symbols-outlined">person</span>
                                                     </div>
                                                     <div>
-                                                        <p className="text-sm font-bold text-[#101319]">{result.title}</p>
-                                                        <p className="text-xs text-[#58698d] mt-1">{result.description}</p>
+                                                        <p className="text-[#58698d] text-xs">Giảng viên hướng dẫn</p>
+                                                        <p className="font-bold text-[#101319]">{myGroup.mentorName}</p>
                                                     </div>
+                                                </div>
+                                            )}
+                                            {topicDetail?.createdAt && (
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-primary">
+                                                        <span className="material-symbols-outlined">calendar_today</span>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[#58698d] text-xs">Ngày tạo đề tài</p>
+                                                        <p className="font-bold text-[#101319]">{formatDate(topicDetail.createdAt)}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {topicDetail?.majorName && (
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-primary">
+                                                        <span className="material-symbols-outlined">school</span>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[#58698d] text-xs">Ngành</p>
+                                                        <p className="font-bold text-[#101319]">{topicDetail.majorName}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.section>
+
+                        {/* Main Content Grid */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* Left Column - Topic Details */}
+                            <motion.div variants={item} className="lg:col-span-2 space-y-6">
+                                <div className="bg-white rounded-xl border border-[#e9ecf1] shadow-sm flex flex-col">
+                                    <div className="p-5 border-b border-[#e9ecf1] flex items-center justify-between">
+                                        <h3 className="font-bold text-[#101319] flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-primary">description</span>
+                                            Mô tả chi tiết đề tài
+                                        </h3>
+                                    </div>
+                                    <div className="p-8 space-y-8">
+                                        {/* Description */}
+                                        {topicDetail?.description && (
+                                            <div>
+                                                <h4 className="text-sm font-bold text-primary uppercase tracking-wider mb-3 flex items-center gap-2">
+                                                    <span className="w-1.5 h-6 bg-primary rounded-full" />
+                                                    Tổng quan
+                                                </h4>
+                                                <p className="text-[#101319] text-sm leading-relaxed whitespace-pre-wrap pl-3.5">
+                                                    {topicDetail.description}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Objective */}
+                                        {topicDetail?.objectives && (
+                                            <div>
+                                                <h4 className="text-sm font-bold text-primary uppercase tracking-wider mb-3 flex items-center gap-2">
+                                                    <span className="w-1.5 h-6 bg-primary rounded-full" />
+                                                    Mục tiêu đề tài
+                                                </h4>
+                                                <p className="text-[#101319] text-sm leading-relaxed whitespace-pre-wrap pl-3.5">
+                                                    {topicDetail.objectives}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Scope & Technologies */}
+                                        {(topicDetail?.scope || topicDetail?.technologies) && (
+                                            <div>
+                                                <h4 className="text-sm font-bold text-primary uppercase tracking-wider mb-3 flex items-center gap-2">
+                                                    <span className="w-1.5 h-6 bg-primary rounded-full" />
+                                                    Phạm vi nghiên cứu
+                                                </h4>
+                                                <div className="pl-3.5 space-y-4">
+                                                    {topicDetail?.scope && (
+                                                        <p className="text-[#101319] text-sm leading-relaxed whitespace-pre-wrap">
+                                                            {topicDetail.scope}
+                                                        </p>
+                                                    )}
+                                                    {topicDetail?.technologies && (
+                                                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
+                                                            <p className="font-bold text-xs text-[#101319] mb-1.5 flex items-center gap-1.5">
+                                                                <span className="material-symbols-outlined text-[16px] text-primary">code</span>
+                                                                Công nghệ sử dụng
+                                                            </p>
+                                                            <p className="text-xs text-[#58698d] whitespace-pre-wrap">{topicDetail.technologies}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Expected Results */}
+                                        {topicDetail?.expectedResults && (
+                                            <div>
+                                                <h4 className="text-sm font-bold text-primary uppercase tracking-wider mb-3 flex items-center gap-2">
+                                                    <span className="w-1.5 h-6 bg-primary rounded-full" />
+                                                    Kết quả dự kiến
+                                                </h4>
+                                                <p className="text-[#101319] text-sm leading-relaxed whitespace-pre-wrap pl-3.5">
+                                                    {topicDetail.expectedResults}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Fallback if no detail content */}
+                                        {!topicDetail?.description && !topicDetail?.objectives && !topicDetail?.scope && !topicDetail?.expectedResults && (
+                                            <div className="flex flex-col items-center justify-center py-8 text-center">
+                                                <span className="material-symbols-outlined text-3xl text-[#58698d] mb-2">info</span>
+                                                <p className="text-[#58698d] text-sm">Chưa có thông tin mô tả cho đề tài này.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </motion.div>
+
+                            {/* Right Column - Files */}
+                            <motion.div variants={item} className="lg:col-span-1 space-y-6">
+                                <div className="bg-white rounded-xl border border-[#e9ecf1] shadow-sm flex flex-col">
+                                    <div className="p-5 border-b border-[#e9ecf1] flex items-center justify-between">
+                                        <h3 className="font-bold text-[#101319] flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-primary">cloud_upload</span>
+                                            Tài liệu đã tải lên
+                                        </h3>
+                                        {documents.length > 0 && (
+                                            <span className="text-xs text-[#58698d] bg-gray-100 px-2 py-0.5 rounded-full">{documents.length} file</span>
+                                        )}
+                                    </div>
+                                    <div className="p-4 flex flex-col gap-3">
+                                        {/* Upload success banner */}
+                                        {uploadSuccess && (
+                                            <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg animate-pulse">
+                                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-500 border-t-transparent shrink-0" />
+                                                <p className="text-xs text-green-700 font-medium">
+                                                    Tải lên thành công! File đang được quét mã độc và sẽ xuất hiện sau vài giây...
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Uploaded documents list */}
+                                        {documents.length > 0 ? (
+                                            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+                                                {documents.map((doc) => {
+                                                    const ext = `.${doc.originalFileName.split('.').pop()?.toLowerCase() ?? ''}`
+                                                    const icon = FILE_ICON_MAP[ext] ?? 'draft'
+                                                    return (
+                                                        <div key={doc.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                                                            <span className="material-symbols-outlined text-primary text-xl shrink-0">{icon}</span>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-xs font-semibold text-[#101319] truncate">{doc.originalFileName}</p>
+                                                                <p className="text-[10px] text-[#58698d]">
+                                                                    {formatFileSize(doc.fileSize)} · {formatDate(doc.uploadedAt)} · {doc.uploadedByName}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center py-6 text-center gap-2">
+                                                <span className="material-symbols-outlined text-3xl text-gray-300">folder_open</span>
+                                                <p className="text-xs text-[#58698d]">Chưa có tài liệu nào được tải lên.</p>
+                                            </div>
+                                        )}
+
+                                        {/* Pending files */}
+                                        {pendingFiles.length > 0 && (
+                                            <div className="flex flex-col gap-1.5 pt-2 border-t border-[#e9ecf1]">
+                                                <p className="text-[10px] font-bold text-[#58698d] uppercase tracking-wider">Đang chờ tải lên</p>
+                                                {pendingFiles.map((file, idx) => {
+                                                    const ext = `.${file.name.split('.').pop()?.toLowerCase() ?? ''}`
+                                                    const icon = FILE_ICON_MAP[ext] ?? 'draft'
+                                                    return (
+                                                        <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-blue-50">
+                                                            <span className="material-symbols-outlined text-primary text-lg shrink-0">{icon}</span>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-xs font-medium text-[#101319] truncate">{file.name}</p>
+                                                                <p className="text-[10px] text-[#58698d]">{formatFileSize(file.size)}</p>
+                                                            </div>
+                                                            <button onClick={() => removePendingFile(idx)} className="text-gray-400 hover:text-red-500 transition-colors shrink-0">
+                                                                <span className="material-symbols-outlined text-lg">close</span>
+                                                            </button>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
+
+                                        {/* File warnings */}
+                                        {fileWarnings.length > 0 && (
+                                            <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+                                                {fileWarnings.map((w, i) => (
+                                                    <p key={i} className="text-[10px] text-amber-700 flex items-start gap-1">
+                                                        <span className="material-symbols-outlined text-xs mt-px shrink-0">warning</span>
+                                                        {w}
+                                                    </p>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Upload drop zone */}
+                                        <label
+                                            className="w-full mt-1 py-4 border-2 border-dashed border-gray-200 rounded-lg flex flex-col items-center justify-center gap-1 hover:border-primary hover:bg-primary/5 transition-all text-[#58698d] hover:text-primary cursor-pointer"
+                                            onDragOver={(e) => { e.preventDefault(); e.stopPropagation() }}
+                                            onDrop={(e) => {
+                                                e.preventDefault(); e.stopPropagation()
+                                                const files = Array.from(e.dataTransfer.files)
+                                                const { accepted, rejected } = validateFiles(pendingFiles, files)
+                                                if (accepted.length > 0) setPendingFiles(prev => [...prev, ...accepted])
+                                                setFileWarnings(rejected)
+                                            }}
+                                        >
+                                            <span className="material-symbols-outlined text-2xl">cloud_upload</span>
+                                            <span className="text-xs font-bold">Kéo thả hoặc nhấn để chọn file</span>
+                                            <span className="text-[10px] text-[#58698d]">
+                                                Tối đa {MAX_ATTACHMENTS} file · {formatFileSize(MAX_FILE_SIZE_BYTES)}/file
+                                            </span>
+                                            <input type="file" className="hidden" multiple accept={ACCEPTED_TYPES.join(',')} onChange={handleFiles} />
+                                        </label>
+
+                                        {/* Upload button */}
+                                        {pendingFiles.length > 0 && (
+                                            <button
+                                                onClick={handleUpload}
+                                                disabled={uploading}
+                                                className="w-full py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                            >
+                                                {uploading ? (
+                                                    <>
+                                                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                                                        Đang tải lên...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span className="material-symbols-outlined text-lg">upload</span>
+                                                        Tải lên {pendingFiles.length} file
+                                                    </>
+                                                )}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Group members */}
+                                {myGroup.members && myGroup.members.length > 0 && (
+                                    <div className="bg-white rounded-xl border border-[#e9ecf1] shadow-sm flex flex-col">
+                                        <div className="p-5 border-b border-[#e9ecf1]">
+                                            <h3 className="font-bold text-[#101319] flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-primary">group</span>
+                                                Thành viên nhóm
+                                            </h3>
+                                        </div>
+                                        <div className="p-4 flex flex-col gap-2">
+                                            {myGroup.members.map((m) => (
+                                                <div key={m.studentId} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                                                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                                                        {m.fullName.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-semibold text-[#101319] truncate">{m.fullName}</p>
+                                                        <p className="text-xs text-[#58698d]">{m.studentCode ?? m.role}</p>
+                                                    </div>
+                                                    {m.role === 'Leader' && (
+                                                        <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full shrink-0">Nhóm trưởng</span>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </motion.div>
-
-                        {/* Right Column - Files */}
-                        <motion.div variants={item} className="lg:col-span-1 space-y-6">
-                            <div className="bg-white rounded-xl border border-[#e9ecf1] shadow-sm flex flex-col">
-                                <div className="p-5 border-b border-[#e9ecf1] flex items-center justify-between">
-                                    <h3 className="font-bold text-[#101319] flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-primary">cloud_upload</span>
-                                        Tài liệu đã tải lên
-                                    </h3>
-                                    <button className="text-xs font-bold text-primary hover:underline">Tất cả</button>
-                                </div>
-                                <div className="p-4 flex flex-col gap-3">
-                                    {files.map((file) => (
-                                        <div key={file.name} className="flex items-center gap-3 p-3 bg-[#f6f7f8] rounded-lg hover:bg-gray-100 transition-colors group cursor-pointer">
-                                            <div className={`p-2 bg-${file.color}-100 text-${file.color}-600 rounded`}>
-                                                <span className="material-symbols-outlined text-xl">
-                                                    {file.type === 'pdf' ? 'description' : file.type === 'doc' ? 'article' : 'image'}
-                                                </span>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-bold text-[#101319] truncate">{file.name}</p>
-                                                <p className="text-[10px] text-[#58698d]">{file.size} • {file.time}</p>
-                                            </div>
-                                            <span className="material-symbols-outlined text-lg text-gray-400 group-hover:text-primary">download</span>
-                                        </div>
-                                    ))}
-                                    <button className="w-full mt-2 py-3 border-2 border-dashed border-gray-200 rounded-lg flex flex-col items-center justify-center gap-1 hover:border-primary hover:bg-primary/5 transition-all text-[#58698d] hover:text-primary">
-                                        <span className="material-symbols-outlined">add_circle</span>
-                                        <span className="text-xs font-bold">Tải lên tài liệu mới</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </div>
-
-                    {/* Footer */}
-                    <footer className="mt-12 pt-6 border-t border-[#e9ecf1] flex flex-col md:flex-row justify-between items-center text-[#58698d] text-sm pb-8">
-                        <p>© 2023 University Thesis Management System.</p>
-                        <div className="flex gap-4 mt-2 md:mt-0">
-                            <a className="hover:text-primary" href="#">Quy định bảo mật</a>
-                            <a className="hover:text-primary" href="#">Điều khoản sử dụng</a>
+                                )}
+                            </motion.div>
                         </div>
-                    </footer>
-                </motion.div>
+
+                        {/* Footer */}
+                        <footer className="mt-12 pt-6 border-t border-[#e9ecf1] flex flex-col md:flex-row justify-between items-center text-[#58698d] text-sm pb-8">
+                            <p>© 2025 University Thesis Management System.</p>
+                            <div className="flex gap-4 mt-2 md:mt-0">
+                                <a className="hover:text-primary" href="#">Quy định bảo mật</a>
+                                <a className="hover:text-primary" href="#">Điều khoản sử dụng</a>
+                            </div>
+                        </footer>
+                    </motion.div>
+                )}
             </div>
         </>
     )
