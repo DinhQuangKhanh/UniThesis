@@ -33,7 +33,7 @@ namespace UniThesis.Infrastructure.EventHandlers.Group
                     $"Yêu cầu tham gia nhóm {notification.GroupCode} của bạn đã được phê duyệt.",
                     NotificationType.Success,
                     NotificationCategory.Group,
-                    "/student/group-detail",
+                    "/student/groups",
                     cancellationToken);
             }
             catch (Exception ex)

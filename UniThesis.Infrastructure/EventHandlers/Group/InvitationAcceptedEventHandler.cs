@@ -40,7 +40,7 @@ namespace UniThesis.Infrastructure.EventHandlers.Group
                     $"{studentName} đã chấp nhận lời mời tham gia nhóm {notification.GroupCode}.",
                     NotificationType.Success,
                     NotificationCategory.Group,
-                    "/student/group-detail",
+                    "/student/groups",
                     cancellationToken);
             }
             catch (Exception ex)

@@ -61,7 +61,7 @@ namespace UniThesis.Infrastructure.EventHandlers.Group
                     "Bạn đã bị xóa khỏi nhóm đồ án. Vui lòng liên hệ nhóm trưởng để biết thêm chi tiết.",
                     NotificationType.Warning,
                     NotificationCategory.Group,
-                    "/groups",
+                    "/student/groups",
                     cancellationToken);
             }
             catch (Exception ex)

@@ -43,7 +43,7 @@ namespace UniThesis.Infrastructure.EventHandlers.Group
                     $"{studentName} vừa gửi yêu cầu tham gia nhóm {notification.GroupCode}. Vui lòng phản hồi trong vòng 1 giờ.",
                     NotificationType.Info,
                     NotificationCategory.Group,
-                    "/student/group-detail",
+                    "/student/groups",
                     cancellationToken);
             }
             catch (Exception ex)
