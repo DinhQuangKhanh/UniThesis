@@ -9,6 +9,7 @@ const navItems = [
     { label: 'Dashboard', icon: 'dashboard', path: '/mentor' },
     { label: 'Nhóm của tôi', icon: 'groups', path: '/mentor/groups' },
     { label: 'Danh sách đề tài', icon: 'folder_open', path: '/mentor/topics' },
+    { label: 'Kho đề tài', icon: 'inventory_2', path: '/mentor/topic-pools' },
     { label: 'Lịch trình', icon: 'calendar_month', path: '/mentor/schedule' },
 ]
 
