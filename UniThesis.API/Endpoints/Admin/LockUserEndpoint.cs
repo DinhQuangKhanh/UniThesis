@@ -1,5 +1,7 @@
 using MediatR;
+using UniThesis.API.Extensions;
 using UniThesis.Application.Features.Users.Commands.LockUser;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Admin;
 
@@ -13,7 +15,7 @@ public class LockUserEndpoint : IEndpoint
                 CancellationToken cancellationToken) =>
             {
                 await sender.Send(new LockUserCommand(userId), cancellationToken);
-                return Results.NoContent();
+                return NoContent("Khóa thành công.");
             })
             .RequireAuthorization("RequireAdmin")
             .WithTags("Admin")

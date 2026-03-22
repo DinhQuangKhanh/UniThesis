@@ -1,5 +1,8 @@
 using MediatR;
+using UniThesis.API.Extensions;
+using UniThesis.API.Endpoints.DepartmentHead.Requests;
 using UniThesis.Application.Features.Departments.Commands.AssignEvaluator;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.DepartmentHead;
 
@@ -18,7 +21,7 @@ public class AssignEvaluatorEndpoint : IEndpoint
                     request.EvaluatorOrder);
 
                 await sender.Send(command, cancellationToken);
-                return Results.NoContent();
+                return NoContent("Gán thẩm pồi thành công.");
             })
             .RequireAuthorization("RequireDepartmentHead")
             .WithTags("DepartmentHead")
@@ -30,8 +33,3 @@ public class AssignEvaluatorEndpoint : IEndpoint
             .Produces(404);
     }
 }
-
-/// <summary>
-/// Request body for assigning an evaluator to a project.
-/// </summary>
-public record AssignEvaluatorRequest(Guid ProjectId, Guid EvaluatorId, int EvaluatorOrder);

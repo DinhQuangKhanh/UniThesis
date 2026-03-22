@@ -1,4 +1,6 @@
+using UniThesis.API.Extensions;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Admin;
 
@@ -47,7 +49,7 @@ public class GetUserActivityLogsEndpoint : IEndpoint
             TotalPages = (int)Math.Ceiling((double)totalCount / pageSize),
           };
 
-          return Results.Ok(result);
+          return Ok(result);
         })
         .RequireAuthorization()
         .WithTags("Admin")

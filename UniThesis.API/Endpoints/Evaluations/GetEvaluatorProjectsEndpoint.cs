@@ -1,7 +1,9 @@
 using MediatR;
+using UniThesis.API.Extensions;
 using UniThesis.Application.Common;
 using UniThesis.Application.Features.Evaluations.DTOs;
 using UniThesis.Application.Features.Evaluations.Queries.GetEvaluatorProjects;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Evaluations;
 
@@ -24,7 +26,7 @@ public class GetEvaluatorProjectsEndpoint : IEndpoint
                 {
                     var query = new GetEvaluatorProjectsQuery(page, pageSize, search, semesterId, majorId, result);
                     var dto = await sender.Send(query, cancellationToken);
-                    return Results.Ok(ApiResponse.Ok(dto));
+                    return Ok(dto);
                 }
                 catch (UnauthorizedAccessException)
                 {

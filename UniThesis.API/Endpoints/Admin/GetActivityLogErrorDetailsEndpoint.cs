@@ -1,4 +1,6 @@
+using UniThesis.API.Extensions;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Admin;
 
@@ -17,7 +19,7 @@ public class GetActivityLogErrorDetailsEndpoint : IEndpoint
                 var errors = await repository.GetErrorDetailsAsync(
                     userId, action, from, to, cancellationToken);
 
-                return Results.Ok(new
+                return Ok(new
                 {
                     Errors = errors.Select(e => new
                     {

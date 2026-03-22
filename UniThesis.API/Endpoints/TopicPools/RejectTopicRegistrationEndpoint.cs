@@ -1,5 +1,7 @@
 using MediatR;
+using UniThesis.API.Extensions;
 using UniThesis.Application.Features.TopicPools.Commands.RejectRegistration;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.TopicPools;
 
@@ -20,7 +22,7 @@ public class RejectTopicRegistrationEndpoint : IEndpoint
                 CancellationToken cancellationToken) =>
             {
                 await sender.Send(new RejectTopicRegistrationCommand(id, body.Reason), cancellationToken);
-                return Results.NoContent();
+                return NoContent("Từ chối yêu cầu thành công.");
             })
             .RequireAuthorization()
             .WithTags("TopicPools")

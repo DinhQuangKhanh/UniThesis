@@ -11,6 +11,7 @@ namespace UniThesis.Domain.Aggregates.SemesterAggregate
     public class Semester : AggregateRoot<int>
     {
         private readonly List<SemesterPhase> _phases = [];
+        private readonly List<EligibleStudent> _eligibleStudents = [];
 
         public string Name { get; private set; } = string.Empty;
         public SemesterCode Code { get; private set; } = null!;
@@ -32,6 +33,7 @@ namespace UniThesis.Domain.Aggregates.SemesterAggregate
         public DateTime? UpdatedAt { get; private set; }
 
         public IReadOnlyCollection<SemesterPhase> Phases => _phases.AsReadOnly();
+        public IReadOnlyCollection<EligibleStudent> EligibleStudents => _eligibleStudents.AsReadOnly();
         public SemesterPhase? CurrentPhase => _phases.FirstOrDefault(p => p.IsCurrent);
         public bool IsActive => Status == SemesterStatus.Ongoing;
 
@@ -96,6 +98,15 @@ namespace UniThesis.Domain.Aggregates.SemesterAggregate
             RaiseDomainEvent(new PhaseCompletedEvent(Id, phaseId, phase.Type));
         }
 
+        public void NotifyUpcomingPhase(int phaseId)
+        {
+            var phase = _phases.FirstOrDefault(p => p.Id == phaseId)
+                ?? throw new EntityNotFoundException(nameof(SemesterPhase), phaseId);
+                
+            RaiseDomainEvent(new PhaseUpcomingEvent(Id, phaseId, phase.Type));
+        }
+
+
         public void UpdateDates(DateTime startDate, DateTime endDate)
         {
             EnsureUpcoming();
@@ -122,6 +133,24 @@ namespace UniThesis.Domain.Aggregates.SemesterAggregate
             var phase = _phases.FirstOrDefault(p => p.Id == phaseId)
                 ?? throw new EntityNotFoundException(nameof(SemesterPhase), phaseId);
             phase.UpdateDates(startDate, endDate);
+            UpdatedAt = DateTime.UtcNow;
+        }
+
+        public void AddEligibleStudent(Guid studentId, string studentCode, Guid? importedBy = null)
+        {
+            if (_eligibleStudents.Any(s => s.StudentId == studentId && s.IsEligible))
+                return;
+
+            var existing = _eligibleStudents.FirstOrDefault(s => s.StudentId == studentId);
+            if (existing != null)
+            {
+                existing.ReinstateEligibility();
+            }
+            else
+            {
+                var eligibleStudent = EligibleStudent.Create(Id, studentId, studentCode, importedBy);
+                _eligibleStudents.Add(eligibleStudent);
+            }
             UpdatedAt = DateTime.UtcNow;
         }
 

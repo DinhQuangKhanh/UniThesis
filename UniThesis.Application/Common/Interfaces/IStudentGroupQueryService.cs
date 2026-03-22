@@ -16,4 +16,35 @@ public interface IStudentGroupQueryService
         Guid mentorId,
         int? semesterId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the group that a student belongs to in a specific semester.
+    /// If semesterId is null, uses the currently active semester.
+    /// </summary>
+    Task<StudentGroupDto?> GetStudentGroupAsync(
+        Guid studentId,
+        int? semesterId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all open groups (active, not full, accepting requests) in a semester.
+    /// If semesterId is null, uses the currently active semester.
+    /// </summary>
+    Task<List<OpenGroupDto>> GetOpenGroupsAsync(
+        int? semesterId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets pending invitations for a student.
+    /// </summary>
+    Task<List<InvitationDto>> GetStudentInvitationsAsync(
+        Guid studentId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets pending join requests for a group.
+    /// </summary>
+    Task<List<JoinRequestDto>> GetGroupJoinRequestsAsync(
+        Guid groupId,
+        CancellationToken cancellationToken = default);
 }

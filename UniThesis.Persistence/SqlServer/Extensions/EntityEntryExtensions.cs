@@ -1,5 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Domain.Common.Primitives;
 
 namespace UniThesis.Persistence.SqlServer.Extensions
@@ -99,8 +100,8 @@ namespace UniThesis.Persistence.SqlServer.Extensions
         public static IEnumerable<object> GetDomainEvents(this ChangeTracker changeTracker)
         {
             var aggregateRoots = changeTracker.Entries()
-                .Where(e => e.Entity is AggregateRoot<Guid>)
-                .Select(e => e.Entity as AggregateRoot<Guid>)
+                .Where(e => e.Entity is IHasDomainEvents)
+                .Select(e => e.Entity as IHasDomainEvents)
                 .Where(ar => ar != null && ar.DomainEvents.Any())
                 .ToList();
 
@@ -113,8 +114,8 @@ namespace UniThesis.Persistence.SqlServer.Extensions
         public static void ClearDomainEvents(this ChangeTracker changeTracker)
         {
             var aggregateRoots = changeTracker.Entries()
-                .Where(e => e.Entity is AggregateRoot<Guid>)
-                .Select(e => e.Entity as AggregateRoot<Guid>)
+                .Where(e => e.Entity is IHasDomainEvents)
+                .Select(e => e.Entity as IHasDomainEvents)
                 .Where(ar => ar != null)
                 .ToList();
 

@@ -1,4 +1,6 @@
+using UniThesis.API.Extensions;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Admin;
 
@@ -15,7 +17,7 @@ public class GetErrorLogDetailEndpoint : IEndpoint
                 if (errorLog is null)
                     return Results.NotFound();
 
-                return Results.Ok(new
+                return Ok(new
                 {
                     errorLog.Id,
                     UserId = errorLog.UserId?.ToString(),

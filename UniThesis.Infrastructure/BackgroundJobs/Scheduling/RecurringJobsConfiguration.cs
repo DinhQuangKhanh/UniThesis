@@ -1,4 +1,4 @@
-﻿using Hangfire;
+using Hangfire;
 using UniThesis.Infrastructure.BackgroundJobs.Jobs;
 
 namespace UniThesis.Infrastructure.BackgroundJobs.Scheduling
@@ -22,7 +22,7 @@ namespace UniThesis.Infrastructure.BackgroundJobs.Scheduling
             // Semester phase transition - daily at midnight
             RecurringJob.AddOrUpdate<SemesterPhaseTransitionJob>(
                 "semester-phase-transition",
-                job => job.ExecuteAsync(),
+                job => job.ExecuteAsync(CancellationToken.None),
                 Cron.Daily());
 
             // Defense schedule reminders - daily at 8 AM

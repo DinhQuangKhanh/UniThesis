@@ -1,10 +1,10 @@
-﻿using UniThesis.Domain.Common.Exceptions;
+using UniThesis.Domain.Common.Exceptions;
 using UniThesis.Domain.Common.Interfaces;
 using UniThesis.Domain.Common.Rules;
 
 namespace UniThesis.Domain.Common.Primitives
 {
-    public abstract class AggregateRoot<TId> : Entity<TId>
+    public abstract class AggregateRoot<TId> : Entity<TId>, IHasDomainEvents
     where TId : notnull
     {
         private readonly List<IDomainEvent> _domainEvents = [];

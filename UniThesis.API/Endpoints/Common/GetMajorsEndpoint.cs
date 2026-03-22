@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using UniThesis.API.Extensions;
 using UniThesis.Persistence.SqlServer;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Common;
 
@@ -18,7 +20,7 @@ public class GetMajorsEndpoint : IEndpoint
                     .Select(m => new { m.Id, m.Name, m.Code })
                     .ToListAsync(cancellationToken);
 
-                return Results.Ok(majors);
+                return Ok(majors);
             })
             .RequireAuthorization()
             .WithTags("Common")

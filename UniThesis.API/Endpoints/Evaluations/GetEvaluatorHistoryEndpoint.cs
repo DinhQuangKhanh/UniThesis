@@ -1,7 +1,9 @@
 using MediatR;
+using UniThesis.API.Extensions;
 using UniThesis.Application.Common;
 using UniThesis.Application.Features.Evaluations.DTOs;
 using UniThesis.Application.Features.Evaluations.Queries.GetEvaluatorHistory;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Evaluations;
 
@@ -23,7 +25,7 @@ public class GetEvaluatorHistoryEndpoint : IEndpoint
                 {
                     var query = new GetEvaluatorHistoryQuery(page, pageSize, search, result, dateRange);
                     var dto = await sender.Send(query, cancellationToken);
-                    return Results.Ok(ApiResponse.Ok(dto));
+                    return Ok(dto);
                 }
                 catch (UnauthorizedAccessException)
                 {
