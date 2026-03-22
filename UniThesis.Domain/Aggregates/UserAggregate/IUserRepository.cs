@@ -51,6 +51,11 @@ namespace UniThesis.Domain.Aggregates.UserAggregate
         Task<bool> ExistsByFirebaseUidAsync(string firebaseUid, CancellationToken ct = default);
 
         /// <summary>
+        /// Gets a user by their student code.
+        /// </summary>
+        Task<User?> GetByStudentCodeAsync(string studentCode, CancellationToken ct = default);
+
+        /// <summary>
         /// Gets a paginated list of users, optionally filtered by role and search term.
         /// Search matches against FullName, Email, StudentCode, and EmployeeCode.
         /// </summary>

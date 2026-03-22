@@ -84,6 +84,8 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
 
         Task<List<Project>> GetExpirablePoolTopicsAsync(int currentSemesterId, CancellationToken cancellationToken = default);
 
+        Task<List<Project>> GetPoolTopicsMissingExpirationAsync(CancellationToken cancellationToken = default);
+
         Task<List<Guid>> GetAvailableApprovedPoolTopicIdsAsync(Guid topicPoolId, CancellationToken cancellationToken = default);
 
         Task<List<Project>> GetExpiringPoolTopicsWithMentorsAsync(int currentSemesterId, CancellationToken cancellationToken = default);
