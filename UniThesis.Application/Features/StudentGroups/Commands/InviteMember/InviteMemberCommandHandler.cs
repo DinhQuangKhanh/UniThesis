@@ -1,11 +1,9 @@
 using UniThesis.Application.Common.Abstractions;
-using UniThesis.Application.Common.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using UniThesis.Domain.Aggregates.GroupAggregate;
 using UniThesis.Domain.Aggregates.UserAggregate;
 using UniThesis.Domain.Common.Exceptions;
 using UniThesis.Domain.Common.Interfaces;
-using UniThesis.Domain.Enums.Notification;
 using ICurrentUserService = UniThesis.Application.Common.Interfaces.ICurrentUserService;
 
 namespace UniThesis.Application.Features.StudentGroups.Commands.InviteMember;
@@ -16,20 +14,17 @@ public class InviteMemberCommandHandler : ICommandHandler<InviteMemberCommand, i
     private readonly IUserRepository _userRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
-    private readonly INotificationService _notificationService;
 
     public InviteMemberCommandHandler(
         IGroupRepository groupRepository,
         IUserRepository userRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUserService currentUser,
-        INotificationService notificationService)
+        ICurrentUserService currentUser)
     {
         _groupRepository = groupRepository;
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
-        _notificationService = notificationService;
     }
 
     public async Task<int> Handle(InviteMemberCommand request, CancellationToken cancellationToken)
@@ -59,16 +54,6 @@ public class InviteMemberCommandHandler : ICommandHandler<InviteMemberCommand, i
         {
             throw new BusinessRuleValidationException("Sinh viên này đã có lời mời tham gia nhóm đang chờ xử lý.");
         }
-
-        var inviterDisplayName = _currentUser.FullName ?? _currentUser.Email ?? "Một sinh viên";
-        await _notificationService.SendAsync(
-            invitee.Id,
-            "Bạn nhận được lời mời tham gia nhóm",
-            $"{inviterDisplayName} đã mời bạn tham gia nhóm {group.Code.Value}. Vui lòng phản hồi trước khi lời mời hết hạn.",
-            NotificationType.Info,
-            NotificationCategory.Group,
-            "/student/invitations",
-            cancellationToken);
 
         return invitation.Id;
     }

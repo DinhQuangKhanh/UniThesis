@@ -3,9 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using UniThesis.Domain.Aggregates.GroupAggregate;
 using UniThesis.Domain.Common.Exceptions;
 using UniThesis.Domain.Common.Interfaces;
-using UniThesis.Domain.Enums.Notification;
 using ICurrentUserService = UniThesis.Application.Common.Interfaces.ICurrentUserService;
-using UniThesis.Application.Common.Interfaces;
 
 namespace UniThesis.Application.Features.StudentGroups.Commands.RequestJoin;
 
@@ -14,18 +12,15 @@ public class RequestJoinCommandHandler : ICommandHandler<RequestJoinCommand, int
     private readonly IGroupRepository _groupRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
-    private readonly INotificationService _notificationService;
 
     public RequestJoinCommandHandler(
         IGroupRepository groupRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUserService currentUser,
-        INotificationService notificationService)
+        ICurrentUserService currentUser)
     {
         _groupRepository = groupRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
-        _notificationService = notificationService;
     }
 
     public async Task<int> Handle(RequestJoinCommand request, CancellationToken cancellationToken)
@@ -54,19 +49,6 @@ public class RequestJoinCommandHandler : ICommandHandler<RequestJoinCommand, int
         catch (DbUpdateException ex) when (IsPendingJoinRequestUniqueViolation(ex))
         {
             throw new BusinessRuleValidationException("Bạn đã có một yêu cầu tham gia nhóm đang chờ xử lý.");
-        }
-
-        if (group.LeaderId.HasValue)
-        {
-            var studentDisplayName = _currentUser.FullName ?? _currentUser.Email ?? "Một sinh viên";
-            await _notificationService.SendAsync(
-                group.LeaderId.Value,
-                "Có yêu cầu tham gia nhóm mới",
-                $"{studentDisplayName} vừa gửi yêu cầu tham gia nhóm {group.Code.Value}. Vui lòng phản hồi trong vòng 1 giờ.",
-                NotificationType.Info,
-                NotificationCategory.Group,
-                $"/student/group-detail",
-                cancellationToken);
         }
 
         return joinRequest.Id;
