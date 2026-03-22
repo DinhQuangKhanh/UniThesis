@@ -42,19 +42,27 @@ namespace UniThesis.Persistence.SqlServer.Interceptors
         {
             if (context is null) return;
 
-            // Collect aggregates with pending events — snapshot the events before clearing
-            var aggregateRoots = context.ChangeTracker
+            // Collect aggregates with pending events (both Guid and int keyed)
+            var guidRoots = context.ChangeTracker
                 .Entries<AggregateRoot<Guid>>()
                 .Select(e => e.Entity)
                 .Where(ar => ar.DomainEvents.Count > 0)
                 .ToList();
 
-            // Snapshot all events, then clear immediately to prevent re-dispatch
-            var domainEvents = aggregateRoots
-                .SelectMany(ar => ar.DomainEvents)
+            var intRoots = context.ChangeTracker
+                .Entries<AggregateRoot<int>>()
+                .Select(e => e.Entity)
+                .Where(ar => ar.DomainEvents.Count > 0)
                 .ToList();
 
-            foreach (var ar in aggregateRoots)
+            // Snapshot all events, then clear immediately to prevent re-dispatch
+            var domainEvents = guidRoots.SelectMany(ar => ar.DomainEvents)
+                .Concat(intRoots.SelectMany(ar => ar.DomainEvents))
+                .ToList();
+
+            foreach (var ar in guidRoots)
+                ar.ClearDomainEvents();
+            foreach (var ar in intRoots)
                 ar.ClearDomainEvents();
 
             // Publish each event — handlers may trigger additional SaveChanges
