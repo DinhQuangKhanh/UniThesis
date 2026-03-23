@@ -2,7 +2,8 @@ import { apiClient } from "./apiClient";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export interface PoolTopicItem {
+/** A single thesis topic available in the pool for student browsing. */
+export interface TopicInPoolItem {
   id: string;
   code: string;
   nameVi: string;
@@ -20,7 +21,8 @@ export interface PoolTopicItem {
   createdAt: string;
 }
 
-export interface PoolTopicDetail {
+/** Full detail of a thesis topic — works for all source types (pool or direct registration). */
+export interface TopicDetail {
   id: string;
   code: string;
   nameVi: string;
@@ -47,15 +49,15 @@ export interface MentorSummary {
   fullName: string;
 }
 
-export interface PoolTopicsResponse {
-  items: PoolTopicItem[];
+export interface TopicsInPoolResponse {
+  items: TopicInPoolItem[];
   totalCount: number;
   page: number;
   pageSize: number;
   totalPages: number;
 }
 
-export interface PoolTopicFilters {
+export interface TopicFilters {
   majorId?: number;
   search?: string;
   poolStatus?: number;
@@ -70,43 +72,63 @@ export interface MajorOption {
   code: string;
 }
 
+export interface TopicDocument {
+  id: string;
+  fileName: string;
+  originalFileName: string;
+  fileType: string;
+  fileSize: number;
+  documentType: string;
+  description: string | null;
+  uploadedAt: string;
+  uploadedByName: string;
+}
+
 // ── Service ──────────────────────────────────────────────────────────────────
 
 export const topicPoolService = {
-  getTopics: (filters: PoolTopicFilters = {}): Promise<PoolTopicsResponse> => {
+  /** Get paginated list of topics available in pool for student browsing. */
+  getTopics: (filters: TopicFilters = {}): Promise<TopicsInPoolResponse> => {
     const params = buildParams(filters);
-    return apiClient.get<PoolTopicsResponse>(
-      `/api/topic-pools/topics?${params.toString()}`
-    );
+    return apiClient.get<TopicsInPoolResponse>(`/api/topics?${params.toString()}`);
   },
 
-  getTopicDetail: (projectId: string): Promise<PoolTopicDetail> => {
-    return apiClient.get<PoolTopicDetail>(
-      `/api/topic-pools/topics/${projectId}`
-    );
+  /** Get full detail of a topic by ID. Works for FromPool and DirectRegistration. */
+  getTopicDetail: (topicId: string): Promise<TopicDetail> => {
+    return apiClient.get<TopicDetail>(`/api/topics/${topicId}`);
   },
 
   getMajors: (): Promise<MajorOption[]> => {
     return apiClient.get<MajorOption[]>("/api/majors");
   },
 
-  registerTopic: (body: {
-    projectId: string;
-    groupId: string;
-    note?: string;
-  }) => {
-    return apiClient.post("/api/topic-pools/registrations", body);
+  registerTopic: (params: { projectId: string; groupId: string; note?: string }) => {
+    return apiClient.post(`/api/student-groups/${params.groupId}/topic-registrations`, {
+      projectId: params.projectId,
+      note: params.note,
+    });
+  },
+
+  /** Get documents attached to a topic. */
+  getTopicDocuments: (topicId: string): Promise<TopicDocument[]> => {
+    return apiClient.get<TopicDocument[]>(`/api/topics/${topicId}/documents`);
+  },
+
+  /** Upload documents to a topic. Returns queued count for malware scanning. */
+  uploadTopicDocuments: (topicId: string, files: File[]): Promise<{ queuedCount: number }> => {
+    const formData = new FormData();
+    files.forEach((f) => formData.append("attachments", f));
+    return apiClient.postForm<{ queuedCount: number }>(`/api/topics/${topicId}/documents`, formData);
   },
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function buildParams(filters: PoolTopicFilters): URLSearchParams {
+function buildParams(filters: TopicFilters): URLSearchParams {
   const params = new URLSearchParams();
   if (filters.majorId != null) params.set("majorId", String(filters.majorId));
   if (filters.search) params.set("search", filters.search);
-  if (filters.poolStatus != null)
-    params.set("poolStatus", String(filters.poolStatus));
+  if (filters.poolStatus != null) params.set("poolStatus", String(filters.poolStatus));
   if (filters.sortBy) params.set("sortBy", filters.sortBy);
   params.set("page", String(filters.page ?? 1));
   params.set("pageSize", String(filters.pageSize ?? 12));

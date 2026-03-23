@@ -10,13 +10,15 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate.Entities
         public string? Message { get; private set; }
         public GroupJoinRequestStatus Status { get; private set; }
         public DateTime CreatedAt { get; private set; }
+        public DateTime ExpiresAt { get; private set; }
         public DateTime? RespondedAt { get; private set; }
 
         public bool IsPending => Status == GroupJoinRequestStatus.Pending;
+        public bool IsExpired => Status == GroupJoinRequestStatus.Pending && DateTime.UtcNow > ExpiresAt;
 
         private GroupJoinRequest() { }
 
-        internal static GroupJoinRequest Create(Guid groupId, Guid studentId, string? message = null)
+        internal static GroupJoinRequest Create(Guid groupId, Guid studentId, string? message = null, int expirationHours = 1)
         {
             return new GroupJoinRequest
             {
@@ -24,7 +26,8 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate.Entities
                 StudentId = studentId,
                 Message = message,
                 Status = GroupJoinRequestStatus.Pending,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddHours(expirationHours)
             };
         }
 

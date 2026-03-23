@@ -8,6 +8,7 @@ using UniThesis.Application.Features.StudentGroups.Commands.RespondJoinRequest;
 using UniThesis.Application.Features.StudentGroups.DTOs;
 using UniThesis.Application.Features.StudentGroups.Queries.GetGroupJoinRequests;
 using UniThesis.Application.Features.StudentGroups.Queries.GetMyInvitations;
+using UniThesis.Application.Features.StudentGroups.Queries.GetMyPendingJoinRequest;
 using UniThesis.Application.Features.StudentGroups.Queries.GetOpenGroups;
 using UniThesis.Application.Features.StudentGroups.Queries.GetStudentGroup;
 using UniThesis.API.Endpoints.StudentGroups.Requests;
@@ -64,6 +65,20 @@ public class StudentGroupEndpoints : IEndpoint
             .WithName("GetMyInvitations")
             .WithTags("StudentGroups")
             .Produces<List<InvitationDto>>()
+            .Produces(401);
+
+        // GET /api/student-groups/my-pending-join-request - Get current student's pending join request in active semester
+        group.MapGet("my-pending-join-request", async (
+                [FromQuery] int? semesterId,
+                ISender sender,
+                CancellationToken ct) =>
+            {
+                var result = await sender.Send(new GetMyPendingJoinRequestQuery(semesterId), ct);
+                return Ok(result);
+            })
+            .WithName("GetMyPendingJoinRequest")
+            .WithTags("StudentGroups")
+            .Produces<PendingJoinRequestDto>()
             .Produces(401);
 
         // GET /api/student-groups/{groupId}/join-requests - Get join requests for a group (leader only)

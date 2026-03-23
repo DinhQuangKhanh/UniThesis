@@ -1,5 +1,4 @@
 using MediatR;
-using System.Linq;
 using UniThesis.Application.Common.Abstractions;
 using UniThesis.Domain.Aggregates.GroupAggregate;
 using UniThesis.Domain.Common.Exceptions;
@@ -27,7 +26,7 @@ public class RespondJoinRequestCommandHandler : ICommandHandler<RespondJoinReque
     public async Task<Unit> Handle(RespondJoinRequestCommand request, CancellationToken cancellationToken)
     {
         var leaderId = _currentUser.UserId
-            ?? throw new UnauthorizedAccessException("User is not authenticated.");
+            ?? throw new UnauthorizedAccessException("Người dùng chưa được xác thực.");
 
         var group = await _groupRepository.GetWithJoinRequestsAsync(request.GroupId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Group), request.GroupId);
@@ -38,12 +37,14 @@ public class RespondJoinRequestCommandHandler : ICommandHandler<RespondJoinReque
                 ?? throw new EntityNotFoundException("GroupJoinRequest", request.RequestId);
 
             if (await _groupRepository.IsStudentInActiveGroupAsync(joinRequest.StudentId, group.SemesterId, cancellationToken))
-                throw new BusinessRuleValidationException("Student is already in an active group this semester.");
+                throw new BusinessRuleValidationException("Sinh viên đã có nhóm hoạt động trong học kỳ này.");
 
             group.ApproveJoinRequest(request.RequestId, leaderId);
         }
         else
+        {
             group.RejectJoinRequest(request.RequestId, leaderId);
+        }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Unit.Value;

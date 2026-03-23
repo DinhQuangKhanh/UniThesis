@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using UniThesis.Domain.Aggregates.ProjectAggregate;
 using UniThesis.Domain.Aggregates.ProjectAggregate.ValueObjects;
+using UniThesis.Domain.Enums.Document;
 using UniThesis.Domain.Enums.Project;
 using UniThesis.Domain.Enums.TopicPool;
 using UniThesis.Domain.Specifications.Projects;
@@ -214,6 +215,42 @@ namespace UniThesis.Persistence.SqlServer.Repositories
                 .Where(spec.Criteria)
                 .Include(p => p.Mentors)
                 .ToListAsync(cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> InsertDocumentAsync(
+            Guid projectId, string fileName, string originalFileName,
+            string fileType, long fileSize, string filePath,
+            DocumentType documentType, Guid uploadedBy,
+            CancellationToken cancellationToken = default)
+        {
+            // Idempotent: skip if a Document with this file path already exists
+            var exists = await _context.Documents
+                .AsNoTracking()
+                .AnyAsync(d => d.FilePath == filePath, cancellationToken);
+
+            if (exists) return true;
+
+            // Direct SQL INSERT bypasses EF's change tracker + interceptors,
+            // avoiding DbUpdateConcurrencyException when parallel scan jobs
+            // hit the same Project aggregate.
+            var now = DateTime.UtcNow;
+            var docId = Guid.NewGuid();
+
+            var rows = await _context.Database.ExecuteSqlAsync(
+                $"""
+                INSERT INTO Documents
+                    (Id, ProjectId, FileName, OriginalFileName, FileType, FileSize,
+                     FilePath, DocumentType, [Version], UploadedBy, UploadedAt, IsDeleted, [Description])
+                VALUES
+                    ({docId}, {projectId}, {fileName}, {originalFileName}, {fileType}, {fileSize},
+                     {filePath}, {(int)documentType}, {"1.0"}, {uploadedBy}, {now}, {false}, {(string?)null});
+
+                UPDATE Projects SET UpdatedAt = {now} WHERE Id = {projectId};
+                """,
+                cancellationToken);
+
+            return rows > 0;
         }
     }
 }

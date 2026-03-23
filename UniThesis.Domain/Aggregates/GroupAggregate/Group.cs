@@ -157,6 +157,7 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
             var invitation = GroupInvitation.Create(Id, inviterId, inviteeId, message);
             _invitations.Add(invitation);
             UpdatedAt = DateTime.UtcNow;
+            RaiseDomainEvent(new MemberInvitedEvent(Id, Code.Value, inviterId, inviteeId));
             return invitation;
         }
 
@@ -177,6 +178,7 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
             CheckRule(new GroupCannotExceedMaxMembersRule(ActiveMemberCount, MaxMembers));
 
             invitation.Accept();
+            RaiseDomainEvent(new InvitationAcceptedEvent(Id, Code.Value, invitation.InviterId, studentId));
             AddMember(studentId);
         }
 
@@ -190,6 +192,7 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
 
             invitation.Reject();
             UpdatedAt = DateTime.UtcNow;
+            RaiseDomainEvent(new InvitationRejectedEvent(Id, Code.Value, invitation.InviterId, studentId));
         }
 
         // ── Join Request Methods ────────────────────────────────────────
@@ -213,6 +216,7 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
             var request = GroupJoinRequest.Create(Id, studentId, message);
             _joinRequests.Add(request);
             UpdatedAt = DateTime.UtcNow;
+            RaiseDomainEvent(new JoinRequestedEvent(Id, Code.Value, studentId, LeaderId));
             return request;
         }
 
@@ -227,9 +231,17 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
             if (!request.IsPending)
                 throw new BusinessRuleValidationException("Join request is no longer pending.");
 
+            if (request.IsExpired)
+            {
+                request.Reject();
+                UpdatedAt = DateTime.UtcNow;
+                throw new BusinessRuleValidationException("Join request has expired.");
+            }
+
             CheckRule(new GroupCannotExceedMaxMembersRule(ActiveMemberCount, MaxMembers));
 
             request.Approve();
+            RaiseDomainEvent(new JoinRequestApprovedEvent(Id, Code.Value, request.StudentId));
             AddMember(request.StudentId);
         }
 
@@ -246,6 +258,7 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
 
             request.Reject();
             UpdatedAt = DateTime.UtcNow;
+            RaiseDomainEvent(new JoinRequestRejectedEvent(Id, Code.Value, request.StudentId));
         }
     }
 }

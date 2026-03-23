@@ -26,14 +26,18 @@ public class RequestJoinCommandHandler : ICommandHandler<RequestJoinCommand, int
     public async Task<int> Handle(RequestJoinCommand request, CancellationToken cancellationToken)
     {
         var studentId = _currentUser.UserId
-            ?? throw new UnauthorizedAccessException("User is not authenticated.");
+            ?? throw new UnauthorizedAccessException("Người dùng chưa được xác thực.");
 
         var group = await _groupRepository.GetWithJoinRequestsAsync(request.GroupId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Group), request.GroupId);
 
         // Check if student is already in an active group this semester
         if (await _groupRepository.IsStudentInActiveGroupAsync(studentId, group.SemesterId, cancellationToken))
-            throw new BusinessRuleValidationException("Student is already in an active group this semester.");
+            throw new BusinessRuleValidationException("Bạn đã có nhóm hoạt động trong học kỳ này.");
+
+        // A student can only keep one pending join request at a time in the same semester.
+        if (await _groupRepository.HasPendingJoinRequestAsync(studentId, group.SemesterId, cancellationToken))
+            throw new BusinessRuleValidationException("Bạn đã có một yêu cầu tham gia nhóm đang chờ xử lý trong học kỳ này.");
 
         // Domain logic validates group status, open for requests, capacity, duplicates
         var joinRequest = group.RequestToJoin(studentId, request.Message);
@@ -44,7 +48,7 @@ public class RequestJoinCommandHandler : ICommandHandler<RequestJoinCommand, int
         }
         catch (DbUpdateException ex) when (IsPendingJoinRequestUniqueViolation(ex))
         {
-            throw new BusinessRuleValidationException("A pending join request already exists for this student.");
+            throw new BusinessRuleValidationException("Bạn đã có một yêu cầu tham gia nhóm đang chờ xử lý.");
         }
 
         return joinRequest.Id;

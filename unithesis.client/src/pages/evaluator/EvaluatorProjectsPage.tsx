@@ -60,7 +60,11 @@ function formatDate(iso: string): string {
 }
 
 function getInitials(name: string): string {
-  return name.split(" ").map((n) => n[0]).join("").slice(-2);
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(-2);
 }
 
 export function EvaluatorProjectsPage() {
@@ -90,7 +94,7 @@ export function EvaluatorProjectsPage() {
   // Helper function để cập nhật URL params
   function updateParams(updates: Record<string, string | number | null>) {
     const newParams = new URLSearchParams(searchParams);
-    
+
     Object.entries(updates).forEach(([key, value]) => {
       if (value === null || value === "") {
         newParams.delete(key);
@@ -131,7 +135,7 @@ export function EvaluatorProjectsPage() {
   }
 
   function handleRowAction(project: EvaluatorProjectItemDto) {
-    navigate(`/evaluator/review/${project.assignmentId}`);
+    navigate(`/evaluator/review/${project.projectId}`);
   }
 
   function handleDownload() {
@@ -243,10 +247,9 @@ export function EvaluatorProjectsPage() {
     return buttons;
   }
 
-  const activeSemesterLabel =
-    semesterId
-      ? filterOptions.semesters.find((s) => String(s.value) === semesterId)?.label
-      : null;
+  const activeSemesterLabel = semesterId
+    ? filterOptions.semesters.find((s) => String(s.value) === semesterId)?.label
+    : null;
 
   return (
     <>
@@ -447,9 +450,7 @@ export function EvaluatorProjectsPage() {
                                   Ưu tiên cao
                                 </span>
                               ) : (
-                                <span className="text-xs text-slate-500 mt-1">
-                                  Chuyên ngành: {project.majorName}
-                                </span>
+                                <span className="text-xs text-slate-500 mt-1">Chuyên ngành: {project.majorName}</span>
                               )}
                             </div>
                           </td>
@@ -465,15 +466,11 @@ export function EvaluatorProjectsPage() {
                                   {project.studentName ? getInitials(project.studentName) : "?"}
                                 </div>
                               )}
-                              <span className="text-slate-900 font-medium text-sm">
-                                {project.studentName || "—"}
-                              </span>
+                              <span className="text-slate-900 font-medium text-sm">{project.studentName || "—"}</span>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-slate-900 font-medium">
-                              {project.mentorName || "—"}
-                            </span>
+                            <span className="text-sm text-slate-900 font-medium">{project.mentorName || "—"}</span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="text-slate-500 text-sm font-medium">

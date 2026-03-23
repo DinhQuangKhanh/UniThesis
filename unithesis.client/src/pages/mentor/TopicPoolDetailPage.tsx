@@ -29,7 +29,7 @@ interface TopicPoolStatisticsDto {
   expiredTopicsCount: number;
 }
 
-interface PoolTopicItemDto {
+interface TopicInPoolItemDto {
   id: string;
   code: string;
   nameVi: string;
@@ -47,8 +47,8 @@ interface PoolTopicItemDto {
   createdAt: string;
 }
 
-interface GetPoolTopicsResult {
-  items: PoolTopicItemDto[];
+interface GetTopicsInPoolResult {
+  items: TopicInPoolItemDto[];
   totalCount: number;
   page: number;
   pageSize: number;
@@ -60,7 +60,7 @@ interface MentorSummaryDto {
   fullName: string;
 }
 
-interface PoolTopicDetailDto {
+interface TopicDetailDto {
   id: string;
   code: string;
   nameVi: string;
@@ -473,13 +473,13 @@ interface TopicDetailModalProps {
 }
 
 function TopicDetailModal({ topicId, onClose }: TopicDetailModalProps) {
-  const [detail, setDetail] = useState<PoolTopicDetailDto | null>(null);
+  const [detail, setDetail] = useState<TopicDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     apiClient
-      .get<PoolTopicDetailDto>(`/api/topic-pools/topics/${topicId}`)
+      .get<TopicDetailDto>(`/api/topics/${topicId}`)
       .then(setDetail)
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
@@ -626,7 +626,7 @@ export function TopicPoolDetailPage() {
 
   const [pool, setPool] = useState<TopicPoolDto | null>(null);
   const [stats, setStats] = useState<TopicPoolStatisticsDto | null>(null);
-  const [topics, setTopics] = useState<PoolTopicItemDto[]>([]);
+  const [topics, setTopics] = useState<TopicInPoolItemDto[]>([]);
   const [topicsMeta, setTopicsMeta] = useState({ totalCount: 0, page: 1, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [topicsLoading, setTopicsLoading] = useState(false);
@@ -673,7 +673,7 @@ export function TopicPoolDetailPage() {
     if (statusFilter) params.set("PoolStatus", statusFilter);
 
     apiClient
-      .get<GetPoolTopicsResult>(`/api/topic-pools/topics?${params}`)
+      .get<GetTopicsInPoolResult>(`/api/topics?${params}`)
       .then((data) => {
         setTopics(data.items);
         setTopicsMeta({ totalCount: data.totalCount, page: data.page, totalPages: data.totalPages });

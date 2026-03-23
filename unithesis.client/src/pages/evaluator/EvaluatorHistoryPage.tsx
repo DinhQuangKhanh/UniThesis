@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { apiClient } from "@/lib/apiClient";
 import { useSystemError } from "@/contexts/SystemErrorContext";
@@ -52,6 +53,7 @@ const RESULT_DISPLAY: Record<string, { label: string; colors: string }> = {
 };
 
 export function EvaluatorHistoryPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [dateRange, setDateRange] = useState("");
   const [result, setResult] = useState("");
@@ -393,7 +395,10 @@ export function EvaluatorHistoryPage() {
                             <p className="text-sm text-slate-500 line-clamp-2 max-w-xs">{histItem.feedback || "—"}</p>
                           </td>
                           <td className="px-6 py-4 text-right whitespace-nowrap">
-                            <button className="inline-flex items-center justify-center h-8 px-4 bg-white border border-gray-200 text-slate-700 text-xs font-bold rounded-lg hover:bg-gray-50 hover:border-primary/50 hover:text-primary transition-all">
+                            <button
+                              onClick={() => navigate(`/evaluator/review/${histItem.projectId}`)}
+                              className="inline-flex items-center justify-center h-8 px-4 bg-white border border-gray-200 text-slate-700 text-xs font-bold rounded-lg hover:bg-gray-50 hover:border-primary/50 hover:text-primary transition-all"
+                            >
                               Chi tiết
                             </button>
                           </td>

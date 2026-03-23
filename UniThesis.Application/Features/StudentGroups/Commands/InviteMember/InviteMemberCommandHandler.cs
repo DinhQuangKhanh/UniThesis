@@ -30,7 +30,7 @@ public class InviteMemberCommandHandler : ICommandHandler<InviteMemberCommand, i
     public async Task<int> Handle(InviteMemberCommand request, CancellationToken cancellationToken)
     {
         var inviterId = _currentUser.UserId
-            ?? throw new UnauthorizedAccessException("User is not authenticated.");
+            ?? throw new UnauthorizedAccessException("Người dùng chưa được xác thực.");
 
         var group = await _groupRepository.GetWithInvitationsAsync(request.GroupId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Group), request.GroupId);
@@ -41,7 +41,7 @@ public class InviteMemberCommandHandler : ICommandHandler<InviteMemberCommand, i
 
         // Check if invitee is already in an active group this semester
         if (await _groupRepository.IsStudentInActiveGroupAsync(invitee.Id, group.SemesterId, cancellationToken))
-            throw new BusinessRuleValidationException("Student is already in an active group this semester.");
+            throw new BusinessRuleValidationException("Sinh viên này đã có nhóm hoạt động trong học kỳ này.");
 
         // Domain logic validates leader, capacity, duplicates
         var invitation = group.InviteMember(inviterId, invitee.Id, request.Message);
@@ -52,7 +52,7 @@ public class InviteMemberCommandHandler : ICommandHandler<InviteMemberCommand, i
         }
         catch (DbUpdateException ex) when (IsPendingInvitationUniqueViolation(ex))
         {
-            throw new BusinessRuleValidationException("A pending invitation already exists for this student.");
+            throw new BusinessRuleValidationException("Sinh viên này đã có lời mời tham gia nhóm đang chờ xử lý.");
         }
 
         return invitation.Id;

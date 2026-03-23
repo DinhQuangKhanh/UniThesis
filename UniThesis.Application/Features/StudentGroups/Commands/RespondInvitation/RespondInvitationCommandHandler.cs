@@ -26,16 +26,19 @@ public class RespondInvitationCommandHandler : ICommandHandler<RespondInvitation
     public async Task<Unit> Handle(RespondInvitationCommand request, CancellationToken cancellationToken)
     {
         var studentId = _currentUser.UserId
-            ?? throw new UnauthorizedAccessException("User is not authenticated.");
+            ?? throw new UnauthorizedAccessException("Người dùng chưa được xác thực.");
 
         var group = await _groupRepository.GetWithInvitationsAsync(request.GroupId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Group), request.GroupId);
+
+        var invitation = group.Invitations.FirstOrDefault(i => i.Id == request.InvitationId)
+            ?? throw new EntityNotFoundException("GroupInvitation", request.InvitationId);
 
         if (request.Accept)
         {
             // Check if student is already in another active group
             if (await _groupRepository.IsStudentInActiveGroupAsync(studentId, group.SemesterId, cancellationToken))
-                throw new BusinessRuleValidationException("Student is already in an active group this semester.");
+                throw new BusinessRuleValidationException("Bạn đã có nhóm hoạt động trong học kỳ này.");
 
             group.AcceptInvitation(request.InvitationId, studentId);
         }

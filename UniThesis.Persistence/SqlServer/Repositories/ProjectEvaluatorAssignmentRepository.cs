@@ -35,5 +35,12 @@ namespace UniThesis.Persistence.SqlServer.Repositories
                 .OrderBy(a => a.EvaluatorOrder)
                 .ToListAsync(cancellationToken);
         }
+
+        public async Task<ProjectEvaluatorAssignment?> GetActiveByProjectAndEvaluatorAsync(Guid projectId, Guid evaluatorId, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .FirstOrDefaultAsync(a => a.ProjectId == projectId && a.EvaluatorId == evaluatorId && a.IsActive, cancellationToken);
+        }
+
     }
 }

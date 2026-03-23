@@ -1,4 +1,5 @@
 using UniThesis.Application.Common.Abstractions;
+using UniThesis.Application.Common.Attributes;
 
 namespace UniThesis.Application.Features.Semesters.Commands.UpdateSemester;
 
@@ -6,6 +7,7 @@ namespace UniThesis.Application.Features.Semesters.Commands.UpdateSemester;
 /// Command to update an existing semester's details and phase dates.
 /// Only allowed when the semester status is Upcoming.
 /// </summary>
+[ActionLog("Update Semester", "Semester")]
 public record UpdateSemesterCommand(
     int Id,
     string Name,
@@ -13,7 +15,11 @@ public record UpdateSemesterCommand(
     DateTime EndDate,
     string? Description,
     List<UpdatePhaseDto>? Phases
-) : ICommand;
+) : ICacheInvalidatingCommand
+{
+    public IReadOnlyCollection<string> CachePrefixesToInvalidate =>
+        ["semesters:", "admin:dashboard", "evaluator:filter-options"];
+}
 
 /// <summary>
 /// DTO for updating phase dates within a semester.

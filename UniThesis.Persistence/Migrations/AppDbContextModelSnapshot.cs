@@ -303,6 +303,10 @@ namespace UniThesis.Persistence.Migrations
 
                     b.HasIndex("InviterId");
 
+                    b.HasIndex("GroupId", "InviteeId")
+                        .IsUnique()
+                        .HasFilter("[Status] = 0");
+
                     b.HasIndex("GroupId", "InviteeId", "Status");
 
                     b.ToTable("GroupInvitations", (string)null);
@@ -317,6 +321,9 @@ namespace UniThesis.Persistence.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("datetime2");
 
                     b.Property<Guid>("GroupId")
@@ -340,6 +347,12 @@ namespace UniThesis.Persistence.Migrations
                     b.HasIndex("GroupId");
 
                     b.HasIndex("StudentId");
+
+                    b.HasIndex("GroupId", "StudentId")
+                        .IsUnique()
+                        .HasFilter("[Status] = 0");
+
+                    b.HasIndex("Status", "ExpiresAt");
 
                     b.HasIndex("GroupId", "StudentId", "Status");
 

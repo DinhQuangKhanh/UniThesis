@@ -10,18 +10,22 @@ namespace UniThesis.Persistence.Seeds;
 /// proper FK relationships throughout.
 /// <para>Distribution:</para>
 /// <list type="bullet">
-///   <item>1000 Admins (role: Admin)</item>
-///   <item>1000 Lecturers with dual roles (roles: Mentor + Evaluator)</item>
-///   <item>1000 Students (role: Student)</item>
+///   <item>250 Admins (role: Admin)</item>
+///   <item>250 Lecturers with dual roles (roles: Mentor + Evaluator)</item>
+///   <item>360 Students (role: Student)</item>
 /// </list>
 /// Uses raw SQL to bypass domain validation. Idempotent.
 /// </summary>
 public static class LoadTestDataSeeder
 {
     // ────────────────── Distribution ──────────────────
-    private const int AdminCount = 1000;
-    private const int DualRoleCount = 1000;
-    private const int StudentCount = 1000;
+    public const int SeededAdminCount = 250;
+    public const int SeededDualRoleCount = 250;
+    public const int SeededStudentCount = 360;
+
+    private const int AdminCount = SeededAdminCount;
+    private const int DualRoleCount = SeededDualRoleCount;
+    private const int StudentCount = SeededStudentCount;
     private const int StudentsPerGroup = 4;
 
     // Semester IDs (assigned, not auto-generated)
@@ -69,7 +73,8 @@ public static class LoadTestDataSeeder
 
     // Rejected project count for Spring 2026
     private const int RejectedProjectCount = 10;
-    private const int SupportTicketCount = 50;
+    private const int SupportTicketCount = 12;
+    private const int TopicPoolProjectsPerMajor = 25;
 
     public static string AdminFirebaseUid(int i) => $"test-admin-{i:D4}";
     public static string DualRoleFirebaseUid(int i) => $"test-lecturer-{i:D4}";
@@ -328,7 +333,7 @@ public static class LoadTestDataSeeder
     }
 
     // ════════════════════════════════════════════════
-    //  TOPIC POOL PROJECTS (~100 per major = 800 total)
+    //  TOPIC POOL PROJECTS (~25 per major = 200 total)
     //  SourceType=FromPool, no GroupId
     // ════════════════════════════════════════════════
     private static async Task SeedTopicPoolProjectsAsync(AppDbContext context, ILogger? logger)
@@ -341,7 +346,12 @@ public static class LoadTestDataSeeder
             var majorCode = MajorCodes[m];
             var poolId = TopicPoolId(m);
             var topicNames = GetGeneratedTopicNames(m);
-            var topicsPerMajor = topicNames.Length; // 100
+            var topicsPerMajor = Math.Min(topicNames.Length, TopicPoolProjectsPerMajor);
+            var availableCount = (int)Math.Floor(topicsPerMajor * 0.6);
+            var expiredCount = (int)Math.Floor(topicsPerMajor * 0.2);
+            var reservedCount = (int)Math.Floor(topicsPerMajor * 0.1);
+            var reservedStart = availableCount + expiredCount;
+            var assignedStart = reservedStart + reservedCount;
 
             for (var batch = 0; batch < topicsPerMajor; batch += BatchSize)
             {
@@ -355,14 +365,14 @@ public static class LoadTestDataSeeder
                     totalCount++;
                     var (nameEn, nameVi) = topicNames[t];
 
-                    // Distribution: 60 Available, 20 Expired, 10 Reserved, 10 Assigned (but no group for pool-only)
+                    // Distribution: 60% Available, 20% Expired, 10% Reserved, remainder Assigned.
                     string poolStatus;
                     int projectStatus;
                     int? createdInSemester;
                     int? expirationSemester;
                     int semesterId;
 
-                    if (t < 60)
+                    if (t < availableCount)
                     {
                         poolStatus = "Available";
                         projectStatus = 3; // Approved
@@ -370,7 +380,7 @@ public static class LoadTestDataSeeder
                         createdInSemester = Spring2026Id;
                         expirationSemester = null;
                     }
-                    else if (t < 80)
+                    else if (t < reservedStart)
                     {
                         poolStatus = "Expired";
                         projectStatus = 3; // Approved (but expired in pool)
@@ -378,7 +388,7 @@ public static class LoadTestDataSeeder
                         createdInSemester = Fall2025Id;
                         expirationSemester = Spring2026Id;
                     }
-                    else if (t < 90)
+                    else if (t < assignedStart)
                     {
                         poolStatus = "Reserved";
                         projectStatus = 3; // Approved
@@ -639,8 +649,12 @@ public static class LoadTestDataSeeder
     }
 
     // ════════════════════════════════════════════════
-    //  SPRING 2026 PROJECTS (40 real SE topics, InProgress)
+    //  SPRING 2026 PROJECTS (40 real SE topics)
+    //  First 20: InProgress (evaluated, approved, group assigned)
+    //  Last  20: PendingEvaluation (awaiting evaluator review, no group)
     // ════════════════════════════════════════════════
+    private const int Spring26EvaluatedCount = 20;
+
     private static async Task SeedSpring26ProjectsAsync(AppDbContext context, ILogger? logger)
     {
         var projectOffset = Fall25GroupCount; // Projects start at index 51
@@ -657,6 +671,7 @@ public static class LoadTestDataSeeder
                 var projectIndex = projectOffset + i + 1; // 51..90
                 var groupIndex = projectIndex; // Groups 51..90
                 var topic = Spring26Topics[i];
+                var isEvaluated = i < Spring26EvaluatedCount; // First 20 are evaluated & approved
 
                 var pId = $"@p{paramIndex++}";
                 var pCode = $"@p{paramIndex++}";
@@ -667,20 +682,11 @@ public static class LoadTestDataSeeder
                 var pObj = $"@p{paramIndex++}";
                 var pMajor = $"@p{paramIndex++}";
                 var pSemester = $"@p{paramIndex++}";
-                var pGroup = $"@p{paramIndex++}";
                 var pSubmittedBy = $"@p{paramIndex++}";
                 var pSubmittedAt = $"@p{paramIndex++}";
-                var pApprovedAt = $"@p{paramIndex++}";
-                var pStartDate = $"@p{paramIndex++}";
-                var pDeadline = $"@p{paramIndex++}";
                 var pDate = $"@p{paramIndex++}";
 
-                valueClauses.Add($@"({pId}, {pCode}, {pNameVi}, {pNameEn}, {pNameAbbr},
-                    {pDesc}, {pObj}, NULL, NULL, NULL,
-                    {pMajor}, {pSemester}, {pGroup}, NULL, 5, 1, 0, 5, 0,
-                    {pSubmittedAt}, {pSubmittedBy}, {pApprovedAt}, {pStartDate}, {pDeadline}, 3, 1,
-                    NULL, NULL, NULL, {pDate}, NULL)");
-
+                // Common parameters (order matches @p indices above)
                 parameters.Add(ProjectId(projectIndex));
                 parameters.Add(topic.Code);
                 parameters.Add(topic.NameVi);
@@ -690,13 +696,38 @@ public static class LoadTestDataSeeder
                 parameters.Add($"Mục tiêu: {topic.NameEn}");
                 parameters.Add(MajorSE);
                 parameters.Add(Spring2026Id);
-                parameters.Add(GroupId(groupIndex));
                 parameters.Add(DualRoleId(((projectOffset + i) % DualRoleCount) + 1));
                 parameters.Add(new DateTime(2025, 11, 10, 0, 0, 0, DateTimeKind.Utc));
-                parameters.Add(new DateTime(2025, 12, 10, 0, 0, 0, DateTimeKind.Utc));
-                parameters.Add(new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc));
-                parameters.Add(new DateTime(2026, 5, 4, 0, 0, 0, DateTimeKind.Utc));
                 parameters.Add(SeedDate);
+
+                if (isEvaluated)
+                {
+                    // InProgress: has group, approved, evaluation completed
+                    var pGroup = $"@p{paramIndex++}";
+                    var pApprovedAt = $"@p{paramIndex++}";
+                    var pStartDate = $"@p{paramIndex++}";
+                    var pDeadline = $"@p{paramIndex++}";
+
+                    valueClauses.Add($@"({pId}, {pCode}, {pNameVi}, {pNameEn}, {pNameAbbr},
+                    {pDesc}, {pObj}, NULL, NULL, NULL,
+                    {pMajor}, {pSemester}, {pGroup}, NULL, 5, 1, 0, 5, 0,
+                    {pSubmittedAt}, {pSubmittedBy}, {pApprovedAt}, {pStartDate}, {pDeadline}, 3, 1,
+                    NULL, NULL, NULL, {pDate}, NULL)");
+
+                    parameters.Add(GroupId(groupIndex));
+                    parameters.Add(new DateTime(2025, 12, 10, 0, 0, 0, DateTimeKind.Utc));
+                    parameters.Add(new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc));
+                    parameters.Add(new DateTime(2026, 5, 4, 0, 0, 0, DateTimeKind.Utc));
+                }
+                else
+                {
+                    // PendingEvaluation: no group, no approval, awaiting evaluator review
+                    valueClauses.Add($@"({pId}, {pCode}, {pNameVi}, {pNameEn}, {pNameAbbr},
+                    {pDesc}, {pObj}, NULL, NULL, NULL,
+                    {pMajor}, {pSemester}, NULL, NULL, 5, 1, 0, 1, 0,
+                    {pSubmittedAt}, {pSubmittedBy}, NULL, NULL, NULL, 1, NULL,
+                    NULL, NULL, NULL, {pDate}, NULL)");
+                }
             }
 
             var sql = $@"
@@ -710,8 +741,8 @@ public static class LoadTestDataSeeder
             await context.Database.ExecuteSqlRawAsync(sql, parameters.ToArray()!);
         }
 
-        // Update groups to reference their projects
-        for (var i = 1; i <= Spring26GroupCount; i++)
+        // Update groups to reference their projects (only evaluated projects have groups)
+        for (var i = 1; i <= Spring26EvaluatedCount; i++)
         {
             var groupIndex = Fall25GroupCount + i;
             await context.Database.ExecuteSqlRawAsync(
@@ -719,7 +750,8 @@ public static class LoadTestDataSeeder
                 ProjectId(groupIndex), GroupId(groupIndex));
         }
 
-        logger?.LogInformation("Seeded {Count} Spring 2026 projects.", Spring26Topics.Length);
+        logger?.LogInformation("Seeded {Count} Spring 2026 projects ({Evaluated} evaluated, {Pending} pending).",
+            Spring26Topics.Length, Spring26EvaluatedCount, Spring26Topics.Length - Spring26EvaluatedCount);
     }
 
     // ════════════════════════════════════════════════
@@ -793,11 +825,15 @@ public static class LoadTestDataSeeder
                             evaluatorOffset++;
                     } while (evaluatorIndex == mentorIndex);
 
-                    // Fall25: all evaluated as Approved; Spring26: pending
-                    var hasResult = isFall;
+                    // Fall25: all evaluated as Approved
+                    // Spring26 first 20 (i=51..70): evaluated as Approved
+                    // Spring26 last 20 (i=71..90): pending evaluation
+                    var hasResult = isFall || (!isFall && i <= Fall25GroupCount + Spring26EvaluatedCount);
                     var resultValue = hasResult ? (object?)1 : null; // 1=Approved
                     var evaluatedAt = hasResult
-                        ? (object?)new DateTime(2025, 12, 20, 0, 0, 0, DateTimeKind.Utc)
+                        ? (object?)(isFall
+                            ? new DateTime(2025, 12, 20, 0, 0, 0, DateTimeKind.Utc)
+                            : new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc))
                         : null;
                     var feedback = hasResult
                         ? (object?)EvaluationFeedbacks[assignmentIndex % EvaluationFeedbacks.Length]
@@ -991,7 +1027,8 @@ public static class LoadTestDataSeeder
 
     // ════════════════════════════════════════════════
     //  SPRING 2026 TOPIC REGISTRATIONS
-    //  40 Confirmed (existing InProgress projects) + 10 Rejected (rejected projects)
+    //  20 Confirmed (evaluated InProgress projects) + 10 Rejected (rejected projects)
+    //  Last 20 Spring26 projects are PendingEvaluation — no registrations yet
     // ════════════════════════════════════════════════
     private static async Task SeedSpring26TopicRegistrationsAsync(AppDbContext context, ILogger? logger)
     {
@@ -1000,8 +1037,8 @@ public static class LoadTestDataSeeder
         var parameters = new List<object?>();
         var paramIndex = 0;
 
-        // 40 Confirmed registrations for Spring 2026 InProgress projects (ProjectId 51..90, GroupId 51..90)
-        for (var i = 1; i <= Spring26GroupCount; i++)
+        // 20 Confirmed registrations for evaluated Spring 2026 InProgress projects (ProjectId 51..70, GroupId 51..70)
+        for (var i = 1; i <= Spring26EvaluatedCount; i++)
         {
             var projectIndex = Fall25GroupCount + i; // 51..90
             var groupIndex = projectIndex;
@@ -1145,7 +1182,7 @@ public static class LoadTestDataSeeder
             ("Hỗ trợ cài đặt VPN truy cập hệ thống", "Sinh viên thực tập ở nước ngoài không truy cập được hệ thống, cần VPN.", 3, 1),
             ("Báo cáo spam trong hệ thống tin nhắn", "Có tài khoản gửi tin nhắn spam đến nhiều sinh viên qua hệ thống.", 3, 2),
 
-            // Additional technical (fill to 50)
+            // Additional technical
             ("Lỗi sync dữ liệu giữa mobile và web", "Dữ liệu cập nhật trên mobile không đồng bộ sang phiên bản web.", 0, 1),
             ("API response time quá chậm", "Endpoint /api/projects trả về response time > 5 giây khi có filter phức tạp.", 0, 2),
             ("Lỗi cache không invalidate", "Sau khi cập nhật thông tin đề tài, dữ liệu cũ vẫn hiển thị do cache không được xóa.", 0, 1),
@@ -1156,16 +1193,6 @@ public static class LoadTestDataSeeder
             ("Log monitoring alert: nhiều request 404", "Hệ thống monitor phát hiện 500+ request 404 trong 1 giờ qua.", 0, 1),
             ("Yêu cầu tăng kích thước upload file", "Giới hạn upload 10MB quá nhỏ, nhiều file báo cáo vượt quá giới hạn.", 1, 1),
             ("Hỏi về lịch bảo vệ đồ án", "Sinh viên hỏi lịch bảo vệ đồ án kỳ Spring 2026 đã được công bố chưa.", 1, 0),
-        };
-
-        // Assign statuses: 15 Open, 10 InProgress, 15 Resolved, 10 Closed
-        // Status: Open=0, InProgress=1, Resolved=2, Closed=3
-        var statusPattern = new int[]
-        {
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  // 15 Open
-            1,1,1,1,1,1,1,1,1,1,              // 10 InProgress
-            2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,  // 15 Resolved
-            3,3,3,3,3,3,3,3,3,3              // 10 Closed
         };
 
         var baseDate = new DateTime(2026, 2, 10, 8, 0, 0, DateTimeKind.Utc);
@@ -1179,8 +1206,15 @@ public static class LoadTestDataSeeder
 
             for (var i = batch; i < end; i++)
             {
-                var template = ticketTemplates[i];
-                var status = statusPattern[i];
+                var template = ticketTemplates[i % ticketTemplates.Length];
+                var ratio = SupportTicketCount == 0 ? 0d : (double)i / SupportTicketCount;
+                var status = ratio switch
+                {
+                    < 0.30 => 0, // Open
+                    < 0.55 => 1, // InProgress
+                    < 0.85 => 2, // Resolved
+                    _ => 3       // Closed
+                };
                 var ticketCode = $"TK-2026-{(i + 1):D4}";
                 var createdAt = baseDate.AddDays(-(SupportTicketCount - i)).AddHours(i % 12).AddMinutes(i * 7 % 60);
 

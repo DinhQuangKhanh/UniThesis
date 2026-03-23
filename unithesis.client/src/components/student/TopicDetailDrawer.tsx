@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { topicPoolService, type PoolTopicDetail } from '@/lib/topicPoolService'
+import { topicPoolService, type TopicDetail } from '@/lib/topicPoolService'
 
 // ── Major color mapping ──────────────────────────────────────────────────────
 
@@ -48,7 +48,7 @@ interface TopicDetailDrawerProps {
 }
 
 export function TopicDetailDrawer({ projectId, isOpen, onClose, isFavorite, onToggleFavorite }: TopicDetailDrawerProps) {
-    const [detail, setDetail] = useState<PoolTopicDetail | null>(null)
+    const [detail, setDetail] = useState<TopicDetail | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 

@@ -3,6 +3,7 @@ using UniThesis.Application.Common.Interfaces;
 using UniThesis.Application.Features.StudentGroups.DTOs;
 using UniThesis.Domain.Enums.Group;
 using UniThesis.Domain.Enums.Mentor;
+using UniThesis.Domain.Enums.Project;
 using UniThesis.Domain.Enums.Semester;
 
 namespace UniThesis.Persistence.SqlServer.QueryServices;
@@ -33,6 +34,9 @@ public class StudentGroupQueryService : IStudentGroupQueryService
             where pm.MentorId == mentorId && pm.Status == ProjectMentorStatus.Active
             join p in _context.Projects on pm.ProjectId equals p.Id
             where p.SemesterId == targetSemesterId && p.GroupId != null
+                  && (p.Status == ProjectStatus.Approved
+                   || p.Status == ProjectStatus.InProgress
+                   || p.Status == ProjectStatus.Completed)
             join g in _context.Groups on p.GroupId equals g.Id
             select new MentorGroupDto
             {
@@ -91,8 +95,9 @@ public class StudentGroupQueryService : IStudentGroupQueryService
                 MaxMembers = g.MaxMembers,
                 IsOpenForRequests = g.IsOpenForRequests,
                 ProjectId = g.ProjectId,
-                ProjectName = p != null ? p.NameVi : null,
-                ProjectCode = p != null ? p.Code : null,
+                // Project is optional for newly created groups, so project fields must be null-safe.
+                ProjectName = p == null ? null : EF.Property<string>(p, "NameVi"),
+                ProjectCode = p == null ? null : EF.Property<string>(p, "Code"),
                 ProjectStatus = p != null ? p.Status.ToString() : null,
                 CreatedAt = g.CreatedAt,
                 ProjectMentorName = p != null
@@ -237,9 +242,12 @@ public class StudentGroupQueryService : IStudentGroupQueryService
         Guid groupId,
         CancellationToken cancellationToken = default)
     {
+        var now = DateTime.UtcNow;
         var requests = await (
             from r in _context.GroupJoinRequests.AsNoTracking()
-            where r.GroupId == groupId && r.Status == GroupJoinRequestStatus.Pending
+            where r.GroupId == groupId
+               && r.Status == GroupJoinRequestStatus.Pending
+               && r.ExpiresAt > now
             join u in _context.Users on r.StudentId equals u.Id
             select new JoinRequestDto
             {
@@ -254,6 +262,37 @@ public class StudentGroupQueryService : IStudentGroupQueryService
         ).ToListAsync(cancellationToken);
 
         return requests;
+    }
+
+    public async Task<PendingJoinRequestDto?> GetStudentPendingJoinRequestAsync(
+        Guid studentId,
+        int? semesterId,
+        CancellationToken cancellationToken = default)
+    {
+        var targetSemesterId = await ResolveSemesterIdAsync(semesterId, cancellationToken);
+        if (targetSemesterId == 0) return null;
+
+        var now = DateTime.UtcNow;
+
+        return await (
+            from r in _context.GroupJoinRequests.AsNoTracking()
+            where r.StudentId == studentId
+               && r.Status == GroupJoinRequestStatus.Pending
+               && r.ExpiresAt > now
+            join g in _context.Groups.AsNoTracking() on r.GroupId equals g.Id
+            where g.SemesterId == targetSemesterId && g.Status == GroupStatus.Active
+            orderby r.CreatedAt descending
+            select new PendingJoinRequestDto
+            {
+                RequestId = r.Id,
+                GroupId = g.Id,
+                GroupCode = g.Code,
+                GroupName = g.Name,
+                Message = r.Message,
+                CreatedAt = r.CreatedAt,
+                ExpiresAt = r.ExpiresAt
+            }
+        ).FirstOrDefaultAsync(cancellationToken);
     }
 
     private async Task<int> ResolveSemesterIdAsync(int? semesterId, CancellationToken cancellationToken)

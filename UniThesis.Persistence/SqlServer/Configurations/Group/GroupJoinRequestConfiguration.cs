@@ -24,9 +24,13 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Group
             builder.Property(r => r.Message)
                 .HasMaxLength(500);
 
+            builder.Property(r => r.ExpiresAt)
+                .IsRequired();
+
             // Indexes
             builder.HasIndex(r => r.GroupId);
             builder.HasIndex(r => r.StudentId);
+            builder.HasIndex(r => new { r.Status, r.ExpiresAt });
             builder.HasIndex(r => new { r.GroupId, r.StudentId, r.Status });
             builder.HasIndex(r => new { r.GroupId, r.StudentId })
                 .IsUnique()
@@ -40,6 +44,7 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Group
 
             // Ignore computed properties
             builder.Ignore(r => r.IsPending);
+            builder.Ignore(r => r.IsExpired);
         }
     }
 }

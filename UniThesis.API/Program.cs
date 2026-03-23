@@ -132,9 +132,10 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.Configure<MalwareScanOptions>(
     builder.Configuration.GetSection(MalwareScanOptions.SectionName));
 builder.Services.AddScoped<IMalwareScanAuditLogger, MalwareScanAuditLogger>();
-builder.Services.AddScoped<ITopicProposalMalwareScanner, TopicProposalMalwareScanner>();
-builder.Services.AddScoped<ITopicProposalAttachmentScanWorkflow, TopicProposalAttachmentScanWorkflow>();
-builder.Services.AddScoped<TopicProposalAttachmentScanJob>();
+builder.Services.AddScoped<IMalwareScanner, MalwareScanner>();
+builder.Services.AddScoped<IAttachmentScanWorkflow, AttachmentScanWorkflow>();
+builder.Services.AddScoped<AttachmentScanJob>();
+builder.Services.AddScoped<QuarantineRetryJob>();
 
 // Layer Services
 builder.Services.AddApplicationServices();  // Application Layer (MediatR, Validators, Behaviors)
@@ -207,5 +208,11 @@ app.MapHub<ChatHub>("/hubs/chat");
 
 // Minimal API Endpoints
 app.MapEndpoints();
+
+// Recurring jobs specific to API-layer jobs (not registerable from Infrastructure)
+Hangfire.RecurringJob.AddOrUpdate<QuarantineRetryJob>(
+    "quarantine-retry",
+    job => job.ExecuteAsync(),
+    "*/30 * * * *"); // every 30 minutes
 
 app.Run();

@@ -89,6 +89,7 @@ namespace UniThesis.Persistence
             services.AddScoped<IStudentGroupQueryService, StudentGroupQueryService>();
             services.AddScoped<IEvaluatorQueryService, EvaluatorQueryService>();
             services.AddScoped<ITopicPoolQueryService, TopicPoolQueryService>();
+            services.AddScoped<ITopicQueryService, TopicQueryService>();
             services.AddScoped<IAdminDashboardQueryService, AdminDashboardQueryService>();
 
             // Add MongoDB Repositories
@@ -100,6 +101,7 @@ namespace UniThesis.Persistence
             services.AddScoped<IUserActivityLogRepository, UserActivityLogRepository>();
             services.AddScoped<ISystemAuditLogRepository, SystemAuditLogRepository>();
             services.AddScoped<IErrorLogRepository, ErrorLogRepository>();
+            services.AddScoped<IQuarantinedAttachmentRepository, QuarantinedAttachmentRepository>();
 
             // Add Log Services
             services.AddScoped<IRequestLogService, RequestLogService>();
@@ -122,7 +124,20 @@ namespace UniThesis.Persistence
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseInit");
 
+            var pendingMigrations = (await dbContext.Database.GetPendingMigrationsAsync()).ToList();
+            if (pendingMigrations.Count == 0)
+            {
+                logger.LogInformation("No pending EF Core migrations.");
+            }
+            else
+            {
+                logger.LogWarning("Applying {Count} pending migration(s): {Migrations}",
+                    pendingMigrations.Count,
+                    string.Join(", ", pendingMigrations));
+            }
+
             await dbContext.Database.MigrateAsync();
+            logger.LogInformation("EF Core migrations applied successfully.");
 
             // Seed development data (idempotent - skips if data already exists)
             await DevelopmentDataSeeder.SeedAsync(dbContext);

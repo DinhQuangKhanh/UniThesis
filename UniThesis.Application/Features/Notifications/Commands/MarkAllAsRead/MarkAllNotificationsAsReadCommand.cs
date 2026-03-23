@@ -7,4 +7,8 @@ namespace UniThesis.Application.Features.Notifications.Commands.MarkAllAsRead;
 /// Command to mark all notifications as read for the current user.
 /// </summary>
 [ActionLog("Mark All Notifications Read", "Notification")]
-public record MarkAllNotificationsAsReadCommand() : ICommand;
+public record MarkAllNotificationsAsReadCommand() : ICacheInvalidatingCommand
+{
+    public IReadOnlyCollection<string> CachePrefixesToInvalidate =>
+        ["notifications:{userId}:"];
+}

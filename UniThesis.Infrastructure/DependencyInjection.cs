@@ -24,6 +24,7 @@ using UniThesis.Infrastructure.Caching;
 using UniThesis.Infrastructure.HealthChecks;
 using UniThesis.Infrastructure.Middleware;
 using UniThesis.Infrastructure.RealTime.Services;
+using UniThesis.Infrastructure.Services;
 using UniThesis.Infrastructure.Services.DomainServices;
 using UniThesis.Infrastructure.Services.Email;
 using UniThesis.Infrastructure.Services.Email.Templates;
@@ -159,6 +160,9 @@ namespace UniThesis.Infrastructure
             services.AddScoped<ITopicPoolQueryService, TopicPoolQueryService>();
             services.AddScoped<IEvaluatorQueryService, EvaluatorQueryService>();
 
+            // Evaluation Services
+            services.AddScoped<ITitleSimilarityService, TitleSimilarityService>();
+
             // Email
             services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
             services.AddScoped<IEmailService, SmtpEmailService>();
@@ -202,6 +206,7 @@ namespace UniThesis.Infrastructure
             services.AddScoped<SemesterPhaseTransitionJob>();
             services.AddScoped<DefenseScheduleReminderJob>();
             services.AddScoped<MeetingReminderJob>();
+            services.AddScoped<GroupJoinRequestExpirationJob>();
             services.AddScoped<DataCleanupJob>();
 
             var hangfireConn = configuration.GetConnectionString("HangfireConnection") ?? configuration.GetConnectionString("DefaultConnection");
