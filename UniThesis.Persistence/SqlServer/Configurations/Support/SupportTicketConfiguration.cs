@@ -60,7 +60,10 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Support
                 .HasForeignKey(t => t.AssigneeId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            // Messages Relationship
+            // Messages Relationship – use backing field so EF can track adds via _messages
+            builder.Navigation(t => t.Messages)
+                .UsePropertyAccessMode(PropertyAccessMode.Field);
+
             builder.HasMany(t => t.Messages)
                 .WithOne()
                 .HasForeignKey(m => m.TicketId)

@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Header } from '@/components/layout'
 import { CreateTicketModal } from '@/components/support/CreateTicketModal'
+import { apiClient } from '@/lib/apiClient'
+import { TicketListDto, TicketDto, TicketStatsDto } from '@/types/support.types'
 
 const container = {
     hidden: { opacity: 0 },
@@ -13,114 +15,140 @@ const item = {
     show: { opacity: 1, y: 0 }
 }
 
-const tickets = [
-    {
-        id: 'MEN-2001',
-        subject: 'Yêu cầu thêm sinh viên vào nhóm hướng dẫn',
-        preview: 'Tôi muốn thêm 2 sinh viên mới vào nhóm đồ án của tôi...',
-        time: '2 giờ trước',
-        status: 'Chưa đọc',
-        priority: 'high',
-        messages: [
-            {
-                sender: 'Bạn',
-                initials: 'TT',
-                time: '2 giờ trước',
-                content: 'Xin chào Admin,\n\nTôi là TS. Trần Minh Tuấn, GVHD nhóm SE20-G05. Tôi muốn xin thêm 2 sinh viên mới từ nhóm SE20-G12 (đã giải thể) vào nhóm của tôi.\n\nMã sinh viên: SV2024015 và SV2024022.\n\nNhờ Admin hỗ trợ cập nhật trên hệ thống.\n\nTrân trọng.',
-                isAdmin: false,
-            },
-        ],
-    },
-    {
-        id: 'MEN-2002',
-        subject: 'Lỗi hiển thị tiến độ sinh viên',
-        preview: 'Biểu đồ tiến độ của nhóm tôi không cập nhật đúng...',
-        time: '1 ngày trước',
-        status: 'Đã trả lời',
-        priority: 'medium',
-        messages: [
-            {
-                sender: 'Bạn',
-                initials: 'TT',
-                time: '1 ngày trước',
-                content: 'Biểu đồ tiến độ trên Dashboard của nhóm SE20-G05 không cập nhật đúng. Sinh viên đã nộp chương 2 nhưng hệ thống vẫn hiển thị "Chưa nộp".\n\nNhờ Admin kiểm tra lại.',
-                isAdmin: false,
-            },
-            {
-                sender: 'Admin Support',
-                initials: 'AD',
-                time: '22 giờ trước',
-                content: 'Chào thầy Trần Minh Tuấn,\n\nChúng tôi đã kiểm tra và phát hiện lỗi cache dữ liệu. Hiện tại đã được khắc phục. Thầy vui lòng refresh lại trang để xem kết quả mới.\n\nXin lỗi vì sự bất tiện.\n\nTrân trọng.',
-                isAdmin: true,
-            },
-        ],
-    },
-    {
-        id: 'MEN-2003',
-        subject: 'Hỏi về lịch bảo vệ đồ án giữa kỳ',
-        preview: 'Tôi muốn xác nhận lại lịch bảo vệ đồ án giữa kỳ...',
-        time: '5 ngày trước',
-        status: 'Đã giải quyết',
-        priority: 'low',
-        messages: [
-            {
-                sender: 'Bạn',
-                initials: 'TT',
-                time: '5 ngày trước',
-                content: 'Tôi muốn xác nhận lại lịch bảo vệ đồ án giữa kỳ cho nhóm SE20-G05. Theo thông báo trước là ngày 15/3 nhưng tôi chưa nhận được email xác nhận.',
-                isAdmin: false,
-            },
-            {
-                sender: 'Admin Support',
-                initials: 'AD',
-                time: '5 ngày trước',
-                content: 'Chào thầy,\n\nLịch bảo vệ giữa kỳ nhóm SE20-G05 đã được xác nhận vào ngày 15/03/2026 lúc 14:00 tại phòng A305. Email xác nhận đã được gửi lại.\n\nThầy có thể kiểm tra trong mục "Lịch trình" trên hệ thống.\n\nTrân trọng.',
-                isAdmin: true,
-            },
-            {
-                sender: 'Bạn',
-                initials: 'TT',
-                time: '4 ngày trước',
-                content: 'Đã nhận được. Cảm ơn Admin!',
-                isAdmin: false,
-            },
-        ],
-    },
-]
+function timeAgo(iso: string): string {
+    const diff = Date.now() - new Date(iso).getTime()
+    const minutes = Math.floor(diff / 60000)
+    if (minutes < 1) return 'Vừa xong'
+    if (minutes < 60) return `${minutes} phút trước`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `${hours} giờ trước`
+    const days = Math.floor(hours / 24)
+    return `${days} ngày trước`
+}
+
+function statusLabel(status: string) {
+    switch (status) {
+        case 'Open': return 'Chưa đọc'
+        case 'InProgress': return 'Đang xử lý'
+        case 'Resolved': return 'Đã giải quyết'
+        case 'Closed': return 'Đã đóng'
+        default: return status
+    }
+}
+
+function statusClass(status: string) {
+    switch (status) {
+        case 'Open': return 'bg-error/10 text-error'
+        case 'InProgress': return 'bg-blue-50 text-blue-600'
+        case 'Resolved': return 'bg-success/10 text-success'
+        case 'Closed': return 'bg-slate-100 text-slate-500'
+        default: return 'bg-slate-100 text-slate-600'
+    }
+}
+
+function priorityDot(priority: string) {
+    switch (priority) {
+        case 'High': return 'bg-error'
+        case 'Medium': return 'bg-yellow-500'
+        default: return 'bg-slate-300'
+    }
+}
 
 export function MentorSupportPage() {
-    const [selectedTicket, setSelectedTicket] = useState(tickets[0])
+    const [tickets, setTickets] = useState<TicketListDto[]>([])
+    const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
+    const [ticketDetail, setTicketDetail] = useState<TicketDto | null>(null)
+    const [stats, setStats] = useState<TicketStatsDto | null>(null)
     const [newMessage, setNewMessage] = useState('')
+    const [isSending, setIsSending] = useState(false)
     const [filter, setFilter] = useState('all')
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
+    const [isDetailLoading, setIsDetailLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+    const messagesEndRef = useRef<HTMLDivElement>(null)
+
+    const fetchTickets = useCallback(async () => {
+        try {
+            setIsLoading(true)
+            setError(null)
+            const [ticketsData, statsData] = await Promise.all([
+                apiClient.get<TicketListDto[]>('/api/supports'),
+                apiClient.get<TicketStatsDto>('/api/supports/stats'),
+            ])
+            setTickets(ticketsData)
+            setStats(statsData)
+            if (!selectedTicketId && ticketsData.length > 0) {
+                setSelectedTicketId(ticketsData[0].id)
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Không thể tải danh sách yêu cầu.')
+        } finally {
+            setIsLoading(false)
+        }
+    }, [])
+
+    const fetchTicketDetail = useCallback(async (id: string) => {
+        try {
+            setIsDetailLoading(true)
+            const data = await apiClient.get<TicketDto>(`/api/supports/${id}`)
+            setTicketDetail(data)
+        } catch {
+            setTicketDetail(null)
+        } finally {
+            setIsDetailLoading(false)
+        }
+    }, [])
+
+    useEffect(() => { fetchTickets() }, [fetchTickets])
+    useEffect(() => { if (selectedTicketId) fetchTicketDetail(selectedTicketId) }, [selectedTicketId, fetchTicketDetail])
+    useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [ticketDetail?.messages])
+
+    const handleReply = async () => {
+        if (!newMessage.trim() || !selectedTicketId) return
+        setIsSending(true)
+        try {
+            await apiClient.post(`/api/supports/${selectedTicketId}/reply`, { content: newMessage.trim() })
+            setNewMessage('')
+            await fetchTicketDetail(selectedTicketId)
+        } catch { /* silent */ } finally { setIsSending(false) }
+    }
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleReply() }
+    }
 
     const filteredTickets = tickets.filter((t) => {
-        if (filter === 'unread') return t.status === 'Chưa đọc'
-        if (filter === 'resolved') return t.status === 'Đã giải quyết'
+        if (filter === 'unread') return t.status === 'Open'
+        if (filter === 'resolved') return t.status === 'Resolved' || t.status === 'Closed'
         return true
     })
+
+    const currentUser = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}') } catch { return {} } })()
+    const currentUserId = currentUser?.id
 
     return (
         <>
             <Header title="Hỗ Trợ & Liên Hệ Admin" showSearch={false} />
-
             <div className="flex-1 overflow-hidden p-8 bg-slate-50">
-                <motion.div
-                    variants={container}
-                    initial="hidden"
-                    animate="show"
-                    className="flex flex-col h-full"
-                >
-                    {/* Stats */}
+                <motion.div variants={container} initial="hidden" animate="show" className="flex flex-col h-full">
                     <motion.div variants={item} className="grid grid-cols-3 gap-4 mb-6 shrink-0">
-                        <StatCard icon="confirmation_number" iconColor="text-slate-600" iconBg="bg-slate-100" value={tickets.length} label="Tổng yêu cầu" />
-                        <StatCard icon="mark_email_unread" iconColor="text-error" iconBg="bg-error/10" value={tickets.filter(t => t.status === 'Chưa đọc').length} label="Chờ phản hồi" valueColor="text-error" />
-                        <StatCard icon="check_circle" iconColor="text-success" iconBg="bg-success/10" value={tickets.filter(t => t.status === 'Đã giải quyết').length} label="Đã giải quyết" />
+                        <StatCard icon="confirmation_number" iconColor="text-slate-600" iconBg="bg-slate-100" value={stats?.totalTickets ?? 0} label="Tổng yêu cầu" />
+                        <StatCard icon="mark_email_unread" iconColor="text-error" iconBg="bg-error/10" value={stats?.unread ?? 0} label="Chờ phản hồi" valueColor="text-error" />
+                        <StatCard icon="check_circle" iconColor="text-success" iconBg="bg-success/10" value={stats?.resolved ?? 0} label="Đã giải quyết" />
                     </motion.div>
 
-                    {/* Main Content */}
+                    {error && (
+                        <motion.div variants={item} className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 mb-4">
+                            <span className="material-symbols-outlined text-red-600 text-[20px] mt-0.5">error</span>
+                            <div>
+                                <p className="text-sm text-red-800 font-semibold">{error}</p>
+                                <button onClick={fetchTickets} className="mt-1 text-xs font-semibold text-red-700 hover:text-red-900 underline">Thử lại</button>
+                            </div>
+                        </motion.div>
+                    )}
+
                     <motion.div variants={item} className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
-                        {/* Ticket List */}
                         <div className="lg:col-span-4 bento-card rounded-md overflow-hidden flex flex-col">
                             <div className="p-4 border-b border-slate-200 shrink-0">
                                 <div className="flex items-center gap-2 mb-3">
@@ -130,166 +158,111 @@ export function MentorSupportPage() {
                                 </div>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">search</span>
-                                    <input
-                                        className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white placeholder-slate-400"
-                                        placeholder="Tìm kiếm yêu cầu..."
-                                        type="text"
-                                    />
+                                    <input className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary bg-white placeholder-slate-400" placeholder="Tìm kiếm yêu cầu..." type="text" />
                                 </div>
                             </div>
                             <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-100">
-                                {filteredTickets.map((ticket) => (
-                                    <div
-                                        key={ticket.id}
-                                        onClick={() => setSelectedTicket(ticket)}
-                                        className={`p-4 cursor-pointer transition-colors ${selectedTicket.id === ticket.id ? 'bg-primary/5 border-l-4 border-l-primary' : 'hover:bg-slate-50'
-                                            }`}
-                                    >
+                                {isLoading ? (
+                                    <div className="flex items-center justify-center py-12"><span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span></div>
+                                ) : filteredTickets.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+                                        <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">inbox</span>
+                                        <p className="text-sm text-slate-500">Chưa có yêu cầu nào</p>
+                                    </div>
+                                ) : filteredTickets.map((ticket) => (
+                                    <div key={ticket.id} onClick={() => setSelectedTicketId(ticket.id)} className={`p-4 cursor-pointer transition-colors ${selectedTicketId === ticket.id ? 'bg-primary/5 border-l-4 border-l-primary' : 'hover:bg-slate-50'}`}>
                                         <div className="flex items-start gap-3">
-                                            <div className={`w-2 h-2 mt-2 rounded-full shrink-0 ${ticket.priority === 'high' ? 'bg-error' : ticket.priority === 'medium' ? 'bg-yellow-500' : 'bg-slate-300'
-                                                }`} />
+                                            <div className={`w-2 h-2 mt-2 rounded-full shrink-0 ${priorityDot(ticket.priority)}`} />
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-0.5">
-                                                    <span className="bg-primary text-white text-[10px] font-bold px-1.5 rounded">{ticket.id}</span>
-                                                </div>
-                                                <h4 className="text-sm font-semibold text-slate-800 truncate">{ticket.subject}</h4>
-                                                <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{ticket.preview}</p>
+                                                <div className="flex items-center gap-2 mb-0.5"><span className="bg-primary text-white text-[10px] font-bold px-1.5 rounded">{ticket.code}</span></div>
+                                                <h4 className="text-sm font-semibold text-slate-800 truncate">{ticket.title}</h4>
                                                 <div className="flex items-center justify-between mt-2">
-                                                    <span className="text-[10px] text-slate-400">{ticket.time}</span>
-                                                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${ticket.status === 'Chưa đọc'
-                                                        ? 'bg-error/10 text-error'
-                                                        : ticket.status === 'Đã trả lời'
-                                                            ? 'bg-blue-50 text-blue-600'
-                                                            : 'bg-success/10 text-success'
-                                                        }`}>
-                                                        {ticket.status}
-                                                    </span>
+                                                    <span className="text-[10px] text-slate-400">{timeAgo(ticket.createdAt)}</span>
+                                                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${statusClass(ticket.status)}`}>{statusLabel(ticket.status)}</span>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                            {/* New ticket button */}
                             <div className="p-3 border-t border-slate-200 shrink-0">
-                                <button 
-                                    onClick={() => setIsCreateModalOpen(true)}
-                                    className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors"
-                                >
-                                    <span className="material-symbols-outlined text-[18px]">add</span>
-                                    Tạo yêu cầu mới
+                                <button onClick={() => setIsCreateModalOpen(true)} className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors">
+                                    <span className="material-symbols-outlined text-[18px]">add</span>Tạo yêu cầu mới
                                 </button>
                             </div>
                         </div>
 
-                        {/* Chat Detail */}
                         <div className="lg:col-span-8 bento-card rounded-md overflow-hidden flex flex-col">
-                            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50 shrink-0">
-                                <div className="flex items-center gap-3">
-                                    <span className="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded">{selectedTicket.id}</span>
-                                    <h3 className="font-bold text-slate-800 text-lg truncate">{selectedTicket.subject}</h3>
+                            {!selectedTicketId || !ticketDetail ? (
+                                <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+                                    <span className="material-symbols-outlined text-5xl text-slate-300 mb-3">forum</span>
+                                    <p className="text-lg font-bold text-slate-700">Chọn một yêu cầu</p>
+                                    <p className="text-sm text-slate-500 mt-1">Chọn yêu cầu từ danh sách bên trái để xem chi tiết.</p>
                                 </div>
-                                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${selectedTicket.status === 'Chưa đọc'
-                                    ? 'bg-error/10 text-error'
-                                    : selectedTicket.status === 'Đã trả lời'
-                                        ? 'bg-blue-50 text-blue-600'
-                                        : 'bg-success/10 text-success'
-                                    }`}>
-                                    {selectedTicket.status}
-                                </span>
-                            </div>
-
-                            {/* Messages */}
-                            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-                                {selectedTicket.messages.map((msg, idx) => (
-                                    <div key={idx} className={`flex gap-3 ${msg.isAdmin ? 'flex-row-reverse' : ''}`}>
-                                        <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-bold ${msg.isAdmin ? 'bg-primary text-white' : 'bg-slate-200 text-slate-500'
-                                            }`}>
-                                            {msg.initials}
+                            ) : isDetailLoading ? (
+                                <div className="flex-1 flex items-center justify-center"><span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span></div>
+                            ) : (
+                                <>
+                                    <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50 shrink-0">
+                                        <div className="flex items-center gap-3">
+                                            <span className="bg-primary text-white text-xs font-bold px-2 py-0.5 rounded">{ticketDetail.code}</span>
+                                            <h3 className="font-bold text-slate-800 text-lg truncate">{ticketDetail.title}</h3>
                                         </div>
-                                        <div className={`flex-1 ${msg.isAdmin ? 'flex flex-col items-end' : ''}`}>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                {msg.isAdmin ? (
-                                                    <>
-                                                        <span className="text-[10px] text-slate-400">• {msg.time}</span>
-                                                        <span className="font-semibold text-slate-800 text-sm">{msg.sender}</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <span className="font-semibold text-slate-800 text-sm">{msg.sender}</span>
-                                                        <span className="text-[10px] text-slate-400">• {msg.time}</span>
-                                                    </>
-                                                )}
+                                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusClass(ticketDetail.status)}`}>{statusLabel(ticketDetail.status)}</span>
+                                    </div>
+                                    <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/30">
+                                        <p className="text-xs font-semibold text-slate-400 uppercase mb-1">Nội dung yêu cầu</p>
+                                        <p className="text-sm text-slate-700 whitespace-pre-line">{ticketDetail.description}</p>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+                                        {ticketDetail.messages.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center py-8 text-center">
+                                                <span className="material-symbols-outlined text-3xl text-slate-300 mb-2">chat_bubble_outline</span>
+                                                <p className="text-sm text-slate-500">Chưa có phản hồi nào. Admin sẽ phản hồi sớm nhất.</p>
                                             </div>
-                                            <div className={`rounded-xl p-4 text-sm max-w-[80%] whitespace-pre-line ${msg.isAdmin
-                                                ? 'bg-primary text-white rounded-tr-none'
-                                                : 'bg-slate-100 text-slate-700 rounded-tl-none'
-                                                }`}>
-                                                {msg.content}
+                                        ) : ticketDetail.messages.map((msg) => {
+                                            const isOwn = msg.senderId === currentUserId
+                                            const initials = msg.sender?.fullName?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '??'
+                                            return (
+                                                <div key={msg.id} className={`flex gap-3 ${!isOwn ? 'flex-row-reverse' : ''}`}>
+                                                    <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-bold ${!isOwn ? 'bg-primary text-white' : 'bg-slate-200 text-slate-500'}`}>{initials}</div>
+                                                    <div className={`flex-1 ${!isOwn ? 'flex flex-col items-end' : ''}`}>
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            {!isOwn ? (<><span className="text-[10px] text-slate-400">• {timeAgo(msg.createdAt)}</span><span className="font-semibold text-slate-800 text-sm">{msg.sender?.fullName || 'Admin'}</span></>) : (<><span className="font-semibold text-slate-800 text-sm">Bạn</span><span className="text-[10px] text-slate-400">• {timeAgo(msg.createdAt)}</span></>)}
+                                                        </div>
+                                                        <div className={`rounded-xl p-4 text-sm max-w-[80%] whitespace-pre-line ${!isOwn ? 'bg-primary text-white rounded-tr-none' : 'bg-slate-100 text-slate-700 rounded-tl-none'}`}>{msg.content}</div>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                        <div ref={messagesEndRef} />
+                                    </div>
+                                    {ticketDetail.status !== 'Closed' && ticketDetail.status !== 'Resolved' && (
+                                        <div className="p-4 border-t border-slate-200 bg-white shrink-0">
+                                            <div className="relative">
+                                                <textarea value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyDown={handleKeyDown} disabled={isSending} className="w-full h-24 p-3 pr-12 text-sm bg-slate-50 border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-none disabled:opacity-50" placeholder="Nhập nội dung tin nhắn cho Admin..." />
+                                                <div className="absolute bottom-3 right-3 flex gap-1">
+                                                    <button className="p-1.5 text-slate-400 hover:text-primary transition-colors"><span className="material-symbols-outlined text-[20px]">attach_file</span></button>
+                                                    <button onClick={handleReply} disabled={isSending || !newMessage.trim()} className="p-1.5 bg-primary text-white rounded hover:bg-primary-light transition-colors disabled:opacity-50"><span className="material-symbols-outlined text-[20px]">{isSending ? 'progress_activity' : 'send'}</span></button>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Reply Box */}
-                            <div className="p-4 border-t border-slate-200 bg-white shrink-0">
-                                <div className="relative">
-                                    <textarea
-                                        value={newMessage}
-                                        onChange={(e) => setNewMessage(e.target.value)}
-                                        className="w-full h-24 p-3 pr-12 text-sm bg-slate-50 border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-none"
-                                        placeholder="Nhập nội dung tin nhắn cho Admin..."
-                                    />
-                                    <div className="absolute bottom-3 right-3 flex gap-1">
-                                        <button className="p-1.5 text-slate-400 hover:text-primary transition-colors">
-                                            <span className="material-symbols-outlined text-[20px]">attach_file</span>
-                                        </button>
-                                        <button className="p-1.5 bg-primary text-white rounded hover:bg-primary-light transition-colors">
-                                            <span className="material-symbols-outlined text-[20px]">send</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                                    )}
+                                </>
+                            )}
                         </div>
                     </motion.div>
                 </motion.div>
             </div>
-
-            <CreateTicketModal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                onCreated={() => {
-                    // Refetch data here later
-                }}
-            />
+            <CreateTicketModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} onCreated={fetchTickets} />
         </>
     )
 }
 
-function StatCard({
-    icon,
-    iconColor,
-    iconBg,
-    value,
-    label,
-    valueColor = 'text-slate-800',
-}: {
-    icon: string
-    iconColor: string
-    iconBg: string
-    value: number
-    label: string
-    valueColor?: string
-}) {
+function StatCard({ icon, iconColor, iconBg, value, label, valueColor = 'text-slate-800' }: { icon: string; iconColor: string; iconBg: string; value: number; label: string; valueColor?: string }) {
     return (
-        <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bento-card p-5 rounded-md"
-        >
-            <div className={`w-8 h-8 rounded-md ${iconBg} ${iconColor} flex items-center justify-center mb-2`}>
-                <span className="material-symbols-outlined text-[20px]">{icon}</span>
-            </div>
+        <motion.div whileHover={{ scale: 1.02 }} className="bento-card p-5 rounded-md">
+            <div className={`w-8 h-8 rounded-md ${iconBg} ${iconColor} flex items-center justify-center mb-2`}><span className="material-symbols-outlined text-[20px]">{icon}</span></div>
             <h3 className={`text-2xl font-bold ${valueColor} mt-1`}>{value}</h3>
             <p className="text-xs text-slate-500 font-medium mt-0.5">{label}</p>
         </motion.div>

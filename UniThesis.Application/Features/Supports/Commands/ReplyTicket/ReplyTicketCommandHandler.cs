@@ -24,10 +24,10 @@ public class ReplyTicketCommandHandler : ICommandHandler<ReplyTicketCommand>
 
         ticket.AddMessage(request.SenderId, request.Content);
 
-        // Optional: If Admin replies to an Open ticket, auto transition to InProgress
-        // But since we aren't passing Role in the command, we'll leave that logic for the API layer or specific admin command.
+        // No need for _repository.Update(ticket) — entity is already tracked by EF Core.
+        // Calling Update() would force all properties to Modified state, interfering
+        // with proper detection of the new TicketMessage as an Added entity.
         
-        _repository.Update(ticket);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Unit.Value;
