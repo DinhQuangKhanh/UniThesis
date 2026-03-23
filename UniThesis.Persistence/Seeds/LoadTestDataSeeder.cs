@@ -5,14 +5,14 @@ using UniThesis.Persistence.SqlServer;
 namespace UniThesis.Persistence.Seeds;
 
 /// <summary>
-/// Seeds realistic load-test data with two real semesters (Fall 2025 / Spring 2026),
+/// Seeds realistic load-test data with three real semesters (Fall 2025 / Spring 2026 / Summer 2026),
 /// real project topics from FPT University, topic pools for every major, and
 /// proper FK relationships throughout.
 /// <para>Distribution:</para>
 /// <list type="bullet">
 ///   <item>250 Admins (role: Admin)</item>
 ///   <item>250 Lecturers with dual roles (roles: Mentor + Evaluator)</item>
-///   <item>360 Students (role: Student)</item>
+///   <item>420 Students (role: Student)</item>
 /// </list>
 /// Uses raw SQL to bypass domain validation. Idempotent.
 /// </summary>
@@ -21,7 +21,7 @@ public static class LoadTestDataSeeder
     // ────────────────── Distribution ──────────────────
     public const int SeededAdminCount = 250;
     public const int SeededDualRoleCount = 250;
-    public const int SeededStudentCount = 360;
+    public const int SeededStudentCount = 420;
 
     private const int AdminCount = SeededAdminCount;
     private const int DualRoleCount = SeededDualRoleCount;
@@ -31,9 +31,11 @@ public static class LoadTestDataSeeder
     // Semester IDs (assigned, not auto-generated)
     private const int Fall2025Id = 100;
     private const int Spring2026Id = 101;
+    private const int Summer2026Id = 102;
 
     private const int Fall25GroupCount = 50;
     private const int Spring26GroupCount = 40;
+    private const int Summer26GroupCount = 15;
 
     private static readonly DateTime SeedDate = new(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
 
@@ -114,7 +116,7 @@ public static class LoadTestDataSeeder
             return;
         }
 
-        logger?.LogInformation("Seeding load-test data (Fall 2025 + Spring 2026)...");
+        logger?.LogInformation("Seeding load-test data (Fall 2025 + Spring 2026 + Summer 2026)...");
 
         await SeedSemestersAsync(context, logger);
         await SeedUsersAsync(context, logger);
@@ -146,8 +148,9 @@ public static class LoadTestDataSeeder
         var sql = @"
             INSERT INTO Semesters (Id, Name, Code, AcademicYear, StartDate, EndDate, Description, CreatedAt, UpdatedAt)
             VALUES
-            (@p0, N'Học kỳ Fall 2025', 'FALL2025', '2025-2026', @p2, @p3, N'Học kỳ đồ án tốt nghiệp Fall 2025 - Đã kết thúc', @p6, NULL),
-            (@p1, N'Học kỳ Spring 2026', 'SPRING2026', '2025-2026', @p4, @p5, N'Học kỳ đồ án tốt nghiệp Spring 2026 - Đang triển khai', @p6, NULL);";
+            (@p0, N'Học kỳ Fall 2025', 'FALL2025', '2025-2026', @p2, @p3, N'Học kỳ đồ án tốt nghiệp Fall 2025 - Đã kết thúc', @p9, NULL),
+            (@p1, N'Học kỳ Spring 2026', 'SPRING2026', '2025-2026', @p4, @p5, N'Học kỳ đồ án tốt nghiệp Spring 2026 - Đang triển khai', @p9, NULL),
+            (@p6, N'Học kỳ Summer 2026', 'SUMMER2026', '2025-2026', @p7, @p8, N'Học kỳ đồ án tốt nghiệp Summer 2026 - Sắp triển khai', @p9, NULL);";
 
         await context.Database.ExecuteSqlRawAsync(sql,
             Fall2025Id,
@@ -156,6 +159,9 @@ public static class LoadTestDataSeeder
             new DateTime(2025, 12, 28, 0, 0, 0, DateTimeKind.Utc),  // Fall25 end
             new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc),    // SP26 start
             new DateTime(2026, 5, 10, 0, 0, 0, DateTimeKind.Utc),   // SP26 end
+            Summer2026Id,
+            new DateTime(2026, 5, 11, 0, 0, 0, DateTimeKind.Utc),   // SU26 start
+            new DateTime(2026, 8, 30, 0, 0, 0, DateTimeKind.Utc),   // SU26 end
             SeedDate);
 
         // Fall 2025 phases (all Completed)
@@ -188,7 +194,21 @@ public static class LoadTestDataSeeder
             new DateTime(2025, 11, 24), new DateTime(2025, 12, 14),  // Evaluation
             new DateTime(2026, 1, 5), new DateTime(2026, 5, 4));     // Implementation (15 weeks + 2 weeks Tet)
 
-        logger?.LogInformation("Seeded 2 semesters with phases.");
+        // Summer 2026 phases (Registration upcoming, rest not started)
+        var phaseSql3 = @"
+            INSERT INTO SemesterPhases (SemesterId, Name, Type, StartDate, EndDate, [Order], Status)
+            VALUES
+            (@p0, N'Đăng ký đề tài',    0, @p1, @p2, 1, 0),
+            (@p0, N'Thẩm định đề tài',  1, @p3, @p4, 2, 0),
+            (@p0, N'Triển khai',         2, @p5, @p6, 3, 0);";
+
+        await context.Database.ExecuteSqlRawAsync(phaseSql3,
+            Summer2026Id,
+            new DateTime(2026, 3, 16), new DateTime(2026, 4, 5),    // Registration
+            new DateTime(2026, 4, 6), new DateTime(2026, 4, 26),    // Evaluation
+            new DateTime(2026, 5, 11), new DateTime(2026, 8, 24));   // Implementation
+
+        logger?.LogInformation("Seeded 3 semesters with phases.");
     }
 
     // ════════════════════════════════════════════════
@@ -466,11 +486,11 @@ public static class LoadTestDataSeeder
     }
 
     // ════════════════════════════════════════════════
-    //  GROUPS (50 Fall25 + 40 Spring26 = 90 groups)
+    //  GROUPS (50 Fall25 + 40 Spring26 + 15 Summer26 = 105 groups)
     // ════════════════════════════════════════════════
     private static async Task SeedGroupsAsync(AppDbContext context, ILogger? logger)
     {
-        var totalGroups = Fall25GroupCount + Spring26GroupCount;
+        var totalGroups = Fall25GroupCount + Spring26GroupCount + Summer26GroupCount;
 
         for (var batch = 0; batch < totalGroups; batch += BatchSize)
         {
@@ -482,11 +502,38 @@ public static class LoadTestDataSeeder
             for (var i = batch + 1; i <= end; i++)
             {
                 var isFall = i <= Fall25GroupCount;
-                var semesterId = isFall ? Fall2025Id : Spring2026Id;
-                var groupStatus = isFall ? 1 : 0; // 1=Completed, 0=Active
+                var isSpring = !isFall && i <= Fall25GroupCount + Spring26GroupCount;
+                // isSummer = everything else (i > Fall25GroupCount + Spring26GroupCount)
+
+                int semesterId;
+                int groupStatus;
+                string code;
+                string name;
+
+                if (isFall)
+                {
+                    semesterId = Fall2025Id;
+                    groupStatus = 1; // Completed
+                    code = $"FA25-G-{i:D3}";
+                    name = $"Nhóm Fall 2025 - {i}";
+                }
+                else if (isSpring)
+                {
+                    semesterId = Spring2026Id;
+                    groupStatus = 0; // Active
+                    code = $"SP26-G-{i - Fall25GroupCount:D3}";
+                    name = $"Nhóm Spring 2026 - {i - Fall25GroupCount}";
+                }
+                else
+                {
+                    semesterId = Summer2026Id;
+                    groupStatus = 0; // Active
+                    var summerIndex = i - Fall25GroupCount - Spring26GroupCount;
+                    code = $"SU26-G-{summerIndex:D3}";
+                    name = $"Nhóm Summer 2026 - {summerIndex}";
+                }
+
                 var leaderId = StudentId((i - 1) * StudentsPerGroup + 1);
-                var code = isFall ? $"FA25-G-{i:D3}" : $"SP26-G-{i - Fall25GroupCount:D3}";
-                var name = isFall ? $"Nhóm Fall 2025 - {i}" : $"Nhóm Spring 2026 - {i - Fall25GroupCount}";
 
                 var pId = $"@p{paramIndex++}";
                 var pCode = $"@p{paramIndex++}";
@@ -495,8 +542,9 @@ public static class LoadTestDataSeeder
                 var pLeader = $"@p{paramIndex++}";
                 var pStatus = $"@p{paramIndex++}";
                 var pDate = $"@p{paramIndex++}";
+                var pIsOpen = $"@p{paramIndex++}";
 
-                valueClauses.Add($"({pId}, {pCode}, {pName}, NULL, {pSemester}, {pLeader}, {pStatus}, 5, {pDate}, NULL)");
+                valueClauses.Add($"({pId}, {pCode}, {pName}, NULL, {pSemester}, {pLeader}, {pStatus}, 5, {pIsOpen}, {pDate}, NULL)");
                 parameters.Add(GroupId(i));
                 parameters.Add(code);
                 parameters.Add(name);
@@ -504,24 +552,25 @@ public static class LoadTestDataSeeder
                 parameters.Add(leaderId);
                 parameters.Add(groupStatus);
                 parameters.Add(SeedDate);
+                parameters.Add(true); // IsOpenForRequests
             }
 
             var sql = $@"
-                INSERT INTO Groups (Id, Code, Name, ProjectId, SemesterId, LeaderId, Status, MaxMembers, CreatedAt, UpdatedAt)
+                INSERT INTO Groups (Id, Code, Name, ProjectId, SemesterId, LeaderId, Status, MaxMembers, IsOpenForRequests, CreatedAt, UpdatedAt)
                 VALUES {string.Join(",\n                       ", valueClauses)};";
 
             await context.Database.ExecuteSqlRawAsync(sql, parameters.ToArray());
         }
 
-        logger?.LogInformation("Seeded {Count} load-test groups.", Fall25GroupCount + Spring26GroupCount);
+        logger?.LogInformation("Seeded {Count} load-test groups.", totalGroups);
     }
 
     // ════════════════════════════════════════════════
-    //  GROUP MEMBERS (360 students in 90 groups)
+    //  GROUP MEMBERS (420 students in 105 groups)
     // ════════════════════════════════════════════════
     private static async Task SeedGroupMembersAsync(AppDbContext context, ILogger? logger)
     {
-        var totalGroups = Fall25GroupCount + Spring26GroupCount;
+        var totalGroups = Fall25GroupCount + Spring26GroupCount + Summer26GroupCount;
         var totalStudents = totalGroups * StudentsPerGroup; // 360
         var members = new List<(Guid GroupId, Guid StudentId, int Role)>();
 
