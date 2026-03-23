@@ -31,7 +31,7 @@ export function Header({
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={`flex items-center justify-between px-8 py-4 sticky top-0 z-[60] ${
+      className={`flex items-center justify-between px-8 py-4 sticky top-0 z-40 ${
         isPrimary
           ? "bg-primary shadow-md text-white"
           : isNavy
