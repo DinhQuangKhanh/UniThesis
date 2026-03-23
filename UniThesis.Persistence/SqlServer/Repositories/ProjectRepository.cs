@@ -90,14 +90,14 @@ namespace UniThesis.Persistence.SqlServer.Repositories
         {
             var prefix = $"PROJ-{year}-";
             var lastCode = await _dbSet
-                .Where(p => EF.Functions.Like(p.Code.Value, $"{prefix}%"))
+                .Where(p => p.CreatedAt.Year == year)
                 .OrderByDescending(p => p.Code)
-                .Select(p => p.Code.Value)
+                .Select(p => p.Code)
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (lastCode == null) return 1;
 
-            var sequencePart = lastCode.Replace(prefix, "");
+            var sequencePart = lastCode.Value.Replace(prefix, "");
             return int.TryParse(sequencePart, out var seq) ? seq + 1 : 1;
         }
 
@@ -181,6 +181,18 @@ namespace UniThesis.Persistence.SqlServer.Repositories
                            p.PoolStatus == PoolTopicStatus.Available &&
                            p.ExpirationSemesterId.HasValue &&
                            p.ExpirationSemesterId.Value < currentSemesterId)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<Project>> GetPoolTopicsMissingExpirationAsync(CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Where(p => p.SourceType == ProjectSourceType.FromPool &&
+                           p.PoolStatus == PoolTopicStatus.Available &&
+                           p.Status == ProjectStatus.Approved &&
+                           p.CreatedInSemesterId.HasValue &&
+                           p.TopicPoolId.HasValue &&
+                           !p.ExpirationSemesterId.HasValue)
                 .ToListAsync(cancellationToken);
         }
 

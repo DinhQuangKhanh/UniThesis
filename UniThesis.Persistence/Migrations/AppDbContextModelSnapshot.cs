@@ -262,6 +262,90 @@ namespace UniThesis.Persistence.Migrations
                     b.ToTable("EvaluationSubmissions", (string)null);
                 });
 
+            modelBuilder.Entity("UniThesis.Domain.Aggregates.GroupAggregate.Entities.GroupInvitation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("InviteeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("InviterId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId");
+
+                    b.HasIndex("InviteeId");
+
+                    b.HasIndex("InviterId");
+
+                    b.HasIndex("GroupId", "InviteeId", "Status");
+
+                    b.ToTable("GroupInvitations", (string)null);
+                });
+
+            modelBuilder.Entity("UniThesis.Domain.Aggregates.GroupAggregate.Entities.GroupJoinRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GroupId");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("GroupId", "StudentId", "Status");
+
+                    b.ToTable("GroupJoinRequests", (string)null);
+                });
+
             modelBuilder.Entity("UniThesis.Domain.Aggregates.GroupAggregate.Entities.GroupMember", b =>
                 {
                     b.Property<int>("Id")
@@ -314,6 +398,9 @@ namespace UniThesis.Persistence.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsOpenForRequests")
+                        .HasColumnType("bit");
 
                     b.Property<Guid?>("LeaderId")
                         .HasColumnType("uniqueidentifier");
@@ -1456,6 +1543,42 @@ namespace UniThesis.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("UniThesis.Domain.Aggregates.GroupAggregate.Entities.GroupInvitation", b =>
+                {
+                    b.HasOne("UniThesis.Domain.Aggregates.GroupAggregate.Group", null)
+                        .WithMany("Invitations")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("UniThesis.Domain.Aggregates.UserAggregate.User", null)
+                        .WithMany()
+                        .HasForeignKey("InviteeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("UniThesis.Domain.Aggregates.UserAggregate.User", null)
+                        .WithMany()
+                        .HasForeignKey("InviterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("UniThesis.Domain.Aggregates.GroupAggregate.Entities.GroupJoinRequest", b =>
+                {
+                    b.HasOne("UniThesis.Domain.Aggregates.GroupAggregate.Group", null)
+                        .WithMany("JoinRequests")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("UniThesis.Domain.Aggregates.UserAggregate.User", null)
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("UniThesis.Domain.Aggregates.GroupAggregate.Entities.GroupMember", b =>
                 {
                     b.HasOne("UniThesis.Domain.Aggregates.GroupAggregate.Group", null)
@@ -1704,6 +1827,10 @@ namespace UniThesis.Persistence.Migrations
 
             modelBuilder.Entity("UniThesis.Domain.Aggregates.GroupAggregate.Group", b =>
                 {
+                    b.Navigation("Invitations");
+
+                    b.Navigation("JoinRequests");
+
                     b.Navigation("Members");
                 });
 

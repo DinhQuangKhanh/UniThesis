@@ -84,9 +84,14 @@ public interface ITopicPoolDomainService
     Task<IEnumerable<Project>> GetExpiringTopicsAsync(int currentSemesterId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Backfills expiration semester for approved pool topics that are still missing expiration metadata.
+    /// </summary>
+    Task<int> ResolveMissingExpirationSemestersAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Calculates the expiration semester ID for a new topic.
     /// </summary>
-    Task<int> CalculateExpirationSemesterAsync(int createdSemesterId, int expirationSemesters, CancellationToken cancellationToken = default);
+    Task<int?> CalculateExpirationSemesterAsync(int createdSemesterId, int expirationSemesters, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

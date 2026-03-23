@@ -1,5 +1,7 @@
 using MediatR;
+using UniThesis.API.Extensions;
 using UniThesis.Application.Features.Notifications.Commands.MarkAllAsRead;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Notifications;
 
@@ -17,7 +19,7 @@ public class MarkAllAsReadEndpoint : IEndpoint
             {
                 await sender.Send(
                     new MarkAllNotificationsAsReadCommand(), cancellationToken);
-                return Results.NoContent();
+                return NoContent("Thành công.");
             })
             .RequireAuthorization()
             .WithTags("Notifications")

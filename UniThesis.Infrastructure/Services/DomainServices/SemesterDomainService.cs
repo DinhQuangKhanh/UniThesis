@@ -40,10 +40,15 @@ namespace UniThesis.Infrastructure.Services.DomainServices
             return date >= phase.StartDate && date <= phase.EndDate;
         }
 
-        public async Task<int> GetSemesterAfterAsync(int semesterId, int count, CancellationToken ct = default)
+        public async Task<int?> GetSemesterAfterAsync(int semesterId, int count, CancellationToken ct = default)
         {
-            // Simple implementation - in real scenario, might need to create future semesters
-            return semesterId + count;
+            if (count <= 0)
+            {
+                return semesterId;
+            }
+
+            var targetSemester = await _semesterRepository.GetSemesterAfterAsync(semesterId, count, ct);
+            return targetSemester?.Id;
         }
     }
 }

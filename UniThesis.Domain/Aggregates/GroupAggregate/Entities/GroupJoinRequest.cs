@@ -1,0 +1,43 @@
+using UniThesis.Domain.Common.Primitives;
+using UniThesis.Domain.Enums.Group;
+
+namespace UniThesis.Domain.Aggregates.GroupAggregate.Entities
+{
+    public class GroupJoinRequest : Entity<int>
+    {
+        public Guid GroupId { get; private set; }
+        public Guid StudentId { get; private set; }
+        public string? Message { get; private set; }
+        public GroupJoinRequestStatus Status { get; private set; }
+        public DateTime CreatedAt { get; private set; }
+        public DateTime? RespondedAt { get; private set; }
+
+        public bool IsPending => Status == GroupJoinRequestStatus.Pending;
+
+        private GroupJoinRequest() { }
+
+        internal static GroupJoinRequest Create(Guid groupId, Guid studentId, string? message = null)
+        {
+            return new GroupJoinRequest
+            {
+                GroupId = groupId,
+                StudentId = studentId,
+                Message = message,
+                Status = GroupJoinRequestStatus.Pending,
+                CreatedAt = DateTime.UtcNow
+            };
+        }
+
+        public void Approve()
+        {
+            Status = GroupJoinRequestStatus.Approved;
+            RespondedAt = DateTime.UtcNow;
+        }
+
+        public void Reject()
+        {
+            Status = GroupJoinRequestStatus.Rejected;
+            RespondedAt = DateTime.UtcNow;
+        }
+    }
+}

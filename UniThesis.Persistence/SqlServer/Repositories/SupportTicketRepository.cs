@@ -97,14 +97,6 @@ namespace UniThesis.Persistence.SqlServer.Repositories
             return int.TryParse(sequencePart, out var seq) ? seq + 1 : 1;
         }
 
-        public async Task<Dictionary<TicketStatus, int>> GetStatusCountAsync(CancellationToken cancellationToken = default)
-        {
-            return await _dbSet
-                .GroupBy(t => t.Status)
-                .Select(g => new { Status = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
-        }
-
         /// <summary>
         /// Gets high priority open tickets.
         /// </summary>
@@ -116,6 +108,15 @@ namespace UniThesis.Persistence.SqlServer.Repositories
                 .OrderBy(t => t.Priority)
                 .ThenBy(t => t.CreatedAt)
                 .ToListAsync(cancellationToken);
+        }
+
+        public async Task<Dictionary<TicketStatus, int>> GetStatusCountAsync(CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .AsNoTracking()
+                .GroupBy(t => t.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
         }
     }
 }

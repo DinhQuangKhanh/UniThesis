@@ -1,4 +1,6 @@
+using UniThesis.API.Extensions;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Admin;
 
@@ -16,7 +18,7 @@ public class GetSeveritySummaryEndpoint : IEndpoint
                 var summary = await repository.GetSeveritySummaryAsync(
                     role, from, to, cancellationToken);
 
-                return Results.Ok(new
+                return Ok(new
                 {
                     summary.Info,
                     summary.Warning,

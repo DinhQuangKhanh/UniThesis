@@ -10,6 +10,7 @@ namespace UniThesis.Domain.Aggregates.SemesterAggregate
         Task<Semester?> GetActiveAsync(CancellationToken cancellationToken = default);
         Task<IEnumerable<Semester>> GetByAcademicYearAsync(string academicYear, CancellationToken cancellationToken = default);
         Task<IEnumerable<Semester>> GetUpcomingAsync(CancellationToken cancellationToken = default);
+        Task<Semester?> GetSemesterAfterAsync(int semesterId, int count, CancellationToken cancellationToken = default);
         Task<bool> ExistsCodeAsync(SemesterCode code, CancellationToken cancellationToken = default);
         Task<bool> HasOverlappingAsync(DateTime startDate, DateTime endDate, int? excludeId = null, CancellationToken cancellationToken = default);
         Task<int> GetNextIdAsync(CancellationToken cancellationToken = default);

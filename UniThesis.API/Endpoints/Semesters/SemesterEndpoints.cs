@@ -1,11 +1,13 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using UniThesis.API.Extensions;
 using UniThesis.Application.Features.Semesters.Commands.CreateSemester;
 using UniThesis.Application.Features.Semesters.Commands.DeleteSemester;
 using UniThesis.Application.Features.Semesters.Commands.UpdateSemester;
 using UniThesis.Application.Features.Semesters.Queries.GetActiveSemester;
 using UniThesis.Application.Features.Semesters.Queries.GetAllSemesters;
 using UniThesis.Application.Features.Semesters.Queries.GetSemesterById;
+using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Semesters;
 
@@ -19,7 +21,7 @@ public class GetAllSemestersEndpoint : IEndpoint
                 CancellationToken cancellationToken) =>
             {
                 var result = await sender.Send(new GetAllSemestersQuery(status), cancellationToken);
-                return Results.Ok(result);
+                return Ok(result);
             })
             .RequireAuthorization("RequireAdmin")
             .WithTags("Semesters")
@@ -39,7 +41,7 @@ public class GetSemesterByIdEndpoint : IEndpoint
                 CancellationToken cancellationToken) =>
             {
                 var result = await sender.Send(new GetSemesterByIdQuery(id), cancellationToken);
-                return Results.Ok(result);
+                return Ok(result);
             })
             .RequireAuthorization("RequireAdmin")
             .WithTags("Semesters")
@@ -59,7 +61,7 @@ public class GetActiveSemesterEndpoint : IEndpoint
                 CancellationToken cancellationToken) =>
             {
                 var result = await sender.Send(new GetActiveSemesterQuery(), cancellationToken);
-                return result is null ? Results.NotFound() : Results.Ok(result);
+                return result is null ? Results.NotFound() : Ok(result);
             })
             .RequireAuthorization("RequireAdmin")
             .WithTags("Semesters")
@@ -80,7 +82,7 @@ public class CreateSemesterEndpoint : IEndpoint
                 CancellationToken cancellationToken) =>
             {
                 var id = await sender.Send(command, cancellationToken);
-                return Results.Created($"/api/admin/semesters/{id}", new { id });
+                return Created($"/api/admin/semesters/{id}", new { id }, "Tạo mới thành công.");
             })
             .RequireAuthorization("RequireAdmin")
             .WithTags("Semesters")
@@ -104,7 +106,7 @@ public class UpdateSemesterEndpoint : IEndpoint
             {
                 if (id != command.Id) return Results.BadRequest("Id mismatch");
                 await sender.Send(command, cancellationToken);
-                return Results.NoContent();
+                return NoContent("Cập nhật thành công.");
             })
             .RequireAuthorization("RequireAdmin")
             .WithTags("Semesters")
@@ -126,7 +128,7 @@ public class DeleteSemesterEndpoint : IEndpoint
                 CancellationToken cancellationToken) =>
             {
                 await sender.Send(new DeleteSemesterCommand(id), cancellationToken);
-                return Results.NoContent();
+                return NoContent("Xóa thành công.");
             })
             .RequireAuthorization("RequireAdmin")
             .WithTags("Semesters")

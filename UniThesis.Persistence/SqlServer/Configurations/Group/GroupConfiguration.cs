@@ -33,6 +33,16 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Group
                 .HasForeignKey(m => m.GroupId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            builder.HasMany(g => g.Invitations)
+                .WithOne()
+                .HasForeignKey(i => i.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasMany(g => g.JoinRequests)
+                .WithOne()
+                .HasForeignKey(r => r.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // Indexes
             builder.HasIndex(g => g.Code).IsUnique();
             builder.HasIndex(g => g.Status);

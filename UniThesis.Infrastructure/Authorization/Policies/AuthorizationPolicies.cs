@@ -51,6 +51,9 @@ namespace UniThesis.Infrastructure.Authorization.Policies
                 options.AddPolicy(PolicyNames.GroupMember, policy =>
                     policy.Requirements.Add(new GroupMemberRequirement()));
 
+                options.AddPolicy(PolicyNames.GroupLeader, policy =>
+                    policy.Requirements.Add(new GroupLeaderRequirement()));
+
                 options.AddPolicy(PolicyNames.MentorOfProject, policy =>
                     policy.Requirements.Add(new MentorOfProjectRequirement()));
             });

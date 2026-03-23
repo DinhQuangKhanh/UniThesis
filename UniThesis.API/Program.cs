@@ -1,10 +1,19 @@
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Http.Features;
+using UniThesis.API.Common.Security;
 using UniThesis.API.Extensions;
+using UniThesis.Application.Common;
 using UniThesis.Application;
 using UniThesis.Infrastructure;
 using UniThesis.Infrastructure.RealTime.Hubs;
 using UniThesis.Persistence;
+using System.Text.Json;
 using System.Linq;
+using System.Threading.RateLimiting;
+
+// Load backend environment variables from .env files before building configuration.
+var environmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+DotEnvLoader.LoadForCurrentEnvironment(Directory.GetCurrentDirectory(), environmentName);
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -72,6 +81,61 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Upload hard limits (phase 1): reject oversized multipart requests early.
+const long proposeTopicMaxUploadBytes = 25 * 1024 * 1024; // 25 MB
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = proposeTopicMaxUploadBytes;
+});
+
+// Request timeout policies (phase 1): keep slow upload requests from hogging workers.
+builder.Services.AddRequestTimeouts(options =>
+{
+    options.AddPolicy("ProposeTopicUploadTimeout", TimeSpan.FromSeconds(60));
+});
+
+// Rate limiting (phase 1): reduce request spam on upload/propose endpoint.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("ProposeTopicUploadPolicy", httpContext =>
+    {
+        var dbUserId = httpContext.User.FindFirst(AppClaimTypes.DbUserId)?.Value;
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var key = !string.IsNullOrWhiteSpace(dbUserId) ? $"user:{dbUserId}" : $"ip:{ip}";
+
+        return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            SegmentsPerWindow = 6,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 2,
+            AutoReplenishment = true,
+        });
+    });
+
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.ContentType = "application/json";
+        var payload = ApiResponse.Fail("Bạn gửi yêu cầu quá nhanh. Vui lòng thử lại sau.");
+        var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+        await context.HttpContext.Response.WriteAsync(json, token);
+    };
+});
+
+// Malware scanning (phase 3): scan uploaded attachments through ClamAV before processing.
+builder.Services.Configure<MalwareScanOptions>(
+    builder.Configuration.GetSection(MalwareScanOptions.SectionName));
+builder.Services.AddScoped<IMalwareScanAuditLogger, MalwareScanAuditLogger>();
+builder.Services.AddScoped<ITopicProposalMalwareScanner, TopicProposalMalwareScanner>();
+builder.Services.AddScoped<ITopicProposalAttachmentScanWorkflow, TopicProposalAttachmentScanWorkflow>();
+builder.Services.AddScoped<TopicProposalAttachmentScanJob>();
+
 // Layer Services
 builder.Services.AddApplicationServices();  // Application Layer (MediatR, Validators, Behaviors)
 builder.Services.AddPersistence(builder.Configuration);  // Persistence Layer (EF Core, MongoDB, Repositories)
@@ -119,6 +183,10 @@ app.UseForwardedHeaders();
 
 // Infrastructure middleware (Correlation ID, Request Logging, Exception Handling, Performance Monitoring)
 app.UseInfrastructure();
+
+// Apply request timeout and rate limit middleware before mapping endpoints.
+app.UseRequestTimeouts();
+app.UseRateLimiter();
 
 // CORS
 app.UseCors("AllowFrontend");
