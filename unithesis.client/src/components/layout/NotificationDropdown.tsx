@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiClient } from "@/lib/apiClient";
+import { useSignalR } from "@/hooks/useSignalR";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,8 @@ export function NotificationDropdown({ isNavy = false }: NotificationDropdownPro
   const dropdownRef = useRef<HTMLDivElement>(null);
   const fetchedRef = useRef(false); // prevent duplicate fetch on first open
 
+  const [pulse, setPulse] = useState(false);
+
   // ── Fetch unread count (badge) on mount ──────────────────────────────────
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -96,10 +99,19 @@ export function NotificationDropdown({ isNavy = false }: NotificationDropdownPro
 
   useEffect(() => {
     fetchUnreadCount();
-    // Poll every 5s to keep badge fresh in realtime
-    const interval = setInterval(fetchUnreadCount, 5_000);
-    return () => clearInterval(interval);
   }, [fetchUnreadCount]);
+
+  // ── SignalR real-time notifications ─────────────────────────────────────
+  const handleReceiveNotification = useCallback((raw: unknown) => {
+    const n = raw as NotificationItem;
+    if (!n?.id) return;
+    setNotifications((prev) => [n, ...prev.filter((x) => x.id !== n.id)]);
+    setUnreadCount((prev) => prev + 1);
+    setPulse(true);
+    setTimeout(() => setPulse(false), 2000);
+  }, []);
+
+  useSignalR({ onReceiveNotification: handleReceiveNotification });
 
   // ── Fetch notifications list when dropdown opens ──────────────────────────
   const fetchNotifications = useCallback(async () => {
@@ -182,7 +194,7 @@ export function NotificationDropdown({ isNavy = false }: NotificationDropdownPro
         }`}
         aria-label="Mở thông báo"
       >
-        <span className="material-symbols-outlined text-[24px]">notifications</span>
+        <span className={`material-symbols-outlined text-[24px] ${pulse ? "animate-bounce" : ""}`}>notifications</span>
         {unreadCount > 0 && (
           <span
             className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold text-white rounded-full ${isNavy ? "bg-red-500" : "bg-primary"}`}
