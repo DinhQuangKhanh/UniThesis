@@ -21,7 +21,8 @@ public class TitleSimilarityService : ITitleSimilarityService
         "than", "so", "as", "up", "out", "about", "into", "through", "during", "before", "after",
         "above", "below", "between", "under", "over", "each", "every", "all", "both", "few",
         "more", "most", "other", "some", "such", "only", "own", "same", "also", "very",
-        "using", "based", "via"
+        "using", "based", "via",
+        "university"
     };
 
     // Technology terms — filter these out to focus similarity on TOPIC, not tech stack.
@@ -38,25 +39,94 @@ public class TitleSimilarityService : ITitleSimilarityService
         // Languages
         "javascript", "typescript", "python", "java", "csharp", "php", "ruby", "golang",
         "swift", "kotlin", "dart", "rust", "scala", "elixir",
-        // Databases
+        // Databases (specific engines + generic term)
+        "database", "databases",
         "sql", "mysql", "postgresql", "postgres", "mongodb", "redis", "sqlite", "oracle",
-        "sqlserver", "firebase", "supabase", "dynamodb", "cassandra", "neo4j",
+        "sqlserver", "firebase", "supabase", "dynamodb", "cassandra", "neo4j", "elasticsearch",
         // Mobile
         "flutter", "ionic", "xamarin", "maui", "swiftui", "jetpack",
+        "native",  // "React Native" — "react" already filtered
         // Cloud & DevOps
         "aws", "azure", "gcp", "docker", "kubernetes", "heroku", "vercel", "netlify",
+        "cicd", "devops", "pipeline",
         // API & protocols
-        "api", "rest", "restful", "graphql", "grpc", "websocket", "signalr",
+        "api", "rest", "restful", "graphql", "grpc", "websocket", "signalr", "oauth", "jwt",
         // Generic tech fragments
         "js", "css", "html", "http", "json", "xml", "mvc", "mvvm", "mvp",
         "wpf", "winforms", "entity", "framework",
         "microservice", "microservices", "serverless",
         "core", "server", "client", "frontend", "backend", "fullstack",
         "app", "web", "mobile", "desktop", "cloud",
+        // UI/UX
+        "interface", "ui", "ux", "dashboard", "widget",
+        // AI/ML methodologies — technique, not topic
+        "machine", "iot",
+        "neural", "network", "deep", "learning",  // "deep learning", "neural network"
+        "nlp", "natural", "language", "processing",
+        "algorithm", "algorithms",
+        "model", "models",
+        // Blockchain / crypto
+        "blockchain", "crypto", "nft", "token", "smart", "contract",
+        // Embedded / hardware
+        "embedded", "sensor", "sensors", "arduino", "raspberry", "firmware",
+        // Data infrastructure — generic, not domain-specific
+        "data", "dataset", "pipeline", "warehouse", "hadoop", "spark",
+        // Time & series
+        "time", "series",
         // Generic action verbs — appear in almost every thesis, not discriminating
         "develop", "build", "create", "construct", "implement", "design",
+        // Generic adjectives
+        "intelligent", "smart", "advanced", "comprehensive", "real", "automated",
+        // Monitor/track/analyze — what you monitor IS the topic
+        "monitor", "track", "surveil",
+        "analyz", "analysis", "assess",
         // Generic nouns — "build a system/platform" says nothing about the topic
-        "system", "platform", "applic", "software", "tool", "solut", "program"
+        "system", "platform", "applic", "software", "tool", "solut", "program",
+        // "boot" is part of "Spring Boot"
+        "boot",
+        // Management/admin — too generic ("manage a hotel" ≠ "manage expenses")
+        "manage", "management", "administr", "organiz", "governance"
+    };
+
+    // Proper nouns — Vietnamese city/location name tokens that appear in English titles
+    // but carry no topic-discriminating value.
+    // Titles are split on spaces, so "Da Nang" → ["da", "nang"], "Ho Chi Minh" → ["ho", "chi", "minh"].
+    // Tokens ≤ 2 chars ("da", "ho", "ha") are already filtered by the min-length check (> 2).
+    // This list covers tokens with 3+ chars that survive the length filter.
+    private static readonly HashSet<string> ProperNounStopWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // Đà Nẵng → "nang" (4 chars, "da" filtered by length)
+        "nang",
+        // Hà Nội → "noi" (3 chars, "ha" filtered by length)
+        "noi",
+        // Hồ Chí Minh → "chi" (3), "minh" (4) — "ho" filtered by length
+        "chi", "minh", "sai", "gon",
+        // Huế → "hue" (3 chars)
+        "hue",
+        // Nha Trang → "nha" (3), "trang" (5)
+        "nha", "trang",
+        // Cần Thơ → "can" already in EnglishStopWords, "tho" (3)
+        "tho",
+        // Hải Phòng → "hai" (3), "phong" (5)
+        "hai", "phong",
+        // Biên Hòa → "bien" (4), "hoa" (3)
+        "bien", "hoa",
+        // Vũng Tàu → "vung" (4), "tau" (3)
+        "vung", "tau",
+        // Quy Nhơn → "quy" (3), "nhon" (4)
+        "quy", "nhon",
+        // Đà Lạt → "lat" (3 chars, "da" filtered by length)
+        "lat", "dalat",
+        // Buôn Ma Thuột → "buon" (4), "thuot" (5)
+        "buon", "thuot",
+        // Pleiku → "pleiku" (6)
+        "pleiku",
+        // Vinh → "vinh" (4)
+        "vinh",
+        // Institutions
+        "fpt",
+        // Country
+        "viet", "nam",
     };
 
     // ── Synonym mapping ──────────────────────────────────────────────────────
@@ -67,15 +137,10 @@ public class TitleSimilarityService : ITitleSimilarityService
         // Online/Digital → #DIGITAL
         {"online", "#DIGITAL"}, {"virtual", "#DIGITAL"}, {"electron", "#DIGITAL"},
         {"digital", "#DIGITAL"},
-        // Manage/Admin → #MANAGE
-        {"manage", "#MANAGE"}, {"administr", "#MANAGE"}, {"organiz", "#MANAGE"},
-        {"governance", "#MANAGE"},
         // Detect/Recognize → #DETECT
         {"detect", "#DETECT"}, {"recogn", "#DETECT"}, {"identif", "#DETECT"},
         // Predict/Forecast → #PREDICT
         {"predict", "#PREDICT"}, {"forecast", "#PREDICT"}, {"estimat", "#PREDICT"},
-        // Monitor/Track → #MONITOR
-        {"monitor", "#MONITOR"}, {"track", "#MONITOR"}, {"surveil", "#MONITOR"},
         // Automate → #AUTOMATE
         {"automat", "#AUTOMATE"},
         // Education/Learning → #EDUCATION
@@ -88,8 +153,6 @@ public class TitleSimilarityService : ITitleSimilarityService
         {"commerce", "#COMMERCE"}, {"ecommerce", "#COMMERCE"}, {"shop", "#COMMERCE"},
         {"store", "#COMMERCE"}, {"market", "#COMMERCE"}, {"retail", "#COMMERCE"},
         {"bookstore", "#COMMERCE"}, {"sell", "#COMMERCE"}, {"purchas", "#COMMERCE"},
-        // Analyze/Evaluate → #ANALYZE
-        {"analyz", "#ANALYZE"}, {"analysis", "#ANALYZE"}, {"assess", "#ANALYZE"},
         // Support/Assist → #SUPPORT
         {"support", "#SUPPORT"}, {"assist", "#SUPPORT"}, {"help", "#SUPPORT"},
         // Recommend/Suggest → #RECOMMEND
@@ -108,15 +171,14 @@ public class TitleSimilarityService : ITitleSimilarityService
     private static readonly Dictionary<string, string> SynonymDisplayNames = new()
     {
         {"#DIGITAL", "online/digital"},
-        {"#MANAGE", "management"},
         {"#DETECT", "detect/recognize"},
         {"#PREDICT", "predict/forecast"},
-        {"#MONITOR", "monitor/track"},
+
         {"#AUTOMATE", "automate"},
         {"#EDUCATION", "education/learning"},
         {"#HEALTH", "health/medical"},
         {"#COMMERCE", "commerce/shop"},
-        {"#ANALYZE", "analyze/evaluate"},
+
         {"#SUPPORT", "support/assist"},
         {"#RECOMMEND", "recommend"},
         {"#SCHEDULE", "schedule/reserve"},
@@ -237,7 +299,7 @@ public class TitleSimilarityService : ITitleSimilarityService
         // 6. Compute TF-IDF vector for current project
         var currentVector = ComputeTfIdfVector(currentTokens, idf, vocabulary);
 
-        // 7. Compute HYBRID similarity: 0.5 * TF-IDF cosine + 0.5 * Overlap coefficient
+        // 7. Compute TF-IDF Cosine similarity
         var results = new List<(int index, double similarity, List<string> commonKeywords)>();
         var currentTokenSet = new HashSet<string>(currentTokens);
 
@@ -247,21 +309,17 @@ public class TitleSimilarityService : ITitleSimilarityService
             if (docTokens.Count == 0) continue;
 
             var docVector = ComputeTfIdfVector(docTokens, idf, vocabulary);
-            double cosineSim = CosineSimilarity(currentVector, docVector);
+            double similarity = CosineSimilarity(currentVector, docVector);
 
-            var docTokenSet = new HashSet<string>(docTokens);
-            double overlapSim = OverlapCoefficient(currentTokenSet, docTokenSet);
-
-            double hybridScore = 0.5 * cosineSim + 0.5 * overlapSim;
-
-            if (hybridScore > 0.01)
+            if (similarity > 0.01)
             {
                 // Map canonical forms to display names for common keywords
+                var docTokenSet = new HashSet<string>(docTokens);
                 var commonKeywords = currentTokenSet
                     .Intersect(docTokenSet)
                     .Select(k => SynonymDisplayNames.GetValueOrDefault(k, k))
                     .ToList();
-                results.Add((i, hybridScore, commonKeywords));
+                results.Add((i, similarity, commonKeywords));
             }
         }
 
@@ -316,10 +374,12 @@ public class TitleSimilarityService : ITitleSimilarityService
 
         return cleaned
             .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-            .Where(t => t.Length > 1)
+            .Where(t => t.Length > 2)                        // min 3 chars — filters "da", "ho", "js", etc.
             .Where(t => !EnglishStopWords.Contains(t))
-            .Where(t => !TechStopWords.Contains(t))
+            .Where(t => !TechStopWords.Contains(t))          // pre-stem filter
+            .Where(t => !ProperNounStopWords.Contains(t))
             .Select(ConservativeStem)
+            .Where(t => !TechStopWords.Contains(t))          // post-stem filter (catches "building"→"build")
             .Select(t => SynonymMap.GetValueOrDefault(t, t)) // Map synonyms to canonical forms
             .Distinct() // Each concept counts once per document
             .ToList();
@@ -409,25 +469,4 @@ public class TitleSimilarityService : ITitleSimilarityService
         return denominator == 0 ? 0 : dot / denominator;
     }
 
-    /// <summary>
-    /// Overlap coefficient: |A ∩ B| / min(|A|, |B|)
-    /// Measures how much of the shorter set is "contained" in the longer one.
-    /// Better than Jaccard for titles of different lengths.
-    /// Includes a penalty when min set size &lt; 3 to avoid inflated scores on very short titles.
-    /// </summary>
-    private static double OverlapCoefficient(HashSet<string> a, HashSet<string> b)
-    {
-        int intersection = a.Count(t => b.Contains(t));
-        int minSize = Math.Min(a.Count, b.Count);
-        if (minSize == 0) return 0;
-
-        double raw = (double)intersection / minSize;
-
-        // Penalize when the shorter set is very small (< 3 tokens)
-        // to avoid inflated scores from trivially short titles
-        if (minSize < 3)
-            raw *= minSize / 3.0;
-
-        return raw;
-    }
 }
