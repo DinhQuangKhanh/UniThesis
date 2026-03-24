@@ -868,14 +868,14 @@ public static class LoadTestDataSeeder
                 var mentorIndex = ((i - 1) % DualRoleCount) + 1;
 
                 var evaluatorOffset = 0;
-                for (var order = 1; order <= 3; order++)
+                for (var order = 1; order <= 2; order++)
                 {
                     assignmentIndex++;
 
                     int evaluatorIndex;
                     do
                     {
-                        evaluatorIndex = ((i - 1) * 3 + order - 1 + evaluatorOffset) % DualRoleCount + 1;
+                        evaluatorIndex = ((i - 1) * 2 + order - 1 + evaluatorOffset) % DualRoleCount + 1;
                         if (evaluatorIndex == mentorIndex)
                             evaluatorOffset++;
                     } while (evaluatorIndex == mentorIndex);

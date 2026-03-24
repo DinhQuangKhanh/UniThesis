@@ -7,7 +7,7 @@ namespace UniThesis.Domain.Aggregates.EvaluationAggregate.Rules
     /// </summary>
     public class ProjectCannotExceedMaxEvaluatorsRule : IBusinessRule
     {
-        public const int MaxEvaluators = 3;
+        public const int MaxEvaluators = 2;
         private readonly int _currentEvaluatorCount;
 
         /// <summary>

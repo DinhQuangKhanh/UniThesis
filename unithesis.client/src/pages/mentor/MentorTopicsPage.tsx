@@ -1,161 +1,580 @@
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { RegisterTopicModal } from '@/components/mentor/RegisterTopicModal'
-import { NotificationDropdown } from '@/components/layout'
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { RegisterTopicModal } from "@/components/mentor/RegisterTopicModal";
+import { Header } from "@/components/layout/Header";
+import {
+  mentorTopicService,
+  sourceTypeLabel,
+  statusConfig,
+  type MentorTopicItem,
+  type MentorTopicsResponse,
+  type SemesterOption,
+} from "@/lib/mentorTopicService";
+import { topicPoolService, type TopicDetail, type TopicDocument } from "@/lib/topicPoolService";
+
+// ── Animation variants ───────────────────────────────────────────────────────
 
 const container = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.05 } }
-}
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
+};
 
 const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+};
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
-const topics = [
-    { code: 'PROJ-2024-001', name: 'Ứng dụng AI trong chẩn đoán hình ảnh Y Khoa', field: 'Khoa học máy tính', icon: 'medical_services', iconColor: 'blue', type: 'reserved', status: 'pending', date: '12/10/2023' },
-    { code: 'PROJ-2024-045', name: 'Xây dựng hệ thống E-commerce Local cho nông sản', field: 'Kỹ thuật phần mềm', icon: 'shopping_cart', iconColor: 'emerald', type: 'public', status: 'approved', date: '10/10/2023' },
-    { code: 'PROJ-2024-089', name: 'Phát triển Robot hỗ trợ người già tại nhà', field: 'IoT & Robotics', icon: 'smart_toy', iconColor: 'rose', type: 'public', status: 'revision', date: '05/10/2023' },
-    { code: 'PROJ-2024-102', name: 'Hệ thống quản lý chuỗi cung ứng Blockchain', field: 'Hệ thống thông tin', icon: 'account_balance', iconColor: 'purple', type: 'public', status: 'approved', date: '01/10/2023' },
-    { code: 'PROJ-2024-115', name: 'Giải pháp Cloud Native cho doanh nghiệp SME', field: 'Mạng máy tính', icon: 'cloud', iconColor: 'orange', type: 'reserved', status: 'pending', date: '28/09/2023' },
-]
+function getPageNumbers(currentPage: number, totalPages: number): (number | "...")[] {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+  const pages: (number | "...")[] = [1];
+  if (currentPage > 3) pages.push("...");
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
+  for (let i = start; i <= end; i++) pages.push(i);
+  if (currentPage < totalPages - 2) pages.push("...");
+  if (totalPages > 1) pages.push(totalPages);
+  return pages;
+}
+
+const PAGE_SIZE = 10;
+
+// ── Main Component ───────────────────────────────────────────────────────────
 
 export function MentorTopicsPage() {
-    const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [detailTopic, setDetailTopic] = useState<MentorTopicItem | null>(null);
 
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'approved':
-                return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"><span className="size-1.5 rounded-full bg-emerald-500" />Đã duyệt</span>
-            case 'revision':
-                return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200"><span className="size-1.5 rounded-full bg-rose-500" />Yêu cầu sửa</span>
-            default:
-                return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200"><span className="size-1.5 rounded-full bg-amber-500" />Chờ duyệt</span>
+  // Data
+  const [data, setData] = useState<MentorTopicsResponse | null>(null);
+  const [semesters, setSemesters] = useState<SemesterOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Filters
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [selectedSemester, setSelectedSemester] = useState<number | undefined>(undefined);
+  const [page, setPage] = useState(1);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, selectedSemester]);
+
+  // Load semesters once
+  useEffect(() => {
+    mentorTopicService
+      .getSemesters()
+      .then((list) => {
+        // Sort by startDate desc
+        const sorted = list.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+        setSemesters(sorted);
+        // Default to the first (latest) semester
+        if (sorted.length > 0) {
+          setSelectedSemester(sorted[0].id);
         }
+      })
+      .catch(() => {
+        // semesters load failure is non-critical
+      });
+  }, []);
+
+  // Load topics
+  const fetchTopics = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await mentorTopicService.getTopics({
+        semesterId: selectedSemester,
+        search: debouncedSearch || undefined,
+        page,
+        pageSize: PAGE_SIZE,
+      });
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể tải dữ liệu");
+    } finally {
+      setLoading(false);
     }
+  }, [selectedSemester, debouncedSearch, page]);
 
-    return (
-        <>
-            {/* Header */}
-            <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 flex-shrink-0 z-50 shadow-sm">
-                <nav className="flex text-sm font-medium text-slate-500">
-                    <a href="#" className="hover:text-slate-900">UniThesis</a>
-                    <span className="mx-2 text-slate-400">/</span>
-                    <span className="text-slate-900 font-bold">Danh sách đề tài</span>
-                </nav>
-                <NotificationDropdown role="mentor" />
-            </header>
+  useEffect(() => {
+    if (selectedSemester !== undefined) {
+      fetchTopics();
+    }
+  }, [fetchTopics, selectedSemester]);
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-8 bg-slate-100">
-                <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-                    {/* Title & Actions */}
-                    <motion.div variants={item} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <h2 className="text-2xl font-bold text-slate-900">Kho Đề Tài Của Mentor</h2>
-                            <p className="text-slate-500 mt-1 text-sm">Quản lý và theo dõi trạng thái thẩm định các đề tài hướng dẫn.</p>
-                        </div>
-                        <button
-                            onClick={() => setIsModalOpen(true)}
-                            className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-semibold shadow-sm transition-all text-sm"
-                        >
-                            <span className="material-symbols-outlined text-[20px]">add</span>
-                            <span>Đề xuất mới</span>
-                        </button>
-                    </motion.div>
+  const totalPages = data?.totalPages ?? 1;
+  const pageNumbers = getPageNumbers(page, totalPages);
 
-                    {/* Search & Filter */}
-                    <motion.div variants={item} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-                        <div className="relative w-full md:w-96">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <span className="material-symbols-outlined text-slate-400 text-[20px]">search</span>
-                            </div>
-                            <input
-                                type="text"
-                                className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-all"
-                                placeholder="Tìm kiếm theo mã hoặc tên đề tài..."
-                            />
-                        </div>
-                        <div className="flex items-center gap-3 w-full md:w-auto">
-                            <div className="flex items-center gap-2 min-w-[140px]">
-                                <span className="text-sm text-slate-500 font-medium whitespace-nowrap">Kỳ học:</span>
-                                <select className="form-select block w-full pl-3 pr-10 py-1.5 text-sm border-slate-200 focus:ring-primary focus:border-primary rounded-lg bg-slate-50">
-                                    <option>Fall 2024</option>
-                                    <option>Summer 2024</option>
-                                    <option>Spring 2024</option>
-                                    <option>Tất cả</option>
-                                </select>
-                            </div>
-                            <button className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap">
-                                <span className="material-symbols-outlined text-[18px]">filter_list</span>
-                                Bộ lọc khác
-                            </button>
-                        </div>
-                    </motion.div>
+  return (
+    <>
+      <Header
+        title="Danh sách đề tài"
+        subtitle="Quản lý và theo dõi trạng thái thẩm định các đề tài hướng dẫn"
+        role="mentor"
+        showSearch={false}
+        breadcrumb={[{ label: "UniThesis" }, { label: "Danh sách đề tài" }]}
+      />
 
-                    {/* Topics Table */}
-                    <motion.div variants={item} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase font-bold tracking-wider">
-                                    <tr>
-                                        <th className="px-6 py-4 w-32">Mã Đề Tài</th>
-                                        <th className="px-6 py-4 min-w-[300px]">Tên Đề Tài</th>
-                                        <th className="px-6 py-4 w-40">Loại Đề Tài</th>
-                                        <th className="px-6 py-4 w-40 text-center">Thẩm Định</th>
-                                        <th className="px-6 py-4 w-40">Ngày Gửi</th>
-                                        <th className="px-6 py-4 w-20 text-right"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {topics.map((topic) => (
-                                        <tr key={topic.code} className="hover:bg-slate-50 transition-colors group">
-                                            <td className="px-6 py-4 text-sm font-medium text-slate-500 font-mono">{topic.code}</td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-start gap-3">
-                                                    <div className={`mt-0.5 bg-${topic.iconColor}-100 text-${topic.iconColor}-600 rounded p-1.5 flex-shrink-0`}>
-                                                        <span className="material-symbols-outlined text-[18px]">{topic.icon}</span>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-bold text-slate-900 group-hover:text-primary transition-colors cursor-pointer">{topic.name}</p>
-                                                        <p className="text-xs text-slate-500 mt-0.5">Lĩnh vực: {topic.field}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${topic.type === 'reserved' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' : 'bg-slate-100 text-slate-700 border border-slate-200'
-                                                    }`}>
-                                                    {topic.type === 'reserved' ? 'Chốt sẵn' : 'Trong kho'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">{getStatusBadge(topic.status)}</td>
-                                            <td className="px-6 py-4 text-sm text-slate-600">{topic.date}</td>
-                                            <td className="px-6 py-4 text-right">
-                                                <button className="size-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
-                                                    <span className="material-symbols-outlined text-[20px]">more_vert</span>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div className="bg-white border-t border-slate-200 px-6 py-4 flex items-center justify-between">
-                            <p className="text-sm text-slate-500">
-                                Hiển thị <span className="font-medium text-slate-900">1</span> đến <span className="font-medium text-slate-900">5</span> trong số <span className="font-medium text-slate-900">24</span> đề tài
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <button className="px-3 py-1.5 text-sm font-medium text-slate-400 bg-white border border-slate-200 rounded-md" disabled>Trước</button>
-                                <button className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">Sau</button>
-                            </div>
-                        </div>
-                    </motion.div>
-                </motion.div>
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-8 bg-slate-100">
+        <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
+          {/* Title & Actions */}
+          <motion.div variants={item} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">Kho Đề Tài Của Mentor</h2>
+              <p className="text-slate-500 mt-1 text-sm">
+                Quản lý và theo dõi trạng thái thẩm định các đề tài hướng dẫn.
+              </p>
             </div>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-semibold shadow-sm transition-all text-sm"
+            >
+              <span className="material-symbols-outlined text-[20px]">add</span>
+              <span>Đề xuất mới</span>
+            </button>
+          </motion.div>
 
-            {/* Modal */}
-            <RegisterTopicModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
-        </>
-    )
+          {/* Search & Filter */}
+          <motion.div
+            variants={item}
+            className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between"
+          >
+            <div className="relative w-full md:w-96">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span className="material-symbols-outlined text-slate-400 text-[20px]">search</span>
+              </div>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="block w-full pl-10 pr-9 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition-all"
+                placeholder="Tìm kiếm theo mã hoặc tên đề tài..."
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <span className="material-symbols-outlined text-[18px]">close</span>
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="flex items-center gap-2 min-w-[200px]">
+                <span className="text-sm text-slate-500 font-medium whitespace-nowrap">Kỳ học:</span>
+                <select
+                  value={selectedSemester ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedSemester(val ? Number(val) : undefined);
+                  }}
+                  className="form-select block w-full pl-3 pr-10 py-1.5 text-sm border-slate-200 focus:ring-primary focus:border-primary rounded-lg bg-slate-50"
+                >
+                  <option value="">Tất cả</option>
+                  {semesters.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Topics Table */}
+          <motion.div variants={item} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            {loading ? (
+              <TableSkeleton />
+            ) : error ? (
+              <ErrorState message={error} onRetry={fetchTopics} />
+            ) : !data || data.items.length === 0 ? (
+              <EmptyState />
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase font-bold tracking-wider">
+                      <tr>
+                        <th className="px-6 py-4 w-36">Mã Đề Tài</th>
+                        <th className="px-6 py-4 min-w-[300px]">Tên Đề Tài</th>
+                        <th className="px-6 py-4 w-40 text-center">Loại Đề Tài</th>
+                        <th className="px-6 py-4 w-40 text-center">Thẩm Định</th>
+                        <th className="px-6 py-4 w-36">Ngày Gửi</th>
+                        <th className="px-6 py-4 w-32 text-right"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {data.items.map((topic) => {
+                        const sc = statusConfig(topic.status);
+                        const canEdit = topic.status === 2; // NeedsModification
+                        return (
+                          <tr
+                            key={topic.id}
+                            className="hover:bg-slate-50 transition-colors group cursor-pointer"
+                            onClick={() => setDetailTopic(topic)}
+                          >
+                            <td className="px-6 py-4 text-sm font-medium text-slate-500 font-mono">{topic.code}</td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-start gap-3">
+                                <div className="mt-0.5 bg-primary/10 text-primary rounded p-1.5 flex-shrink-0">
+                                  <span className="material-symbols-outlined text-[18px]">description</span>
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold text-slate-900 group-hover:text-primary transition-colors">
+                                    {topic.nameVi}
+                                  </p>
+                                  <p className="text-xs text-slate-500 mt-0.5">Lĩnh vực: {topic.majorName}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  topic.sourceType === 0
+                                    ? "bg-indigo-50 text-indigo-700 border border-indigo-100"
+                                    : "bg-slate-100 text-slate-700 border border-slate-200"
+                                }`}
+                              >
+                                {sourceTypeLabel(topic.sourceType)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${sc.bg} ${sc.text} border border-current/10`}
+                              >
+                                <span className={`size-1.5 rounded-full ${sc.dot}`} />
+                                {sc.label}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-600">
+                              {formatDate(topic.submittedAt ?? topic.createdAt)}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              {canEdit && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    // TODO: open edit modal
+                                    alert("Chức năng chỉnh sửa sẽ được cập nhật sau.");
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">edit</span>
+                                  Chỉnh sửa
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {data.totalCount > 0 && (
+                  <div className="bg-white border-t border-slate-200 px-6 py-4 flex items-center justify-between">
+                    <p className="text-sm text-slate-500">
+                      Hiển thị <span className="font-medium text-slate-900">{(page - 1) * PAGE_SIZE + 1}</span> đến{" "}
+                      <span className="font-medium text-slate-900">{Math.min(page * PAGE_SIZE, data.totalCount)}</span>{" "}
+                      trong số <span className="font-medium text-slate-900">{data.totalCount}</span> đề tài
+                    </p>
+                    {totalPages > 1 && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setPage((p) => Math.max(1, p - 1))}
+                          disabled={page <= 1}
+                          className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Trước
+                        </button>
+                        {pageNumbers.map((p, i) =>
+                          p === "..." ? (
+                            <span key={`dots-${i}`} className="px-2 py-1 text-slate-400">
+                              ...
+                            </span>
+                          ) : (
+                            <button
+                              key={p}
+                              onClick={() => setPage(p)}
+                              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                                p === page
+                                  ? "bg-primary text-white"
+                                  : "text-slate-600 border border-slate-200 hover:bg-slate-50"
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          ),
+                        )}
+                        <button
+                          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                          disabled={page >= totalPages}
+                          className="px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-md hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Sau
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </motion.div>
+        </motion.div>
+      </div>
+
+      {/* Register Topic Modal */}
+      <RegisterTopicModal
+        isOpen={isModalOpen}
+        onClose={(success) => {
+          setIsModalOpen(false);
+          if (success) fetchTopics();
+        }}
+      />
+
+      {/* Topic Detail Modal */}
+      <AnimatePresence>
+        {detailTopic && <TopicDetailModal topic={detailTopic} onClose={() => setDetailTopic(null)} />}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// ── Topic Detail Modal ───────────────────────────────────────────────────────
+
+function TopicDetailModal({ topic, onClose }: { topic: MentorTopicItem; onClose: () => void }) {
+  const [detail, setDetail] = useState<TopicDetail | null>(null);
+  const [documents, setDocuments] = useState<TopicDocument[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.allSettled([topicPoolService.getTopicDetail(topic.id), topicPoolService.getTopicDocuments(topic.id)]).then(
+      ([detailRes, docsRes]) => {
+        if (detailRes.status === "fulfilled") setDetail(detailRes.value);
+        if (docsRes.status === "fulfilled") setDocuments(docsRes.value);
+        setLoading(false);
+      },
+    );
+  }, [topic.id]);
+
+  const sc = statusConfig(topic.status);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between shrink-0">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-mono text-slate-400">{topic.code}</span>
+              <span
+                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${sc.bg} ${sc.text}`}
+              >
+                <span className={`size-1.5 rounded-full ${sc.dot}`} />
+                {sc.label}
+              </span>
+              <span
+                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                  topic.sourceType === 0 ? "bg-indigo-50 text-indigo-700" : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                {sourceTypeLabel(topic.sourceType)}
+              </span>
+            </div>
+            <h2 className="text-lg font-bold text-slate-900 truncate">{topic.nameVi}</h2>
+            {topic.nameEn && <p className="text-sm text-slate-500 truncate">{topic.nameEn}</p>}
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors ml-3">
+            <span className="material-symbols-outlined text-slate-400">close</span>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="h-4 w-24 bg-slate-200 rounded mb-2" />
+                  <div className="h-4 w-full bg-slate-100 rounded" />
+                </div>
+              ))}
+            </div>
+          ) : detail ? (
+            <div className="space-y-5">
+              {/* Meta info */}
+              <div className="grid grid-cols-2 gap-4">
+                <InfoField label="Lĩnh vực" value={detail.majorName} icon="school" />
+                <InfoField label="Học kỳ" value={topic.semesterName} icon="calendar_today" />
+                <InfoField label="Ngày tạo" value={formatDate(detail.createdAt)} icon="event" />
+                <InfoField label="SV tối đa" value={String(detail.maxStudents)} icon="groups" />
+              </div>
+
+              {/* Mentors */}
+              {detail.mentors.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                    Giảng viên hướng dẫn
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {detail.mentors.map((m) => (
+                      <span
+                        key={m.mentorId}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/5 text-primary text-sm font-medium rounded-full"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">person</span>
+                        {m.fullName}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              {detail.description && <DetailSection title="Mô tả" content={detail.description} />}
+              {detail.objectives && <DetailSection title="Mục tiêu" content={detail.objectives} />}
+              {detail.scope && <DetailSection title="Phạm vi" content={detail.scope} />}
+              {detail.technologies && <DetailSection title="Công nghệ sử dụng" content={detail.technologies} />}
+              {detail.expectedResults && <DetailSection title="Kết quả mong đợi" content={detail.expectedResults} />}
+
+              {/* Documents */}
+              {documents.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                    Tài liệu đính kèm
+                  </h4>
+                  <div className="space-y-2">
+                    {documents.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100"
+                      >
+                        <span className="material-symbols-outlined text-slate-400 text-[20px]">attach_file</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-700 truncate">{doc.originalFileName}</p>
+                          <p className="text-xs text-slate-400">
+                            {(doc.fileSize / 1024).toFixed(1)} KB &middot; {formatDate(doc.uploadedAt)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500 text-center py-8">Không thể tải thông tin chi tiết.</p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-slate-200 flex justify-end shrink-0">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            Đóng
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function InfoField({ label, value, icon }: { label: string; value: string; icon: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <span className="material-symbols-outlined text-slate-400 text-[18px] mt-0.5">{icon}</span>
+      <div>
+        <p className="text-xs text-slate-400 font-medium">{label}</p>
+        <p className="text-sm text-slate-700 font-medium">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function DetailSection({ title, content }: { title: string; content: string }) {
+  return (
+    <div>
+      <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{title}</h4>
+      <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{content}</p>
+    </div>
+  );
+}
+
+// ── Shared Components ────────────────────────────────────────────────────────
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center gap-3 py-16 text-center">
+      <span className="material-symbols-outlined text-5xl text-slate-300">topic</span>
+      <p className="text-sm font-medium text-slate-400">Không có đề tài nào</p>
+      <p className="text-xs text-slate-400">Thử thay đổi bộ lọc hoặc đề xuất đề tài mới.</p>
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3 py-16 text-center">
+      <span className="material-symbols-outlined text-4xl text-red-400">error</span>
+      <p className="text-sm text-slate-500">{message}</p>
+      <button onClick={onRetry} className="text-sm font-medium text-primary hover:underline">
+        Thử lại
+      </button>
+    </div>
+  );
+}
+
+function TableSkeleton() {
+  return (
+    <div className="p-6 space-y-4">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="flex items-center gap-4 animate-pulse">
+          <div className="h-4 w-28 bg-slate-200 rounded" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-3/4 bg-slate-200 rounded" />
+            <div className="h-3 w-1/3 bg-slate-100 rounded" />
+          </div>
+          <div className="h-6 w-20 bg-slate-200 rounded-full" />
+          <div className="h-6 w-20 bg-slate-200 rounded-full" />
+          <div className="h-4 w-24 bg-slate-200 rounded" />
+        </div>
+      ))}
+    </div>
+  );
 }

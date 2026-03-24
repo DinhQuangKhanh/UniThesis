@@ -100,8 +100,12 @@ namespace UniThesis.Domain.Aggregates.GroupAggregate
 
         public void AssignProject(Guid projectId)
         {
+            if (ProjectId.HasValue)
+                throw new BusinessRuleValidationException("Group already has an assigned project.");
+
             CheckRule(new GroupMustHaveMinMembersRule(ActiveMemberCount, MinMembers));
             ProjectId = projectId;
+            IsOpenForRequests = false;
             UpdatedAt = DateTime.UtcNow;
         }
 

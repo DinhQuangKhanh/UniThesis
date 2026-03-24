@@ -49,8 +49,8 @@ namespace UniThesis.Domain.Aggregates.EvaluationAggregate.Entities
                 new EvaluatorCannotEvaluateOwnMentoredProjectRule(evaluatorId, allProjectMentorIds),
                 new ProjectCannotExceedMaxEvaluatorsRule(currentActiveEvaluatorCount));
 
-            if (order is < 1 or > 3)
-                throw new ArgumentOutOfRangeException(nameof(order), "Evaluator order must be between 1 and 3.");
+            if (order is < 1 or > 2)
+                throw new ArgumentOutOfRangeException(nameof(order), "Evaluator order must be 1 or 2.");
 
             return new ProjectEvaluatorAssignment
             {

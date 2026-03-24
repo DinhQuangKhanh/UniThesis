@@ -48,9 +48,44 @@ export interface AdminDashboardData {
     recentTickets: RecentTicket[]
 }
 
+// ── Mentor Dashboard Types ──────────────────────────────
+
+export interface MentorStats {
+    totalGroups: number
+    totalStudents: number
+    pendingEvaluation: number
+    approvedProjects: number
+    inProgressProjects: number
+    totalProjects: number
+}
+
+export interface RecentProject {
+    id: string
+    code: string
+    nameVi: string
+    nameEn: string
+    status: number
+    sourceType: number
+    groupName: string | null
+    leaderName: string | null
+    memberCount: number
+    createdAt: string
+    submittedAt: string | null
+}
+
+export interface MentorDashboardData {
+    mentorName: string
+    stats: MentorStats
+    semesterProgress: SemesterProgress | null
+    recentProjects: RecentProject[]
+}
+
 // ── Service ──────────────────────────────────────────
 
 export const dashboardService = {
     getAdminDashboard: (): Promise<AdminDashboardData> =>
         apiClient.get<AdminDashboardData>('/api/admin/dashboard'),
+
+    getMentorDashboard: (): Promise<MentorDashboardData> =>
+        apiClient.get<MentorDashboardData>('/api/mentor/dashboard'),
 }

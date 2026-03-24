@@ -4,6 +4,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificationDropdown } from "@/components/layout";
+import {
+  validateFiles,
+  formatFileSize,
+  ACCEPTED_TYPES,
+  MAX_ATTACHMENTS,
+  MAX_FILE_SIZE_BYTES,
+  MAX_TOTAL_SIZE_BYTES,
+} from "@/lib/fileUploadUtils";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -103,9 +111,6 @@ interface ProposeTopicModalProps {
 }
 
 function ProposeTopicModal({ poolId, onClose, onSuccess }: ProposeTopicModalProps) {
-  const MAX_ATTACHMENTS = 5;
-  const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
-  const MAX_TOTAL_SIZE_BYTES = 25 * 1024 * 1024;
   const [form, setForm] = useState({
     nameVi: "",
     nameEn: "",
@@ -121,77 +126,6 @@ function ProposeTopicModal({ poolId, onClose, onSuccess }: ProposeTopicModalProp
   const [error, setError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [attachmentWarnings, setAttachmentWarnings] = useState<string[]>([]);
-
-  const ACCEPTED_TYPES = [
-    ".pdf",
-    ".doc",
-    ".docx",
-    ".xls",
-    ".xlsx",
-    ".ppt",
-    ".pptx",
-    ".zip",
-    ".rar",
-    ".jpg",
-    ".jpeg",
-    ".png",
-  ];
-
-  const DANGEROUS_EXTENSIONS = ["php", "phtml", "asp", "aspx", "jsp", "exe", "dll", "bat", "cmd", "ps1", "sh", "js"];
-
-  const isSuspiciousDoubleExtension = (fileName: string) => {
-    const parts = fileName.toLowerCase().split(".").filter(Boolean);
-    if (parts.length < 3) return false;
-    const nestedExt = parts[parts.length - 2];
-    return DANGEROUS_EXTENSIONS.includes(nestedExt);
-  };
-
-  const formatSize = (bytes: number) => {
-    if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    return `${Math.ceil(bytes / 1024)} KB`;
-  };
-
-  const validateFiles = (current: File[], incoming: File[]) => {
-    const accepted: File[] = [];
-    const rejected: string[] = [];
-
-    const currentTotal = current.reduce((sum, f) => sum + f.size, 0);
-    let acceptedTotal = 0;
-
-    incoming.forEach((file) => {
-      if (current.length + accepted.length >= MAX_ATTACHMENTS) {
-        rejected.push(`Không thể thêm '${file.name}': tối đa ${MAX_ATTACHMENTS} file.`);
-        return;
-      }
-
-      const extension = `.${file.name.split(".").pop()?.toLowerCase() ?? ""}`;
-      if (!ACCEPTED_TYPES.includes(extension)) {
-        rejected.push(`'${file.name}' không đúng định dạng cho phép.`);
-        return;
-      }
-
-      if (isSuspiciousDoubleExtension(file.name)) {
-        rejected.push(`'${file.name}' có tên file không an toàn (double extension).`);
-        return;
-      }
-
-      if (file.size > MAX_FILE_SIZE_BYTES) {
-        rejected.push(`'${file.name}' vượt quá ${formatSize(MAX_FILE_SIZE_BYTES)}.`);
-        return;
-      }
-
-      const nextTotal = currentTotal + acceptedTotal + file.size;
-      if (nextTotal > MAX_TOTAL_SIZE_BYTES) {
-        rejected.push(`Tổng dung lượng vượt quá ${formatSize(MAX_TOTAL_SIZE_BYTES)} khi thêm '${file.name}'.`);
-        return;
-      }
-
-      accepted.push(file);
-      acceptedTotal += file.size;
-    });
-
-    return { accepted, rejected };
-  };
 
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
@@ -385,8 +319,8 @@ function ProposeTopicModal({ poolId, onClose, onSuccess }: ProposeTopicModalProp
               <span className="ml-1 font-normal text-slate-400">(tùy chọn)</span>
             </label>
             <p className="text-[11px] text-slate-400 mb-2">
-              Guard phía client: tối đa {MAX_ATTACHMENTS} file, mỗi file ≤ {formatSize(MAX_FILE_SIZE_BYTES)}, tổng ≤{" "}
-              {formatSize(MAX_TOTAL_SIZE_BYTES)}.
+              Guard phía client: tối đa {MAX_ATTACHMENTS} file, mỗi file ≤ {formatFileSize(MAX_FILE_SIZE_BYTES)}, tổng ≤{" "}
+              {formatFileSize(MAX_TOTAL_SIZE_BYTES)}.
             </p>
             <label className="flex flex-col items-center justify-center gap-2 px-4 py-5 text-center transition-colors border-2 border-dashed rounded-lg cursor-pointer border-slate-200 bg-slate-50 hover:border-primary hover:bg-primary/5">
               <span className="text-2xl material-symbols-outlined text-slate-400">upload_file</span>

@@ -80,6 +80,7 @@ namespace UniThesis.Persistence.Services
         if (path.StartsWith("/api/mentor/", StringComparison.OrdinalIgnoreCase)) return "mentor";
         if (path.StartsWith("/api/admin/", StringComparison.OrdinalIgnoreCase)) return "admin";
         if (path.StartsWith("/api/student/", StringComparison.OrdinalIgnoreCase)) return "student";
+        if (path.StartsWith("/api/department-head/", StringComparison.OrdinalIgnoreCase)) return "department-head";
       }
       return fallbackRole ?? "anonymous";
     }

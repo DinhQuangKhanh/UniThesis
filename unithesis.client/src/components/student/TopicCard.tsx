@@ -47,9 +47,10 @@ interface TopicCardProps {
     isFavorite: boolean
     onToggleFavorite: () => void
     onViewDetail: () => void
+    groupHasProject?: boolean
 }
 
-export function TopicCard({ topic, isFavorite, onToggleFavorite, onViewDetail }: TopicCardProps) {
+export function TopicCard({ topic, isFavorite, onToggleFavorite, onViewDetail, groupHasProject }: TopicCardProps) {
     const colors = majorColors[topic.majorCode] ?? defaultColor
     const techs = parseTechnologies(topic.technologies)
     const isAvailable = topic.poolStatus === 0 // PoolTopicStatus.Available
@@ -144,7 +145,12 @@ export function TopicCard({ topic, isFavorite, onToggleFavorite, onViewDetail }:
                     Chi tiết
                 </button>
 
-                {isAvailable ? (
+                {groupHasProject ? (
+                    <button className="flex-1 bg-slate-200 text-slate-400 py-2 rounded-lg text-xs font-bold cursor-not-allowed flex items-center justify-center gap-1.5" disabled>
+                        <span className="material-symbols-outlined text-base">block</span>
+                        Nhóm đã có đề tài
+                    </button>
+                ) : isAvailable ? (
                     <button className="flex-1 bg-primary text-white py-2 rounded-lg text-xs font-bold hover:bg-primary-light transition-colors flex items-center justify-center gap-1.5">
                         <span className="material-symbols-outlined text-base">app_registration</span>
                         Đăng ký

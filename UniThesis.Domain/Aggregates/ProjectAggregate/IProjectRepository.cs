@@ -92,6 +92,17 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
         Task<List<Project>> GetExpiringPoolTopicsWithMentorsAsync(int currentSemesterId, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Cancels a rejected project (sets status to Cancelled).
+        /// Called by background job after 5-minute delay.
+        /// </summary>
+        Task CancelRejectedProjectAsync(Guid projectId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets all projects pending evaluation for a given department (via Major.DepartmentId).
+        /// </summary>
+        Task<IEnumerable<Project>> GetPendingEvaluationByDepartmentAsync(int departmentId, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Inserts a Document row directly (bypassing the aggregate's change tracker)
         /// and touches the Project's UpdatedAt. Used by background scan jobs to avoid
         /// DbUpdateConcurrencyException when multiple jobs hit the same aggregate.

@@ -188,6 +188,12 @@ public class TopicPoolDomainService : ITopicPoolDomainService
         project.SetPoolStatus(PoolTopicStatus.Assigned);
         _projectRepository.Update(project);
 
+        // Assign project to group (sets ProjectId + closes join requests)
+        var group = await _groupRepository.GetByIdAsync(registration.GroupId, cancellationToken)
+            ?? throw new EntityNotFoundException(nameof(Group), registration.GroupId);
+        group.AssignProject(project.Id);
+        _groupRepository.Update(group);
+
         // Cancel all other pending registrations for this project
         var otherPendingRegistrations = await _registrationRepository.GetPendingByProjectIdAsync(registration.ProjectId, cancellationToken);
         foreach (var otherReg in otherPendingRegistrations.Where(r => r.Id != registrationId))

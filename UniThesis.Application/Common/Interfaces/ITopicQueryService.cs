@@ -1,3 +1,4 @@
+using UniThesis.Application.Features.Mentor.DTOs;
 using UniThesis.Application.Features.Topics.DTOs;
 
 namespace UniThesis.Application.Common.Interfaces;
@@ -26,4 +27,11 @@ public interface ITopicQueryService
     /// Returns documents attached to a topic/project (non-deleted only).
     /// </summary>
     Task<List<TopicDocumentDto>> GetTopicDocumentsAsync(Guid topicId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns a paginated list of topics assigned to a specific mentor.
+    /// </summary>
+    Task<GetMentorTopicsResult> GetMentorTopicsAsync(
+        Guid mentorId, int? semesterId, string? search,
+        int page, int pageSize, CancellationToken cancellationToken = default);
 }

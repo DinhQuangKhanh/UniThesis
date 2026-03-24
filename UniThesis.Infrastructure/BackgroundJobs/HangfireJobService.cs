@@ -1,5 +1,6 @@
 ﻿using Hangfire;
 using System.Linq.Expressions;
+using UniThesis.Application.Common.Interfaces;
 
 namespace UniThesis.Infrastructure.BackgroundJobs
 {

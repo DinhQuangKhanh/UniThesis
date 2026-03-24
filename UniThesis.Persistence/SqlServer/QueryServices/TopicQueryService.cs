@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using UniThesis.Application.Common.Interfaces;
+using UniThesis.Application.Features.Mentor.DTOs;
 using UniThesis.Application.Features.Topics.DTOs;
 using UniThesis.Domain.Aggregates.ProjectAggregate.Entities;
 using UniThesis.Domain.Entities;
@@ -199,5 +200,97 @@ public class TopicQueryService : ITopicQueryService
                 UploadedByName = u.FullName,
             })
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<GetMentorTopicsResult> GetMentorTopicsAsync(
+        Guid mentorId, int? semesterId, string? search,
+        int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        // If a semester is selected, find the PREVIOUS semester
+        // (topics are proposed in semester N-1 for use in semester N)
+        int? targetSemesterId = null;
+        if (semesterId.HasValue)
+        {
+            var selectedSemester = await _context.Semesters.AsNoTracking()
+                .Where(s => s.Id == semesterId.Value)
+                .Select(s => new { s.Id, s.StartDate })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (selectedSemester != null)
+            {
+                var previousSemesterId = await _context.Semesters.AsNoTracking()
+                    .Where(s => s.StartDate < selectedSemester.StartDate)
+                    .OrderByDescending(s => s.StartDate)
+                    .Select(s => s.Id)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                // If previous semester found (non-default int), use it; otherwise no topics exist
+                targetSemesterId = previousSemesterId != 0 ? previousSemesterId : null;
+            }
+
+            // No previous semester found → return empty result immediately
+            if (!targetSemesterId.HasValue)
+                return new GetMentorTopicsResult([], 0, page, pageSize, 0);
+        }
+
+        var query = from p in _context.Projects.AsNoTracking()
+                    where p.Mentors.Any(pm => pm.MentorId == mentorId && pm.Status == ProjectMentorStatus.Active)
+                    join m in _context.Set<Major>() on p.MajorId equals m.Id
+                    join s in _context.Semesters.AsNoTracking() on p.SemesterId equals s.Id
+                    select new { Project = p, MajorName = m.Name, SemesterName = s.Name };
+
+        // Always filter by semester when a semester is selected
+        if (targetSemesterId.HasValue)
+            query = query.Where(x => x.Project.SemesterId == targetSemesterId.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(x =>
+                EF.Property<string>(x.Project, "NameVi").Contains(term) ||
+                EF.Property<string>(x.Project, "NameEn").Contains(term) ||
+                EF.Property<string>(x.Project, "Code").Contains(term));
+        }
+
+        query = query.OrderByDescending(x => x.Project.CreatedAt);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        var rawItems = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(x => new
+            {
+                x.Project.Id,
+                Code = x.Project.Code.Value,
+                NameVi = x.Project.NameVi.Value,
+                NameEn = x.Project.NameEn.Value,
+                x.MajorName,
+                x.Project.SourceType,
+                x.Project.Status,
+                x.Project.SubmittedAt,
+                x.Project.CreatedAt,
+                x.SemesterName,
+            })
+            .ToListAsync(cancellationToken);
+
+        var items = rawItems.Select(x => new MentorTopicItemDto
+        {
+            Id = x.Id,
+            Code = x.Code,
+            NameVi = x.NameVi,
+            NameEn = x.NameEn,
+            MajorName = x.MajorName,
+            SourceType = (int)x.SourceType,
+            SourceTypeName = x.SourceType.ToString(),
+            Status = (int)x.Status,
+            StatusName = x.Status.ToString(),
+            SubmittedAt = x.SubmittedAt,
+            CreatedAt = x.CreatedAt,
+            SemesterName = x.SemesterName,
+        }).ToList();
+
+        return new GetMentorTopicsResult(items, totalCount, page, pageSize, totalPages);
     }
 }
