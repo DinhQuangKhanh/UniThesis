@@ -1,4 +1,4 @@
-using UniThesis.Infrastructure.BackgroundJobs;
+using UniThesis.Application.Common.Interfaces;
 using UniThesis.Persistence.MongoDB.Repositories.Interfaces;
 
 namespace UniThesis.API.Common.Security;
