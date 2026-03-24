@@ -92,6 +92,7 @@ namespace UniThesis.Persistence
             services.AddScoped<ITopicQueryService, TopicQueryService>();
             services.AddScoped<IAdminDashboardQueryService, AdminDashboardQueryService>();
             services.AddScoped<IMentorDashboardQueryService, MentorDashboardQueryService>();
+            services.AddScoped<IDepartmentHeadQueryService, DepartmentHeadQueryService>();
 
             // Add MongoDB Repositories
             services.AddScoped<IEvaluationLogRepository, EvaluationLogRepository>();

@@ -217,6 +217,35 @@ namespace UniThesis.Persistence.SqlServer.Repositories
                 .ToListAsync(cancellationToken);
         }
 
+        public async Task CancelRejectedProjectAsync(Guid projectId, CancellationToken cancellationToken = default)
+        {
+            var project = await _dbSet.FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
+            if (project is null) return;
+
+            // Only cancel if still in Rejected status
+            if (project.Status == ProjectStatus.Rejected)
+            {
+                project.Cancel();
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+        }
+
+        public async Task<IEnumerable<Project>> GetPendingEvaluationByDepartmentAsync(int departmentId, CancellationToken cancellationToken = default)
+        {
+            // Get major IDs that belong to this department
+            var majorIds = await _context.Majors
+                .Where(m => m.DepartmentId == departmentId)
+                .Select(m => m.Id)
+                .ToListAsync(cancellationToken);
+
+            return await _dbSet
+                .Include(p => p.Mentors)
+                .Where(p => majorIds.Contains(p.MajorId) &&
+                           p.Status == ProjectStatus.PendingEvaluation)
+                .OrderByDescending(p => p.SubmittedAt)
+                .ToListAsync(cancellationToken);
+        }
+
         /// <inheritdoc />
         public async Task<bool> InsertDocumentAsync(
             Guid projectId, string fileName, string originalFileName,
