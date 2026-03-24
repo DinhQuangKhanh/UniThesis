@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UniThesis.Persistence.SqlServer;
 
@@ -11,9 +12,11 @@ using UniThesis.Persistence.SqlServer;
 namespace UniThesis.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260322095144_AddEligibleStudent")]
+    partial class AddEligibleStudent
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -323,9 +326,6 @@ namespace UniThesis.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uniqueidentifier");
 
@@ -351,8 +351,6 @@ namespace UniThesis.Persistence.Migrations
                     b.HasIndex("GroupId", "StudentId")
                         .IsUnique()
                         .HasFilter("[Status] = 0");
-
-                    b.HasIndex("Status", "ExpiresAt");
 
                     b.HasIndex("GroupId", "StudentId", "Status");
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUnreadSupportCount } from "@/hooks/useUnreadSupportCount";
 
 const navItems = [
   { label: "Dashboard", icon: "dashboard", path: "/admin" },
@@ -14,12 +15,13 @@ const navItems = [
 const systemItems = [
   { label: "Báo cáo", icon: "analytics", path: "/admin/reports" },
   { label: "Cấu hình", icon: "settings", path: "/admin/settings" },
-  { label: "Yêu cầu hỗ trợ", icon: "support_agent", path: "/admin/support", badge: "3" },
+  { label: "Yêu cầu hỗ trợ", icon: "support_agent", path: "/admin/support" },
 ];
 
 export function Sidebar() {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const unreadSupportCount = useUnreadSupportCount();
   const [isHovered, setIsHovered] = useState(false);
 
   const isActive = (path: string) => {
@@ -62,7 +64,13 @@ export function Sidebar() {
       {/* Footer */}
       <div className={`p-4 border-t border-[#e9ecf1] ${isHovered ? "" : "px-2"}`}>
         {systemItems.map((item) => (
-          <NavItem key={item.path} {...item} active={isActive(item.path)} expanded={isHovered} />
+          <NavItem 
+            key={item.path} 
+            {...item} 
+            badge={item.path === "/admin/support" && unreadSupportCount > 0 ? unreadSupportCount.toString() : undefined}
+            active={isActive(item.path)} 
+            expanded={isHovered} 
+          />
         ))}
         {/* User Profile */}
         <div

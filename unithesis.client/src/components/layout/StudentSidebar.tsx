@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
+import { useUnreadSupportCount } from '@/hooks/useUnreadSupportCount'
 
 const navItems = [
     { label: 'Trang chủ', icon: 'dashboard', path: '/student' },
@@ -9,7 +10,7 @@ const navItems = [
     { label: 'Kho đề tài đề xuất', icon: 'inventory_2', path: '/student/topics' },
     { label: 'Nhóm', icon: 'group', path: '/student/groups' },
     { label: 'Lịch trình chung', icon: 'calendar_month', path: '/student/schedule' },
-    { label: 'Hỗ trợ', icon: 'support_agent', path: '/student/support', badge: '1' },
+    { label: 'Hỗ trợ', icon: 'support_agent', path: '/student/support' },
 ]
 
 const systemItems = [
@@ -19,6 +20,7 @@ const systemItems = [
 export function StudentSidebar() {
     const location = useLocation()
     const { user, logout } = useAuth()
+    const unreadSupportCount = useUnreadSupportCount()
     const [isHovered, setIsHovered] = useState(false)
 
     return (
@@ -41,7 +43,13 @@ export function StudentSidebar() {
             {/* Navigation */}
             <nav className={`flex-1 ${isHovered ? 'px-4' : 'px-2'} flex flex-col gap-1.5 overflow-y-auto transition-all duration-300`}>
                 {navItems.map((item) => (
-                    <NavItem key={item.path} {...item} active={location.pathname === item.path} expanded={isHovered} />
+                    <NavItem 
+                        key={item.path} 
+                        {...item} 
+                        badge={item.path === '/student/support' && unreadSupportCount > 0 ? unreadSupportCount.toString() : undefined}
+                        active={location.pathname === item.path} 
+                        expanded={isHovered} 
+                    />
                 ))}
             </nav>
 

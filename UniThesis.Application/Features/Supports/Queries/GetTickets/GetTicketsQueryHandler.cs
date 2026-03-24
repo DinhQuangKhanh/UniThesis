@@ -20,16 +20,23 @@ public class GetTicketsQueryHandler : IQueryHandler<GetTicketsQuery, List<Ticket
     {
         IEnumerable<SupportTicket> tempTickets;
 
-        // Since ISupportTicketRepository doesn't expose an IQueryable or GetAll with filters,
-        // we use the closest method and filter in memory. For a real prod app with massive tickets,
-        // it's better to add a specific method to ISupportTicketRepository.
-        if (request.Status.HasValue)
+        // Non-admin users only see their own tickets
+        if (!request.IsAdmin)
+        {
+            tempTickets = await _supportTicketRepository.GetByReporterIdAsync(request.ReporterId, cancellationToken);
+
+            if (request.Status.HasValue)
+            {
+                tempTickets = tempTickets.Where(t => t.Status == request.Status.Value);
+            }
+        }
+        else if (request.Status.HasValue)
         {
             tempTickets = await _supportTicketRepository.GetByStatusAsync(request.Status.Value, cancellationToken);
         }
         else
         {
-            // Default to grabbing all (we can achieve this by fetching all statuses or adding GetAll to IRepository, which it has).
+            // Admin sees all tickets
             tempTickets = await _supportTicketRepository.GetAllAsync(cancellationToken);
         }
 

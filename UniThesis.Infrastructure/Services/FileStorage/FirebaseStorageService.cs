@@ -3,6 +3,7 @@ using Google.Cloud.Storage.V1;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using UniThesis.Application.Common.Interfaces;
 using UniThesis.Infrastructure.Authentication;
 
 namespace UniThesis.Infrastructure.Services.FileStorage
@@ -265,7 +266,7 @@ namespace UniThesis.Infrastructure.Services.FileStorage
         }
 
         /// <inheritdoc/>
-        public async Task<FileInfo?> GetFileInfoAsync(string filePath, CancellationToken ct = default)
+        public async Task<UniThesis.Application.Common.Interfaces.FileInfo?> GetFileInfoAsync(string filePath, CancellationToken ct = default)
         {
             try
             {
@@ -274,7 +275,7 @@ namespace UniThesis.Infrastructure.Services.FileStorage
                     objectName: filePath,
                     cancellationToken: ct);
 
-                return new FileInfo(
+                return new UniThesis.Application.Common.Interfaces.FileInfo(
                     FileName: Path.GetFileName(filePath),
                     FilePath: filePath,
                     FileSize: (long)(obj.Size ?? 0),

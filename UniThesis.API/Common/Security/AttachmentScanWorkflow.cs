@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using UniThesis.Application.Common.Interfaces;
 using UniThesis.Infrastructure.BackgroundJobs;
 using UniThesis.Infrastructure.Services.FileStorage;
 using UniThesis.Persistence.MongoDB.Documents;

@@ -51,6 +51,22 @@ export function CreateSemesterModal({ isOpen, onClose, onCreated }: CreateSemest
     const fileInputRef = useRef<HTMLInputElement>(null)
     const contentRef = useRef<HTMLDivElement>(null)
 
+    // Fetch Majors
+    const [majors, setMajors] = useState<{ id: number; name: string }[]>([])
+
+    useEffect(() => {
+        apiClient.get<{ id: number; name: string }[]>('/api/majors')
+            .then(res => setMajors(res))
+            .catch(err => console.error("Could not fetch majors", err))
+    }, [])
+
+    // Generate cohorts
+    const currentYear = new Date().getFullYear();
+    const cohorts = Array.from({ length: 6 }, (_, i) => currentYear - 4 + i).map(year => ({
+        label: `K${year}`,
+        value: year
+    }));
+
     // Auto-save draft to localStorage on every change
     const saveDraft = useCallback(() => {
         const data = { name, code, startDate, endDate, description, phases }
@@ -153,7 +169,7 @@ export function CreateSemesterModal({ isOpen, onClose, onCreated }: CreateSemest
         setError(null)
 
         try {
-            await apiClient.post<{ id: number }>('/api/admin/semesters', {
+            const res = await apiClient.post<{ id: number }>('/api/admin/semesters', {
                 name: name.trim(),
                 code: code.trim(),
                 startDate: new Date(startDate).toISOString(),
@@ -167,6 +183,20 @@ export function CreateSemesterModal({ isOpen, onClose, onCreated }: CreateSemest
                     endDate: new Date(p.endDate).toISOString(),
                 })),
             })
+
+            // Upload eligible students if selected
+            if (uploadedFile) {
+                try {
+                    const formData = new FormData()
+                    formData.append('file', uploadedFile)
+                    await apiClient.postForm(`/api/admin/semesters/${res.id}/eligible-students/import`, formData)
+                } catch (uploadErr) {
+                    showError('Tạo học kỳ thành công nhưng có lỗi khi tải danh sách sinh viên: ' + (uploadErr instanceof Error ? uploadErr.message : 'Unknown error'))
+                    setIsSubmitting(false)
+                    return // Stop further success flow to let user see error
+                }
+            }
+
             setSuccess(true)
             onCreated?.()
             clearDraft()
@@ -358,15 +388,16 @@ export function CreateSemesterModal({ isOpen, onClose, onCreated }: CreateSemest
                                             <div>
                                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Khóa &amp; Ngành</label>
                                                 <div className="grid grid-cols-2 gap-2">
-                                                    <select className="text-xs border border-slate-200 rounded-md px-2 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
-                                                        <option>Tất cả Khóa</option>
-                                                        <option>K2020</option>
-                                                        <option>K2021</option>
+                                                    <select
+                                                        className="text-xs border border-slate-200 rounded-md px-2 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                                                        value={startDate ? deriveAcademicYearStart() : currentYear}
+                                                        disabled
+                                                    >
+                                                        {cohorts.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                                                     </select>
                                                     <select className="text-xs border border-slate-200 rounded-md px-2 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
-                                                        <option>Tất cả Ngành</option>
-                                                        <option>CNTT</option>
-                                                        <option>Kỹ thuật phần mềm</option>
+                                                        <option value="">Tất cả Ngành</option>
+                                                        {majors.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                                                     </select>
                                                 </div>
                                             </div>

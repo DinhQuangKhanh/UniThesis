@@ -1,7 +1,8 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using UniThesis.Domain.Common.Primitives;
+using UniThesis.Domain.Common.Interfaces;
 
 namespace UniThesis.Persistence.SqlServer.Interceptors
 {
@@ -42,10 +43,11 @@ namespace UniThesis.Persistence.SqlServer.Interceptors
         {
             if (context is null) return;
 
-            // Collect aggregates with pending events (both Guid and int keyed)
-            var guidRoots = context.ChangeTracker
-                .Entries<AggregateRoot<Guid>>()
-                .Select(e => e.Entity)
+            // Collect aggregates with pending events — snapshot the events before clearing
+            var aggregateRoots = context.ChangeTracker
+                .Entries()
+                .Where(e => e.Entity is IHasDomainEvents)
+                .Select(e => (IHasDomainEvents)e.Entity)
                 .Where(ar => ar.DomainEvents.Count > 0)
                 .ToList();
 

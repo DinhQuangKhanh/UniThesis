@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using UniThesis.Application.Common.Interfaces;
 using UniThesis.Domain.Aggregates.SupportAggregate;
 using UniThesis.Domain.Aggregates.SupportAggregate.Events;
+using UniThesis.Domain.Aggregates.UserAggregate;
 using UniThesis.Domain.Enums.Notification;
 
 namespace UniThesis.Application.Features.Supports.EventHandlers;
@@ -15,13 +16,16 @@ public class TicketCreatedEventHandler : INotificationHandler<TicketCreatedEvent
 {
     private readonly ILogger<TicketCreatedEventHandler> _logger;
     private readonly INotificationService _notificationService;
+    private readonly IUserRepository _userRepository;
 
     public TicketCreatedEventHandler(
         ILogger<TicketCreatedEventHandler> logger,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IUserRepository userRepository)
     {
         _logger = logger;
         _notificationService = notificationService;
+        _userRepository = userRepository;
     }
 
     public async Task Handle(TicketCreatedEvent notification, CancellationToken cancellationToken)
@@ -33,14 +37,20 @@ public class TicketCreatedEventHandler : INotificationHandler<TicketCreatedEvent
             notification.Category,
             notification.Priority);
 
-        // Notify admins about the new ticket
-        await _notificationService.SendAsync(
-            Guid.Empty, // System-level notification — actual admin targeting is handled by NotificationService
-            "Yêu cầu hỗ trợ mới",
-            $"Ticket {notification.TicketCode} (Ưu tiên: {notification.Priority}) vừa được tạo.",
-            NotificationType.Info,
-            NotificationCategory.Support,
-            $"/admin/supports/{notification.TicketId}",
-            cancellationToken);
+        var admins = await _userRepository.GetByRoleAsync("Admin", cancellationToken);
+        var adminIds = admins.Select(a => a.Id).ToList();
+
+        if (adminIds.Any())
+        {
+            // Notify admins about the new ticket
+            await _notificationService.SendToMultipleAsync(
+                adminIds,
+                "Yêu cầu hỗ trợ mới",
+                $"Ticket {notification.TicketCode} (Ưu tiên: {notification.Priority}) vừa được tạo.",
+                NotificationType.Info,
+                NotificationCategory.Support,
+                $"/admin/supports/{notification.TicketId}",
+                cancellationToken);
+        }
     }
 }

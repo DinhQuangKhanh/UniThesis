@@ -71,6 +71,15 @@ namespace UniThesis.Persistence.SqlServer.Repositories
             return (maxId ?? 0) + 1;
         }
 
+        public async Task<IEnumerable<Semester>> GetSemestersWithPhaseStartingInAsync(int days, CancellationToken cancellationToken = default)
+        {
+            var targetDate = DateTime.UtcNow.Date.AddDays(days);
+            return await _dbSet
+                .Include(s => s.Phases)
+                .Where(s => s.Phases.Any(p => p.StartDate.Date == targetDate))
+                .ToListAsync(cancellationToken);
+        }
+
         /// <summary>
         /// Gets all semesters with their phases.
         /// </summary>

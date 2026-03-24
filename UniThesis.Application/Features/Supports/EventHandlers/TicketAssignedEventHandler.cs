@@ -47,14 +47,6 @@ public class TicketAssignedEventHandler : INotificationHandler<TicketAssignedEve
             $"/admin/supports/{notification.TicketId}",
             cancellationToken);
 
-        // Notify the reporter that their ticket is being handled
-        await _notificationService.SendAsync(
-            ticket.ReporterId,
-            "Ticket đang được xử lý",
-            $"Ticket {ticket.Code.Value} của bạn đã được tiếp nhận và đang được xử lý.",
-            NotificationType.Info,
-            NotificationCategory.Support,
-            $"/supports/{notification.TicketId}",
-            cancellationToken);
+        // Notify the reporter about assignment is disabled as per user request.
     }
 }

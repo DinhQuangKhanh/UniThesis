@@ -126,12 +126,45 @@ export function SemestersPage() {
 
   return (
     <>
-      <Header
-        variant="navy"
-        title="Quản lý kỳ học"
-        breadcrumb={[{ label: "Quản lý kỳ học" }]}
-        searchPlaceholder="Tìm kiếm kỳ học..."
-      />
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 pt-4 px-2">
+        <div>
+          <h1 className="text-[28px] font-bold tracking-tight text-slate-800">Danh Sách Kỳ Học</h1>
+          <p className="text-sm text-slate-500 mt-1">Quản lý các kỳ bảo vệ đồ án, tiến độ và mốc thời gian.</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          {/* Status Filter */}
+          <div className="relative flex-1 md:flex-none">
+            <select
+              title="Lọc trạng thái"
+              className="w-full appearance-none bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-lg pl-4 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all cursor-pointer shadow-sm hover:border-slate-300"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="Upcoming">Sắp tới</option>
+              <option value="Ongoing">Đang diễn ra</option>
+              <option value="Ended">Đã kết thúc</option>
+            </select>
+            <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[20px]">
+              expand_more
+            </span>
+          </div>
+
+          <button className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all shadow-sm hover:border-slate-300 flex-1 md:flex-none">
+            <span className="material-symbols-outlined text-[18px]">filter_list</span>
+            Báo cáo
+          </button>
+
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-slate-700 border border-slate-800 rounded-lg hover:bg-slate-800 transition-all shadow-md shadow-slate-900/10 flex-1 md:flex-none"
+          >
+            <span className="material-symbols-outlined text-[20px]">add</span>
+            Tạo kỳ học mới
+          </button>
+        </div>
+      </div>
 
       {/* Loading */}
       {isLoading && (

@@ -166,12 +166,15 @@ public static class LoadTestDataSeeder
 
         // Fall 2025 phases (all Completed)
         var phaseSql = @"
-            INSERT INTO SemesterPhases (SemesterId, Name, Type, StartDate, EndDate, [Order], Status)
-            VALUES
-            (@p0, N'Đăng ký đề tài',    0, @p1, @p2, 1, 2),
-            (@p0, N'Thẩm định đề tài',  1, @p3, @p4, 2, 2),
-            (@p0, N'Triển khai',         2, @p5, @p6, 3, 2),
-            (@p0, N'Bảo vệ đồ án',      3, @p7, @p8, 4, 2);";
+            IF NOT EXISTS (SELECT 1 FROM SemesterPhases WHERE SemesterId = @p0)
+            BEGIN
+                INSERT INTO SemesterPhases (SemesterId, Name, Type, StartDate, EndDate, [Order], Status)
+                VALUES
+                (@p0, N'Đăng ký đề tài',    0, @p1, @p2, 1, 2),
+                (@p0, N'Thẩm định đề tài',  1, @p3, @p4, 2, 2),
+                (@p0, N'Triển khai',         2, @p5, @p6, 3, 2),
+                (@p0, N'Bảo vệ đồ án',      3, @p7, @p8, 4, 2);
+            END";
 
         await context.Database.ExecuteSqlRawAsync(phaseSql,
             Fall2025Id,
@@ -182,11 +185,14 @@ public static class LoadTestDataSeeder
 
         // Spring 2026 phases (Implementation in progress, Defense not started)
         var phaseSql2 = @"
-            INSERT INTO SemesterPhases (SemesterId, Name, Type, StartDate, EndDate, [Order], Status)
-            VALUES
-            (@p0, N'Đăng ký đề tài',    0, @p1, @p2, 1, 2),
-            (@p0, N'Thẩm định đề tài',  1, @p3, @p4, 2, 2),
-            (@p0, N'Triển khai',         2, @p5, @p6, 3, 1);";
+            IF NOT EXISTS (SELECT 1 FROM SemesterPhases WHERE SemesterId = @p0)
+            BEGIN
+                INSERT INTO SemesterPhases (SemesterId, Name, Type, StartDate, EndDate, [Order], Status)
+                VALUES
+                (@p0, N'Đăng ký đề tài',    0, @p1, @p2, 1, 2),
+                (@p0, N'Thẩm định đề tài',  1, @p3, @p4, 2, 2),
+                (@p0, N'Triển khai',         2, @p5, @p6, 3, 1);
+            END";
 
         await context.Database.ExecuteSqlRawAsync(phaseSql2,
             Spring2026Id,

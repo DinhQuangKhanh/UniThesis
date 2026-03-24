@@ -36,14 +36,6 @@ public class TicketResolvedEventHandler : INotificationHandler<TicketResolvedEve
         var ticket = await _ticketRepository.GetByIdAsync(notification.TicketId, cancellationToken);
         if (ticket is null) return;
 
-        // Notify the reporter that their ticket has been resolved
-        await _notificationService.SendAsync(
-            ticket.ReporterId,
-            "Ticket đã được giải quyết",
-            $"Ticket {ticket.Code.Value}: \"{ticket.Title}\" đã được giải quyết. Nếu bạn vẫn còn vấn đề, vui lòng phản hồi lại.",
-            NotificationType.Success,
-            NotificationCategory.Support,
-            $"/supports/{notification.TicketId}",
-            cancellationToken);
+        // Note: Notifications disabled to ensure reporter only gets reply notifications.
     }
 }
