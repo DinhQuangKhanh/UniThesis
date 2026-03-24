@@ -24,6 +24,9 @@ namespace UniThesis.Domain.Aggregates.SupportAggregate
         private readonly List<TicketMessage> _messages = new();
         public IReadOnlyCollection<TicketMessage> Messages => _messages.AsReadOnly();
 
+        private readonly List<FileAttachment> _attachments = new();
+        public IReadOnlyCollection<FileAttachment> Attachments => _attachments.AsReadOnly();
+
         private SupportTicket() { }
 
         public static SupportTicket Create(
@@ -32,7 +35,8 @@ namespace UniThesis.Domain.Aggregates.SupportAggregate
             string description,
             Guid reporterId,
             TicketCategory category,
-            TicketPriority priority = TicketPriority.Medium)
+            TicketPriority priority = TicketPriority.Medium,
+            IEnumerable<FileAttachment>? attachments = null)
         {
             if (string.IsNullOrWhiteSpace(title))
                 throw new ArgumentException("Title cannot be empty.", nameof(title));
@@ -51,6 +55,11 @@ namespace UniThesis.Domain.Aggregates.SupportAggregate
                 Status = TicketStatus.Open,
                 CreatedAt = DateTime.UtcNow
             };
+
+            if (attachments != null)
+            {
+                ticket._attachments.AddRange(attachments);
+            }
 
             ticket.RaiseDomainEvent(new TicketCreatedEvent(ticket.Id, code.Value, category, priority));
             return ticket;
@@ -162,12 +171,12 @@ namespace UniThesis.Domain.Aggregates.SupportAggregate
             UpdatedAt = DateTime.UtcNow;
         }
 
-        public void AddMessage(Guid senderId, string content)
+        public void AddMessage(Guid senderId, string content, IEnumerable<FileAttachment>? attachments = null)
         {
             if (Status == TicketStatus.Closed)
                 throw new BusinessRuleValidationException("Cannot add a message to a closed ticket.");
 
-            var message = TicketMessage.Create(Id, senderId, content);
+            var message = TicketMessage.Create(Id, senderId, content, attachments);
             _messages.Add(message);
             
             UpdatedAt = DateTime.UtcNow;

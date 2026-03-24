@@ -55,6 +55,7 @@ public class AppDbContext : DbContext
     #region Semester Aggregate
     public DbSet<Semester> Semesters => Set<Semester>();
     public DbSet<SemesterPhase> SemesterPhases => Set<SemesterPhase>();
+    public DbSet<EligibleStudent> EligibleStudents => Set<EligibleStudent>();
     #endregion
 
     #region Evaluation Aggregate

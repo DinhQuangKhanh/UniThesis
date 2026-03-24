@@ -50,7 +50,25 @@ public class TicketMessageAddedEventHandler : INotificationHandler<TicketMessage
             ? ticket.AssigneeId ?? Guid.Empty
             : ticket.ReporterId;
 
-        if (recipientId != Guid.Empty)
+        if (recipientId == Guid.Empty)
+        {
+            // Ticket has no specific assignee, notify all Admins
+            var admins = await _userRepository.GetByRoleAsync("Admin", cancellationToken);
+            var adminIds = admins.Select(a => a.Id).ToList();
+
+            if (adminIds.Any())
+            {
+                await _notificationService.SendToMultipleAsync(
+                    adminIds,
+                    "Phản hồi mới trên ticket",
+                    $"{senderName} đã gửi phản hồi trên ticket {ticket.Code.Value}.",
+                    NotificationType.Info,
+                    NotificationCategory.Support,
+                    $"/admin/supports/{notification.TicketId}",
+                    cancellationToken);
+            }
+        }
+        else
         {
             await _notificationService.SendAsync(
                 recipientId,

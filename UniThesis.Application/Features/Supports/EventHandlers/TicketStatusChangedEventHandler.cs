@@ -38,14 +38,7 @@ public class TicketStatusChangedEventHandler : INotificationHandler<TicketStatus
         var ticket = await _ticketRepository.GetByIdAsync(notification.TicketId, cancellationToken);
         if (ticket is null) return;
 
-        // Notify the reporter about the status change
-        await _notificationService.SendAsync(
-            ticket.ReporterId,
-            "Cập nhật trạng thái ticket",
-            $"Ticket {ticket.Code.Value} đã được chuyển từ \"{notification.OldStatus}\" sang \"{notification.NewStatus}\".",
-            NotificationType.Info,
-            NotificationCategory.Support,
-            $"/supports/{notification.TicketId}",
-            cancellationToken);
+        // Note: Notifications for status changes are disabled as per user request to
+        // only notify reporters when there is an actual reply message on the ticket.
     }
 }

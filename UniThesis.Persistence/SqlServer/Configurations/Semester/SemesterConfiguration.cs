@@ -41,6 +41,11 @@ namespace UniThesis.Persistence.SqlServer.Configurations.Semester
                 .HasForeignKey(p => p.SemesterId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            builder.HasMany(s => s.EligibleStudents)
+                .WithOne()
+                .HasForeignKey(e => e.SemesterId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // Indexes
             builder.HasIndex(s => s.Code).IsUnique();
             builder.HasIndex(s => s.AcademicYear);

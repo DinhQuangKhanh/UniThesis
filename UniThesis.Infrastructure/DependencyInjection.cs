@@ -30,6 +30,7 @@ using UniThesis.Infrastructure.Services.Email;
 using UniThesis.Infrastructure.Services.Email.Templates;
 using UniThesis.Infrastructure.Services.FileStorage;
 using UniThesis.Infrastructure.Services.Notification;
+using UniThesis.Infrastructure.Services;
 using UniThesis.Persistence.SqlServer.QueryServices;
 
 namespace UniThesis.Infrastructure
@@ -171,6 +172,7 @@ namespace UniThesis.Infrastructure
             // File Storage - Firebase Storage
             services.Configure<FileStorageSettings>(configuration.GetSection(FileStorageSettings.SectionName));
             services.AddScoped<IFileStorageService, FirebaseStorageService>();
+            services.AddScoped<IExcelService, ExcelService>();
 
             // Notification & RealTime
             services.AddScoped<INotificationService, NotificationService>();
@@ -218,6 +220,9 @@ namespace UniThesis.Infrastructure
 
             // Health Checks
             services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("sqlserver").AddCheck<MongoDbHealthCheck>("mongodb");
+
+            // MediatR - Register Infrastructure Handlers (like Domain Event Handlers)
+            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
 
             return services;
         }

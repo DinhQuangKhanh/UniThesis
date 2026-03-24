@@ -1,4 +1,4 @@
-﻿namespace UniThesis.Infrastructure.Services.FileStorage
+namespace UniThesis.Application.Common.Interfaces
 {
     public interface IFileStorageService
     {

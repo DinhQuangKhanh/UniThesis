@@ -32,7 +32,7 @@ public class GetUserNotificationsQueryHandler
         var userId = _currentUser.UserId.Value;
 
         var items = await _notificationService.GetUserNotificationsAsync(userId, request.Limit, cancellationToken);
-        var unreadCount = await _notificationService.GetUnreadCountAsync(userId, cancellationToken);
+        var unreadCount = await _notificationService.GetUnreadCountAsync(userId, ct: cancellationToken);
 
         var itemList = items.ToList();
 
