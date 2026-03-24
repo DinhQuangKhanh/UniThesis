@@ -12,6 +12,7 @@ import {
     type TopicsInPoolResponse,
     type MajorOption,
 } from '@/lib/topicPoolService'
+import { studentGroupService, type StudentGroupDto } from '@/lib/studentGroupService'
 
 // ── Animation variants ───────────────────────────────────────────────────────
 
@@ -59,6 +60,15 @@ export function StudentTopicsPage() {
     const [showWishlist, setShowWishlist] = useState(false)
     const wishlist = useWishlist()
     const { showError } = useSystemError()
+    const [myGroup, setMyGroup] = useState<StudentGroupDto | null>(null)
+
+    useEffect(() => {
+        studentGroupService.getMyGroup()
+            .then((g) => setMyGroup(g))
+            .catch(() => {})
+    }, [])
+
+    const myGroupHasProject = !!myGroup?.projectId
 
     // Debounced search
     useEffect(() => {
@@ -260,6 +270,7 @@ export function StudentTopicsPage() {
                                     isFavorite={wishlist.has(topic.id)}
                                     onToggleFavorite={() => wishlist.toggle(topic.id, topic)}
                                     onViewDetail={() => setSelectedTopicId(topic.id)}
+                                    groupHasProject={myGroupHasProject}
                                 />
                             ))}
                         </motion.div>
@@ -348,6 +359,7 @@ export function StudentTopicsPage() {
                         wishlist.toggle(selectedTopicId, topic)
                     }
                 }}
+                groupHasProject={myGroupHasProject}
             />
 
             <WishlistDrawer

@@ -45,9 +45,10 @@ interface TopicDetailDrawerProps {
     onClose: () => void
     isFavorite: boolean
     onToggleFavorite: () => void
+    groupHasProject?: boolean
 }
 
-export function TopicDetailDrawer({ projectId, isOpen, onClose, isFavorite, onToggleFavorite }: TopicDetailDrawerProps) {
+export function TopicDetailDrawer({ projectId, isOpen, onClose, isFavorite, onToggleFavorite, groupHasProject }: TopicDetailDrawerProps) {
     const [detail, setDetail] = useState<TopicDetail | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -228,7 +229,12 @@ export function TopicDetailDrawer({ projectId, isOpen, onClose, isFavorite, onTo
                                     {isFavorite ? 'Đã quan tâm' : 'Quan tâm'}
                                 </motion.button>
 
-                                {isAvailable ? (
+                                {groupHasProject ? (
+                                    <button className="flex-1 bg-slate-200 text-slate-400 py-2.5 rounded-lg text-sm font-bold cursor-not-allowed flex items-center justify-center gap-2" disabled>
+                                        <span className="material-symbols-outlined text-lg">block</span>
+                                        Nhóm đã có đề tài
+                                    </button>
+                                ) : isAvailable ? (
                                     <button className="flex-1 bg-primary text-white py-2.5 rounded-lg text-sm font-bold hover:bg-primary-light transition-colors flex items-center justify-center gap-2">
                                         <span className="material-symbols-outlined text-lg">app_registration</span>
                                         Đăng ký đề tài
