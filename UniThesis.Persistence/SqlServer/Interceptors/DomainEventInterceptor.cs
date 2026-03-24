@@ -51,20 +51,11 @@ namespace UniThesis.Persistence.SqlServer.Interceptors
                 .Where(ar => ar.DomainEvents.Count > 0)
                 .ToList();
 
-            var intRoots = context.ChangeTracker
-                .Entries<AggregateRoot<int>>()
-                .Select(e => e.Entity)
-                .Where(ar => ar.DomainEvents.Count > 0)
-                .ToList();
-
             // Snapshot all events, then clear immediately to prevent re-dispatch
-            var domainEvents = guidRoots.SelectMany(ar => ar.DomainEvents)
-                .Concat(intRoots.SelectMany(ar => ar.DomainEvents))
+            var domainEvents = aggregateRoots.SelectMany(ar => ar.DomainEvents)
                 .ToList();
 
-            foreach (var ar in guidRoots)
-                ar.ClearDomainEvents();
-            foreach (var ar in intRoots)
+            foreach (var ar in aggregateRoots)
                 ar.ClearDomainEvents();
 
             // Publish each event — handlers may trigger additional SaveChanges
