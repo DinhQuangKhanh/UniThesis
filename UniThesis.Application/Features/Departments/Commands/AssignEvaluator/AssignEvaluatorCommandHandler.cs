@@ -2,6 +2,7 @@ using MediatR;
 using UniThesis.Application.Common.Abstractions;
 using UniThesis.Domain.Aggregates.EvaluationAggregate;
 using UniThesis.Domain.Aggregates.EvaluationAggregate.Entities;
+using UniThesis.Domain.Aggregates.EvaluationAggregate.Events;
 using UniThesis.Domain.Aggregates.ProjectAggregate;
 using UniThesis.Domain.Aggregates.UserAggregate;
 using UniThesis.Domain.Common.Exceptions;
@@ -30,6 +31,7 @@ public class AssignEvaluatorCommandHandler : ICommandHandler<AssignEvaluatorComm
     private readonly IProjectEvaluatorAssignmentRepository _assignmentRepository;
     private readonly ICurrentUserService _currentUser;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IPublisher _publisher;
 
     public AssignEvaluatorCommandHandler(
         IUserRepository userRepository,
@@ -37,7 +39,8 @@ public class AssignEvaluatorCommandHandler : ICommandHandler<AssignEvaluatorComm
         IProjectRepository projectRepository,
         IProjectEvaluatorAssignmentRepository assignmentRepository,
         ICurrentUserService currentUser,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IPublisher publisher)
     {
         _userRepository = userRepository;
         _departmentRepository = departmentRepository;
@@ -45,6 +48,7 @@ public class AssignEvaluatorCommandHandler : ICommandHandler<AssignEvaluatorComm
         _assignmentRepository = assignmentRepository;
         _currentUser = currentUser;
         _unitOfWork = unitOfWork;
+        _publisher = publisher;
     }
 
     public async Task<Unit> Handle(AssignEvaluatorCommand request, CancellationToken cancellationToken)
@@ -112,6 +116,10 @@ public class AssignEvaluatorCommandHandler : ICommandHandler<AssignEvaluatorComm
 
         // 9. Save all changes
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // 10. Publish domain event for notification handling
+        await _publisher.Publish(new EvaluatorAssignedToProjectEvent(
+            assignment.Id, request.ProjectId, request.EvaluatorId, request.EvaluatorOrder, currentUserId), cancellationToken);
 
         return Unit.Value;
     }
