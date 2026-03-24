@@ -10,6 +10,7 @@ const roleHomeMap: Record<string, string> = {
   mentor: "/mentor",
   evaluator: "/evaluator",
   student: "/student",
+  departmentHead: "/department-head",
 };
 
 /** Compute destination: use `from` state if it matches user role, otherwise go to role home. */
@@ -56,7 +57,7 @@ export function LoginPage() {
     }
   };
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleEmailLogin = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);

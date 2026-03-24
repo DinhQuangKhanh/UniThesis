@@ -177,6 +177,7 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
         {
             var mentor = _mentors.FirstOrDefault(m => m.MentorId == mentorId && m.IsActive)
                 ?? throw new EntityNotFoundException(nameof(ProjectMentor), mentorId);
+            CheckRule(new ProjectMustHaveAtLeastOneMentorRule(ActiveMentorCount - 1));
             mentor.Deactivate();
             UpdatedAt = DateTime.UtcNow;
             RaiseDomainEvent(new MentorRemovedEvent(Id, mentorId));

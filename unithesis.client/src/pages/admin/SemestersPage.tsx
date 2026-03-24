@@ -125,8 +125,8 @@ export function SemestersPage() {
   };
 
   return (
-    <>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 pt-4 px-2">
+    <div className="flex-1 overflow-y-auto p-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
           <h1 className="text-[28px] font-bold tracking-tight text-slate-800">Danh Sách Kỳ Học</h1>
           <p className="text-sm text-slate-500 mt-1">Quản lý các kỳ bảo vệ đồ án, tiến độ và mốc thời gian.</p>
@@ -447,7 +447,7 @@ export function SemestersPage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </div>
   );
 }
 
@@ -490,18 +490,18 @@ function TimelineStep({
           )}
         </div>
       </div>
-      <div className="text-center">
+      <div className="text-center mt-1">
         <p
-          className={`text-xs font-bold uppercase mt-1 ${isCurrent ? "text-sm text-green-700" : isPending ? "text-slate-500" : "text-slate-700"}`}
+          className={`text-xs font-bold uppercase ${isCurrent ? "text-sm text-green-700" : isPending ? "text-slate-500" : "text-slate-700"}`}
         >
           {label}
         </p>
         {isCurrent ? (
-          <p className="text-[10px] text-green-700 font-medium bg-green-50 px-2 py-0.5 rounded mt-0.5 border border-green-200">
+          <p className="text-[10px] text-green-700 font-medium bg-green-50 px-2 py-0.5 rounded mt-1 border border-green-200">
             {info}
           </p>
         ) : (
-          <p className="text-[10px] text-slate-400">{info}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">{info}</p>
         )}
       </div>
     </div>
