@@ -12,3 +12,4 @@ export * from "./mentor";
 export * from "./student";
 export * from "./errors";
 export { DepartmentHeadDashboardPage } from "./department-head/DepartmentHeadDashboardPage";
+export { AssignEvaluatorsPage } from "./department-head/AssignEvaluatorsPage";

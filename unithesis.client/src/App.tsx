@@ -39,6 +39,7 @@ import {
   TopicPoolDetailPage,
   MaintenancePage,
   DepartmentHeadDashboardPage,
+  AssignEvaluatorsPage,
   ActivityLogsPage,
 } from "@/pages";
 
@@ -177,6 +178,7 @@ function App() {
                 }
               >
                 <Route index element={<DepartmentHeadDashboardPage />} />
+                <Route path="assign" element={<AssignEvaluatorsPage />} />
               </Route>
 
               {/* Redirect root to admin */}
