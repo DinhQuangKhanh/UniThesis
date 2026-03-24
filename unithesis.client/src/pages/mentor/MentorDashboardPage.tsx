@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { RegisterTopicModal } from '@/components/mentor/RegisterTopicModal'
 import { NotificationDropdown } from '@/components/layout'
+import { SemesterTimeline } from '@/components/shared/SemesterTimeline'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSystemError } from '@/contexts/SystemErrorContext'
 import { dashboardService, type MentorDashboardData, type RecentProject } from '@/lib/dashboardService'
@@ -30,12 +31,6 @@ const projectStatusMap: Record<number, { label: string; className: string }> = {
     5: { label: 'Đang triển khai', className: 'bg-blue-50 text-blue-700 border-blue-200' },
     6: { label: 'Hoàn thành', className: 'bg-teal-50 text-teal-700 border-teal-200' },
     7: { label: 'Đã hủy', className: 'bg-gray-100 text-gray-500 border-gray-200' },
-}
-
-const phaseStatusColors: Record<number, string> = {
-    0: 'bg-slate-200',    // NotStarted
-    1: 'bg-primary',      // InProgress
-    2: 'bg-emerald-500',  // Completed
 }
 
 function StatusBadge({ status }: { status: number }) {
@@ -162,27 +157,6 @@ export function MentorDashboardPage() {
                             ))}
                     </div>
 
-                    {/* Semester Timeline */}
-                    {semester && semester.phases.length > 0 && (
-                        <motion.div variants={item} className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
-                            <div className="flex items-center gap-2 mb-5">
-                                <span className="material-symbols-outlined text-primary">timeline</span>
-                                <h3 className="text-slate-800 font-bold text-lg">Tiến trình học kỳ</h3>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                {semester.phases.map((phase, idx) => (
-                                    <div key={idx} className="flex-1 flex flex-col items-center gap-2">
-                                        <div className={`h-2 w-full rounded-full ${phaseStatusColors[phase.status] ?? 'bg-slate-200'}`} />
-                                        <p className="text-xs text-slate-600 font-medium text-center leading-tight">{phase.name}</p>
-                                        <p className="text-[10px] text-slate-400">
-                                            {new Date(phase.startDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
-                        </motion.div>
-                    )}
-
                     {/* Recent Projects Table */}
                     <motion.div variants={item} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                         <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
@@ -262,45 +236,61 @@ export function MentorDashboardPage() {
                         )}
                     </motion.div>
 
-                    {/* Quick Actions */}
-                    <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        <button
-                            onClick={() => setIsModalOpen(true)}
-                            className="group bg-white rounded-xl border border-slate-100 shadow-sm p-5 flex items-center gap-4 hover:border-primary/30 hover:shadow-md transition-all text-left"
-                        >
-                            <div className="bg-primary/10 text-primary p-3 rounded-xl group-hover:bg-primary group-hover:text-white transition-colors">
-                                <span className="material-symbols-outlined text-[24px]">add_circle</span>
-                            </div>
-                            <div>
-                                <p className="font-bold text-slate-800">Đăng ký đề tài mới</p>
-                                <p className="text-xs text-slate-500 mt-0.5">Đề xuất đề tài vào kho đề tài</p>
-                            </div>
-                        </button>
-                        <button
-                            onClick={() => navigate('/mentor/topic-pools')}
-                            className="group bg-white rounded-xl border border-slate-100 shadow-sm p-5 flex items-center gap-4 hover:border-indigo-300/50 hover:shadow-md transition-all text-left"
-                        >
-                            <div className="bg-indigo-50 text-indigo-600 p-3 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                                <span className="material-symbols-outlined text-[24px]">library_books</span>
-                            </div>
-                            <div>
-                                <p className="font-bold text-slate-800">Kho đề tài</p>
-                                <p className="text-xs text-slate-500 mt-0.5">Xem và quản lý kho đề tài</p>
-                            </div>
-                        </button>
-                        <button
-                            onClick={() => navigate('/mentor/groups')}
-                            className="group bg-white rounded-xl border border-slate-100 shadow-sm p-5 flex items-center gap-4 hover:border-emerald-300/50 hover:shadow-md transition-all text-left"
-                        >
-                            <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                                <span className="material-symbols-outlined text-[24px]">groups</span>
-                            </div>
-                            <div>
-                                <p className="font-bold text-slate-800">Nhóm sinh viên</p>
-                                <p className="text-xs text-slate-500 mt-0.5">Quản lý nhóm đang hướng dẫn</p>
-                            </div>
-                        </button>
-                    </motion.div>
+                    {/* Semester Timeline + Quick Actions — same row */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                        {/* Semester Timeline */}
+                        {semester && semester.phases.length > 0 ? (
+                            <motion.div variants={item} className="lg:col-span-2 bg-white rounded-xl border border-slate-100 shadow-sm p-6">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="material-symbols-outlined text-primary">timeline</span>
+                                    <h3 className="text-slate-800 font-bold text-lg">Tiến trình học kỳ</h3>
+                                </div>
+                                <SemesterTimeline phases={semester.phases} />
+                            </motion.div>
+                        ) : (
+                            <div className="lg:col-span-2" />
+                        )}
+
+                        {/* Quick Actions — stacked in 1 column */}
+                        <motion.div variants={item} className="space-y-3">
+                            <button
+                                onClick={() => setIsModalOpen(true)}
+                                className="w-full group bg-white rounded-xl border border-slate-100 shadow-sm p-4 flex items-center gap-4 hover:border-primary/30 hover:shadow-md transition-all text-left"
+                            >
+                                <div className="bg-primary/10 text-primary p-2.5 rounded-xl group-hover:bg-primary group-hover:text-white transition-colors">
+                                    <span className="material-symbols-outlined text-[22px]">add_circle</span>
+                                </div>
+                                <div>
+                                    <p className="font-bold text-slate-800 text-sm">Đăng ký đề tài mới</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">Đề xuất đề tài vào kho đề tài</p>
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => navigate('/mentor/topic-pools')}
+                                className="w-full group bg-white rounded-xl border border-slate-100 shadow-sm p-4 flex items-center gap-4 hover:border-indigo-300/50 hover:shadow-md transition-all text-left"
+                            >
+                                <div className="bg-indigo-50 text-indigo-600 p-2.5 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                    <span className="material-symbols-outlined text-[22px]">library_books</span>
+                                </div>
+                                <div>
+                                    <p className="font-bold text-slate-800 text-sm">Kho đề tài</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">Xem và quản lý kho đề tài</p>
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => navigate('/mentor/groups')}
+                                className="w-full group bg-white rounded-xl border border-slate-100 shadow-sm p-4 flex items-center gap-4 hover:border-emerald-300/50 hover:shadow-md transition-all text-left"
+                            >
+                                <div className="bg-emerald-50 text-emerald-600 p-2.5 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                                    <span className="material-symbols-outlined text-[22px]">groups</span>
+                                </div>
+                                <div>
+                                    <p className="font-bold text-slate-800 text-sm">Nhóm sinh viên</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">Quản lý nhóm đang hướng dẫn</p>
+                                </div>
+                            </button>
+                        </motion.div>
+                    </div>
                 </motion.div>
             </div>
 
