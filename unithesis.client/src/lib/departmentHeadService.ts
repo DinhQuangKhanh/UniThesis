@@ -89,9 +89,63 @@ export function groupProjects(resp: DepartmentProjectsResponse | null | undefine
   return { pendingAssignment: pending, inEvaluation: inEval, needsDecision: needs, completed: done };
 }
 
+// ── Dashboard types ─────────────────────────────────────────────────────────
+
+export interface DepartmentHeadDashboardData {
+  departmentName: string;
+  headName: string;
+  stats: DepartmentHeadStats;
+  semesterProgress: SemesterProgressInfo | null;
+  evaluationProgress: EvaluationProgress;
+  recentActivities: RecentActivity[];
+}
+
+export interface DepartmentHeadStats {
+  totalProjects: number;
+  pendingAssignment: number;
+  inEvaluation: number;
+  needsFinalDecision: number;
+  completed: number;
+  totalEvaluators: number;
+  totalMentors: number;
+}
+
+export interface SemesterProgressInfo {
+  semesterName: string;
+  phases: SemesterPhaseInfo[];
+}
+
+export interface SemesterPhaseInfo {
+  name: string;
+  type: number;
+  status: number; // 0=NotStarted, 1=InProgress, 2=Completed
+  startDate: string;
+  endDate: string;
+  order: number;
+}
+
+export interface EvaluationProgress {
+  approved: number;
+  rejected: number;
+  needsModification: number;
+  pending: number;
+}
+
+export interface RecentActivity {
+  projectId: string;
+  projectCode: string;
+  projectName: string;
+  activityType: string; // "submitted" | "assigned" | "decided"
+  actorName: string;
+  occurredAt: string;
+}
+
 // ── API ──────────────────────────────────────────────────────────────────────
 
 export const departmentHeadService = {
+  getDashboard: () =>
+    apiClient.get<DepartmentHeadDashboardData>("/api/department-head/dashboard"),
+
   getProjects: () =>
     apiClient.get<DepartmentProjectsResponse>("/api/department-head/projects"),
 

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using UniThesis.Application.Common.Interfaces;
+using UniThesis.Application.Features.Dashboard.DTOs;
 using UniThesis.Application.Features.Departments.DTOs;
 using UniThesis.Domain.Constants;
 using UniThesis.Domain.Enums.Evaluation;
@@ -158,6 +159,156 @@ namespace UniThesis.Persistence.SqlServer.QueryServices
                 AcademicTitle = e.AcademicTitle,
                 ActiveAssignmentCount = assignmentCounts.GetValueOrDefault(e.Id, 0)
             }).OrderBy(e => e.FullName).ToList();
+        }
+
+        public async Task<DepartmentHeadDashboardDto> GetDashboardAsync(
+            int departmentId,
+            Guid headId,
+            CancellationToken cancellationToken = default)
+        {
+            // 1. Department name + head name
+            var department = await _context.Departments.AsNoTracking()
+                .Where(d => d.Id == departmentId)
+                .Select(d => d.Name)
+                .FirstOrDefaultAsync(cancellationToken) ?? "";
+
+            var headName = await _context.Users.AsNoTracking()
+                .Where(u => u.Id == headId)
+                .Select(u => u.FullName)
+                .FirstOrDefaultAsync(cancellationToken) ?? "";
+
+            // 2. Active semester with phases
+            var now = DateTime.UtcNow;
+            var activeSemester = await _context.Semesters.AsNoTracking()
+                .Include(s => s.Phases)
+                .FirstOrDefaultAsync(s => s.StartDate <= now && s.EndDate >= now, cancellationToken);
+
+            SemesterProgressDto? semesterProgress = null;
+            if (activeSemester != null)
+            {
+                semesterProgress = new SemesterProgressDto
+                {
+                    SemesterName = activeSemester.Name,
+                    Phases = activeSemester.Phases
+                        .OrderBy(p => p.Order)
+                        .Select(p => new SemesterPhaseDto
+                        {
+                            Name = p.Name,
+                            Type = (int)p.Type,
+                            Status = (int)p.Status,
+                            StartDate = p.StartDate,
+                            EndDate = p.EndDate,
+                            Order = p.Order,
+                        }).ToList()
+                };
+            }
+
+            // 3. Major IDs for this department
+            var majorIds = await _context.Majors.AsNoTracking()
+                .Where(m => m.DepartmentId == departmentId && m.IsActive)
+                .Select(m => m.Id)
+                .ToListAsync(cancellationToken);
+
+            // 4. Projects in relevant statuses
+            var projects = await _context.Projects.AsNoTracking()
+                .Where(p => majorIds.Contains(p.MajorId) &&
+                           (p.Status == ProjectStatus.PendingEvaluation ||
+                            p.Status == ProjectStatus.Approved ||
+                            p.Status == ProjectStatus.NeedsModification ||
+                            p.Status == ProjectStatus.Rejected))
+                .Select(p => new { p.Id, p.Status })
+                .ToListAsync(cancellationToken);
+
+            var projectIds = projects.Select(p => p.Id).ToList();
+
+            // 5. Evaluator assignments
+            var assignments = await _context.ProjectEvaluatorAssignments.AsNoTracking()
+                .Where(a => projectIds.Contains(a.ProjectId) && a.IsActive)
+                .Select(a => new { a.ProjectId, a.IndividualResult, a.HasSubmittedEvaluation, a.EvaluatorId, a.AssignedAt, a.EvaluatedAt })
+                .ToListAsync(cancellationToken);
+
+            // 6. Compute stats
+            var projectStats = projects.Select(p =>
+            {
+                var pa = assignments.Where(a => a.ProjectId == p.Id).ToList();
+                var submitted = pa.Count(a => a.HasSubmittedEvaluation);
+                var distinct = pa.Where(a => a.HasSubmittedEvaluation).Select(a => a.IndividualResult).Distinct().Count();
+                var hasConflict = submitted >= 2 && distinct > 1;
+                var needsDecision = hasConflict && p.Status == ProjectStatus.PendingEvaluation;
+                return new { p.Id, p.Status, AssignedCount = pa.Count, NeedsDecision = needsDecision };
+            }).ToList();
+
+            var stats = new DepartmentHeadStatsDto
+            {
+                TotalProjects = projectStats.Count,
+                PendingAssignment = projectStats.Count(p => p.AssignedCount < 2 && p.Status == ProjectStatus.PendingEvaluation),
+                InEvaluation = projectStats.Count(p => p.AssignedCount >= 2 && !p.NeedsDecision && p.Status == ProjectStatus.PendingEvaluation),
+                NeedsFinalDecision = projectStats.Count(p => p.NeedsDecision),
+                Completed = projectStats.Count(p => p.Status != ProjectStatus.PendingEvaluation),
+                TotalEvaluators = await _context.Users.AsNoTracking()
+                    .CountAsync(u => u.DepartmentId == departmentId &&
+                                     u.Roles.Any(r => r.RoleName == DomainRoleNames.Evaluator && r.IsActive), cancellationToken),
+                TotalMentors = await _context.Users.AsNoTracking()
+                    .CountAsync(u => u.DepartmentId == departmentId &&
+                                     u.Roles.Any(r => r.RoleName == DomainRoleNames.Mentor && r.IsActive), cancellationToken),
+            };
+
+            // 7. Evaluation progress (from completed projects)
+            var completedProjectIds = projectStats
+                .Where(p => p.Status != ProjectStatus.PendingEvaluation)
+                .Select(p => p.Id).ToList();
+
+            var evalProgress = new EvaluationProgressDto
+            {
+                Approved = projects.Count(p => p.Status == ProjectStatus.Approved),
+                Rejected = projects.Count(p => p.Status == ProjectStatus.Rejected),
+                NeedsModification = projects.Count(p => p.Status == ProjectStatus.NeedsModification),
+                Pending = projects.Count(p => p.Status == ProjectStatus.PendingEvaluation),
+            };
+
+            // 8. Recent activities (evaluator assignments + submissions, sorted by date)
+            var recentAssignments = assignments
+                .OrderByDescending(a => a.EvaluatedAt ?? a.AssignedAt)
+                .Take(10)
+                .ToList();
+
+            var activityProjectIds = recentAssignments.Select(a => a.ProjectId).Distinct().ToList();
+            var activityProjects = await _context.Projects.AsNoTracking()
+                .Where(p => activityProjectIds.Contains(p.Id))
+                .Select(p => new { p.Id, Code = p.Code.Value, Name = p.NameVi.Value })
+                .ToDictionaryAsync(p => p.Id, cancellationToken);
+
+            var activityEvaluatorIds = recentAssignments.Select(a => a.EvaluatorId).Distinct().ToList();
+            var activityNames = await _context.Users.AsNoTracking()
+                .Where(u => activityEvaluatorIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.FullName, cancellationToken);
+
+            var recentActivities = recentAssignments.Select(a =>
+            {
+                var proj = activityProjects.GetValueOrDefault(a.ProjectId);
+                var actorName = activityNames.GetValueOrDefault(a.EvaluatorId, "");
+                var isSubmission = a.HasSubmittedEvaluation && a.EvaluatedAt.HasValue;
+
+                return new RecentEvaluationActivityDto
+                {
+                    ProjectId = a.ProjectId,
+                    ProjectCode = proj?.Code ?? "",
+                    ProjectName = proj?.Name ?? "",
+                    ActivityType = isSubmission ? "submitted" : "assigned",
+                    ActorName = actorName,
+                    OccurredAt = isSubmission ? a.EvaluatedAt!.Value : a.AssignedAt,
+                };
+            }).ToList();
+
+            return new DepartmentHeadDashboardDto
+            {
+                DepartmentName = department,
+                HeadName = headName,
+                Stats = stats,
+                SemesterProgress = semesterProgress,
+                EvaluationProgress = evalProgress,
+                RecentActivities = recentActivities,
+            };
         }
     }
 }
