@@ -6,7 +6,7 @@ import { useSignalR } from "@/hooks/useSignalR";
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 // Notification types for different roles
-export type UserRole = "admin" | "mentor" | "student" | "evaluator";
+export type UserRole = "admin" | "mentor" | "student" | "evaluator" | "department-head";
 
 interface NotificationItem {
   id: string;
