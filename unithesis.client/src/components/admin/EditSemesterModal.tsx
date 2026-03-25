@@ -266,7 +266,7 @@ export function EditSemesterModal({ isOpen, onClose, onUpdated, initialData }: E
                                         <span className="bg-primary text-white text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tight">Quan trọng</span>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div>
                                     {/* Upload Excel */}
                                     <input
                                         ref={fileInputRef}
@@ -317,43 +317,6 @@ export function EditSemesterModal({ isOpen, onClose, onUpdated, initialData }: E
                                             <a className="mt-3 text-[11px] text-primary hover:underline flex items-center gap-1" href="/templates/danh_sach_sinh_vien_mau.csv" download>
                                                 <span className="material-symbols-outlined text-[14px]">download</span> Tải file mẫu (.csv)
                                             </a>
-                                        </div>
-                                    </div>
-
-                                    {/* Filter */}
-                                    <div className="border border-slate-200 rounded-xl p-6 bg-slate-50/50">
-                                        <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-[20px] text-primary">filter_alt</span>
-                                            Lọc theo điều kiện
-                                        </h4>
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Khóa &amp; Ngành</label>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <select className="text-xs border border-slate-200 rounded-md px-2 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
-                                                        <option>Tất cả Khóa</option>
-                                                        <option>K2020</option>
-                                                        <option>K2021</option>
-                                                    </select>
-                                                    <select className="text-xs border border-slate-200 rounded-md px-2 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
-                                                        <option>Tất cả Ngành</option>
-                                                        <option>CNTT</option>
-                                                        <option>Kỹ thuật phần mềm</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Điểm tích lũy (GPA) tối thiểu</label>
-                                                <div className="flex items-center gap-3">
-                                                    <input className="w-full text-xs border border-slate-200 rounded-md px-2 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" placeholder="VD: 2.5" step="0.1" type="number" />
-                                                    <span className="text-xs text-slate-400 font-medium whitespace-nowrap">/ 4.0</span>
-                                                </div>
-                                            </div>
-                                            <div className="pt-2">
-                                                <button className="w-full py-2 px-4 bg-primary/10 text-primary border border-primary/20 rounded-md text-xs font-bold hover:bg-primary/20 transition-all">
-                                                    Xem trước danh sách (245 SV)
-                                                </button>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
