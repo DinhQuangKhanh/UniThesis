@@ -6,6 +6,7 @@ import {
   mentorTopicService,
   sourceTypeLabel,
   statusConfig,
+  evaluationStatusConfig,
   type MentorTopicItem,
   type MentorTopicsResponse,
   type SemesterOption,
@@ -117,10 +118,8 @@ export function MentorTopicsPage() {
   }, [selectedSemester, debouncedSearch, page]);
 
   useEffect(() => {
-    if (selectedSemester !== undefined) {
-      fetchTopics();
-    }
-  }, [fetchTopics, selectedSemester]);
+    fetchTopics();
+  }, [fetchTopics]);
 
   const totalPages = data?.totalPages ?? 1;
   const pageNumbers = getPageNumbers(page, totalPages);
@@ -226,8 +225,7 @@ export function MentorTopicsPage() {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {data.items.map((topic) => {
-                        const sc = statusConfig(topic.status);
-                        const canEdit = topic.status === 2; // NeedsModification
+                        const evalSc = evaluationStatusConfig(topic.status);
                         return (
                           <tr
                             key={topic.id}
@@ -261,30 +259,16 @@ export function MentorTopicsPage() {
                             </td>
                             <td className="px-6 py-4 text-center">
                               <span
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${sc.bg} ${sc.text} border border-current/10`}
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${evalSc.bg} ${evalSc.text} border border-current/10`}
                               >
-                                <span className={`size-1.5 rounded-full ${sc.dot}`} />
-                                {sc.label}
+                                <span className={`size-1.5 rounded-full ${evalSc.dot}`} />
+                                {evalSc.label}
                               </span>
                             </td>
                             <td className="px-6 py-4 text-sm text-slate-600">
                               {formatDate(topic.submittedAt ?? topic.createdAt)}
                             </td>
-                            <td className="px-6 py-4 text-right">
-                              {canEdit && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    // TODO: open edit modal
-                                    alert("Chức năng chỉnh sửa sẽ được cập nhật sau.");
-                                  }}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
-                                >
-                                  <span className="material-symbols-outlined text-[16px]">edit</span>
-                                  Chỉnh sửa
-                                </button>
-                              )}
-                            </td>
+                            <td className="px-6 py-4 text-right"></td>
                           </tr>
                         );
                       })}
@@ -356,7 +340,16 @@ export function MentorTopicsPage() {
 
       {/* Topic Detail Modal */}
       <AnimatePresence>
-        {detailTopic && <TopicDetailModal topic={detailTopic} onClose={() => setDetailTopic(null)} onReviewed={() => { setDetailTopic(null); fetchTopics(); }} />}
+        {detailTopic && (
+          <TopicDetailModal
+            topic={detailTopic}
+            onClose={() => setDetailTopic(null)}
+            onReviewed={() => {
+              setDetailTopic(null);
+              fetchTopics();
+            }}
+          />
+        )}
       </AnimatePresence>
     </>
   );
@@ -364,7 +357,15 @@ export function MentorTopicsPage() {
 
 // ── Topic Detail Modal ───────────────────────────────────────────────────────
 
-function TopicDetailModal({ topic, onClose, onReviewed }: { topic: MentorTopicItem; onClose: () => void; onReviewed: () => void }) {
+function TopicDetailModal({
+  topic,
+  onClose,
+  onReviewed,
+}: {
+  topic: MentorTopicItem;
+  onClose: () => void;
+  onReviewed: () => void;
+}) {
   const [detail, setDetail] = useState<TopicDetail | null>(null);
   const [documents, setDocuments] = useState<TopicDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -550,10 +551,15 @@ function TopicDetailModal({ topic, onClose, onReviewed }: { topic: MentorTopicIt
                   disabled={reviewLoading}
                   className="flex-1 px-4 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
-                  {reviewLoading && <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />}
+                  {reviewLoading && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  )}
                   Xác nhận duyệt
                 </button>
-                <button onClick={() => setReviewAction(null)} className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                <button
+                  onClick={() => setReviewAction(null)}
+                  className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                >
                   Hủy
                 </button>
               </div>
@@ -590,10 +596,18 @@ function TopicDetailModal({ topic, onClose, onReviewed }: { topic: MentorTopicIt
                   disabled={reviewLoading}
                   className="flex-1 px-4 py-2.5 bg-amber-500 text-white text-sm font-semibold rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
-                  {reviewLoading && <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />}
+                  {reviewLoading && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  )}
                   Gửi yêu cầu chỉnh sửa
                 </button>
-                <button onClick={() => { setReviewAction(null); setFeedback(""); }} className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                <button
+                  onClick={() => {
+                    setReviewAction(null);
+                    setFeedback("");
+                  }}
+                  className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                >
                   Hủy
                 </button>
               </div>
