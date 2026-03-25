@@ -82,6 +82,8 @@ export function statusConfig(status: number): { label: string; bg: string; text:
       return { label: "Hoàn thành", bg: "bg-teal-50", text: "text-teal-700", dot: "bg-teal-500" };
     case 7: // Cancelled
       return { label: "Đã hủy", bg: "bg-slate-100", text: "text-slate-500", dot: "bg-slate-400" };
+    case 8: // PendingMentorReview
+      return { label: "Chờ GV duyệt", bg: "bg-violet-50", text: "text-violet-700", dot: "bg-violet-500" };
     default: // Draft=0 or unknown
       return { label: "Nháp", bg: "bg-slate-100", text: "text-slate-600", dot: "bg-slate-400" };
   }

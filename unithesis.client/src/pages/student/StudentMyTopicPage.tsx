@@ -5,7 +5,10 @@ import { Header } from '@/components/layout'
 import { apiClient } from '@/lib/apiClient'
 import { studentGroupService, type StudentGroupDto } from '@/lib/studentGroupService'
 import { topicPoolService, type TopicDetail, type TopicDocument } from '@/lib/topicPoolService'
+import { directTopicService } from '@/lib/directTopicService'
 import { useSystemError } from '@/contexts/SystemErrorContext'
+import { useAuth } from '@/contexts/AuthContext'
+import { CreateDirectTopicForm } from '@/components/student/CreateDirectTopicForm'
 
 const container = {
     hidden: { opacity: 0 },
@@ -19,8 +22,15 @@ const item = {
 
 function statusLabel(status: string | undefined | null): string {
     switch (status) {
+        case 'Draft': return 'Nháp'
+        case 'PendingEvaluation': return 'Chờ thẩm định'
+        case 'NeedsModification': return 'Cần chỉnh sửa'
+        case 'Approved': return 'Đã duyệt'
+        case 'Rejected': return 'Từ chối'
         case 'InProgress': return 'Đang thực hiện'
         case 'Completed': return 'Hoàn thành'
+        case 'Cancelled': return 'Đã hủy'
+        case 'PendingMentorReview': return 'Chờ GV duyệt'
         case 'Pending': return 'Chờ xác nhận'
         default: return status ?? 'Chưa xác định'
     }
@@ -28,8 +38,15 @@ function statusLabel(status: string | undefined | null): string {
 
 function statusColor(status: string | undefined | null): string {
     switch (status) {
+        case 'Draft': return 'bg-slate-100 text-slate-600'
+        case 'PendingEvaluation': return 'bg-amber-100 text-amber-700'
+        case 'NeedsModification': return 'bg-rose-100 text-rose-700'
+        case 'Approved': return 'bg-emerald-100 text-emerald-700'
+        case 'Rejected': return 'bg-red-100 text-red-700'
         case 'InProgress': return 'bg-green-100 text-green-700'
         case 'Completed': return 'bg-blue-100 text-blue-700'
+        case 'Cancelled': return 'bg-gray-100 text-gray-500'
+        case 'PendingMentorReview': return 'bg-violet-100 text-violet-700'
         default: return 'bg-gray-100 text-gray-600'
     }
 }
@@ -99,6 +116,7 @@ const FILE_ICON_MAP: Record<string, string> = {
 export function StudentMyTopicPage() {
     const navigate = useNavigate()
     const { showError } = useSystemError()
+    const { user } = useAuth()
     const [loading, setLoading] = useState(true)
     const [myGroup, setMyGroup] = useState<StudentGroupDto | null>(null)
     const [topicDetail, setTopicDetail] = useState<TopicDetail | null>(null)
@@ -107,7 +125,11 @@ export function StudentMyTopicPage() {
     const [fileWarnings, setFileWarnings] = useState<string[]>([])
     const [uploading, setUploading] = useState(false)
     const [uploadSuccess, setUploadSuccess] = useState(false)
+    const [showCreateForm, setShowCreateForm] = useState(false)
+    const [submittingToMentor, setSubmittingToMentor] = useState(false)
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+    const isLeader = myGroup?.members.some(m => m.studentId === user?.id && m.role === 'Leader') ?? false
 
     const stopPolling = useCallback(() => {
         if (pollRef.current) {
@@ -241,19 +263,53 @@ export function StudentMyTopicPage() {
                     </div>
                 ) : !myGroup.projectId ? (
                     /* Has group but no project */
-                    <div className="flex flex-col items-center justify-center h-64 text-center gap-4">
-                        <span className="material-symbols-outlined text-5xl text-[#58698d]">topic</span>
-                        <p className="text-[#101319] font-bold text-lg">
-                            Nhóm <span className="text-primary">{myGroup.groupName ?? myGroup.groupCode}</span> chưa được gán đề tài
-                        </p>
-                        <p className="text-[#58698d] text-sm">Liên hệ giảng viên hoặc chờ hệ thống phân công đề tài.</p>
-                        <button
-                            onClick={() => navigate('/student/topics')}
-                            className="px-5 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary-light transition-colors"
-                        >
-                            Xem kho đề tài
-                        </button>
-                    </div>
+                    showCreateForm ? (
+                        <div className="max-w-3xl mx-auto">
+                            <CreateDirectTopicForm
+                                groupId={myGroup.groupId}
+                                onCreated={() => {
+                                    setShowCreateForm(false)
+                                    setLoading(true)
+                                    studentGroupService.getMyGroup()
+                                        .then(async (group) => {
+                                            setMyGroup(group)
+                                            if (group?.projectId) {
+                                                const detail = await topicPoolService.getTopicDetail(group.projectId)
+                                                setTopicDetail(detail)
+                                                loadDocuments(group.projectId)
+                                            }
+                                        })
+                                        .finally(() => setLoading(false))
+                                }}
+                                onCancel={() => setShowCreateForm(false)}
+                            />
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-64 text-center gap-4">
+                            <span className="material-symbols-outlined text-5xl text-[#58698d]">topic</span>
+                            <p className="text-[#101319] font-bold text-lg">
+                                Nhóm <span className="text-primary">{myGroup.groupName ?? myGroup.groupCode}</span> chưa có đề tài
+                            </p>
+                            <p className="text-[#58698d] text-sm">Đăng ký đề tài từ kho hoặc đề xuất đề tài mới cho giảng viên duyệt.</p>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => navigate('/student/topics')}
+                                    className="px-5 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary-light transition-colors"
+                                >
+                                    Xem kho đề tài
+                                </button>
+                                {isLeader && (
+                                    <button
+                                        onClick={() => setShowCreateForm(true)}
+                                        className="px-5 py-2 border-2 border-primary text-primary rounded-lg text-sm font-bold hover:bg-primary/5 transition-colors flex items-center gap-1.5"
+                                    >
+                                        <span className="material-symbols-outlined text-lg">edit_note</span>
+                                        Đề xuất đề tài mới
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )
                 ) : (
                     /* Full view */
                     <motion.div variants={container} initial="hidden" animate="show" className="flex flex-col gap-6">
@@ -283,6 +339,44 @@ export function StudentMyTopicPage() {
                                             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${statusColor(myGroup.projectStatus)}`}>
                                                 {statusLabel(myGroup.projectStatus)}
                                             </span>
+                                            {/* Action buttons based on status */}
+                                            {isLeader && (myGroup.projectStatus === 'Draft' || myGroup.projectStatus === 'NeedsModification') && (
+                                                <button
+                                                    onClick={async () => {
+                                                        if (!myGroup.projectId) return
+                                                        setSubmittingToMentor(true)
+                                                        try {
+                                                            await directTopicService.submitToMentor(myGroup.projectId)
+                                                            // Reload group data
+                                                            const group = await studentGroupService.getMyGroup()
+                                                            setMyGroup(group)
+                                                            if (group?.projectId) {
+                                                                const detail = await topicPoolService.getTopicDetail(group.projectId)
+                                                                setTopicDetail(detail)
+                                                            }
+                                                        } catch (err) {
+                                                            showError(err instanceof Error ? err.message : 'Không thể gửi đề tài.')
+                                                        } finally {
+                                                            setSubmittingToMentor(false)
+                                                        }
+                                                    }}
+                                                    disabled={submittingToMentor}
+                                                    className="ml-2 px-4 py-1.5 bg-primary text-white rounded-full text-xs font-bold hover:bg-primary-light transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                                                >
+                                                    {submittingToMentor ? (
+                                                        <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent" />
+                                                    ) : (
+                                                        <span className="material-symbols-outlined text-sm">send</span>
+                                                    )}
+                                                    {myGroup.projectStatus === 'Draft' ? 'Gửi cho giảng viên' : 'Gửi lại cho giảng viên'}
+                                                </button>
+                                            )}
+                                            {myGroup.projectStatus === 'PendingMentorReview' && (
+                                                <span className="ml-2 px-3 py-1.5 bg-violet-50 text-violet-700 rounded-full text-xs font-semibold flex items-center gap-1.5">
+                                                    <span className="material-symbols-outlined text-sm">hourglass_top</span>
+                                                    Đang chờ giảng viên duyệt
+                                                </span>
+                                            )}
                                         </div>
                                         <h1 className="text-2xl font-extrabold text-[#101319] leading-tight mb-4">
                                             {topicDetail?.nameVi ?? '—'}

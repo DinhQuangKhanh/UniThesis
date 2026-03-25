@@ -46,9 +46,12 @@ interface TopicDetailDrawerProps {
     isFavorite: boolean
     onToggleFavorite: () => void
     groupHasProject?: boolean
+    hasGroup?: boolean
+    isLeader?: boolean
+    onRegister?: (projectId: string) => void
 }
 
-export function TopicDetailDrawer({ projectId, isOpen, onClose, isFavorite, onToggleFavorite, groupHasProject }: TopicDetailDrawerProps) {
+export function TopicDetailDrawer({ projectId, isOpen, onClose, isFavorite, onToggleFavorite, groupHasProject, hasGroup, isLeader, onRegister }: TopicDetailDrawerProps) {
     const [detail, setDetail] = useState<TopicDetail | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -229,13 +232,26 @@ export function TopicDetailDrawer({ projectId, isOpen, onClose, isFavorite, onTo
                                     {isFavorite ? 'Đã quan tâm' : 'Quan tâm'}
                                 </motion.button>
 
-                                {groupHasProject ? (
+                                {!hasGroup ? (
+                                    <button className="flex-1 bg-slate-200 text-slate-400 py-2.5 rounded-lg text-sm font-bold cursor-not-allowed flex items-center justify-center gap-2" disabled>
+                                        <span className="material-symbols-outlined text-lg">group_add</span>
+                                        Tham gia nhóm trước
+                                    </button>
+                                ) : groupHasProject ? (
                                     <button className="flex-1 bg-slate-200 text-slate-400 py-2.5 rounded-lg text-sm font-bold cursor-not-allowed flex items-center justify-center gap-2" disabled>
                                         <span className="material-symbols-outlined text-lg">block</span>
                                         Nhóm đã có đề tài
                                     </button>
+                                ) : !isLeader ? (
+                                    <button className="flex-1 bg-slate-200 text-slate-400 py-2.5 rounded-lg text-sm font-bold cursor-not-allowed flex items-center justify-center gap-2" disabled>
+                                        <span className="material-symbols-outlined text-lg">lock</span>
+                                        Chỉ nhóm trưởng đăng ký
+                                    </button>
                                 ) : isAvailable ? (
-                                    <button className="flex-1 bg-primary text-white py-2.5 rounded-lg text-sm font-bold hover:bg-primary-light transition-colors flex items-center justify-center gap-2">
+                                    <button
+                                        onClick={() => detail && onRegister?.(detail.id)}
+                                        className="flex-1 bg-primary text-white py-2.5 rounded-lg text-sm font-bold hover:bg-primary-light transition-colors flex items-center justify-center gap-2"
+                                    >
                                         <span className="material-symbols-outlined text-lg">app_registration</span>
                                         Đăng ký đề tài
                                     </button>

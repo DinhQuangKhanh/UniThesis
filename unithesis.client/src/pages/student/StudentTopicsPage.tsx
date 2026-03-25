@@ -6,6 +6,7 @@ import { TopicDetailDrawer } from '@/components/student/TopicDetailDrawer'
 import { WishlistDrawer } from '@/components/student/WishlistDrawer'
 import { useWishlist } from '@/hooks/useWishlist'
 import { useSystemError } from '@/contexts/SystemErrorContext'
+import { useAuth } from '@/contexts/AuthContext'
 import {
     topicPoolService,
     type TopicFilters,
@@ -60,7 +61,11 @@ export function StudentTopicsPage() {
     const [showWishlist, setShowWishlist] = useState(false)
     const wishlist = useWishlist()
     const { showError } = useSystemError()
+    const { user } = useAuth()
     const [myGroup, setMyGroup] = useState<StudentGroupDto | null>(null)
+    const [registerTopicId, setRegisterTopicId] = useState<string | null>(null)
+    const [registerNote, setRegisterNote] = useState('')
+    const [registering, setRegistering] = useState(false)
 
     useEffect(() => {
         studentGroupService.getMyGroup()
@@ -69,6 +74,26 @@ export function StudentTopicsPage() {
     }, [])
 
     const myGroupHasProject = !!myGroup?.projectId
+    const isLeader = myGroup?.members.some(m => m.studentId === user?.id && m.role === 'Leader') ?? false
+
+    const handleRegister = async () => {
+        if (!registerTopicId || !myGroup?.groupId) return
+        setRegistering(true)
+        try {
+            await topicPoolService.registerTopic({ projectId: registerTopicId, groupId: myGroup.groupId, note: registerNote.trim() || undefined })
+            setRegisterTopicId(null)
+            setRegisterNote('')
+            setSelectedTopicId(null)
+            // Refresh group state and re-trigger topic fetch
+            const g = await studentGroupService.getMyGroup()
+            setMyGroup(g)
+            setFilters(prev => ({ ...prev }))
+        } catch (err) {
+            showError(err instanceof Error ? err.message : 'Đăng ký thất bại.')
+        } finally {
+            setRegistering(false)
+        }
+    }
 
     // Debounced search
     useEffect(() => {
@@ -360,6 +385,9 @@ export function StudentTopicsPage() {
                     }
                 }}
                 groupHasProject={myGroupHasProject}
+                hasGroup={!!myGroup}
+                isLeader={isLeader}
+                onRegister={(topicId) => setRegisterTopicId(topicId)}
             />
 
             <WishlistDrawer
@@ -368,6 +396,49 @@ export function StudentTopicsPage() {
                 wishlist={wishlist}
                 onViewDetail={(id) => { setShowWishlist(false); setSelectedTopicId(id) }}
             />
+
+            {/* Registration Confirmation Modal */}
+            {registerTopicId && (
+                <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4" onClick={() => { setRegisterTopicId(null); setRegisterNote('') }}>
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold text-[#101319] mb-3 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-primary">app_registration</span>
+                            Xác nhận đăng ký đề tài
+                        </h3>
+                        <p className="text-sm text-[#58698d] mb-4">
+                            Nhóm <span className="font-semibold text-primary">{myGroup?.groupName ?? myGroup?.groupCode}</span> sẽ đăng ký đề tài này.
+                            Sau khi đăng ký, giảng viên sẽ xem xét và xác nhận.
+                        </p>
+                        <textarea
+                            value={registerNote}
+                            onChange={e => setRegisterNote(e.target.value)}
+                            rows={3}
+                            className="w-full px-3 py-2.5 border border-[#e9ecf1] rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none mb-4"
+                            placeholder="Ghi chú cho giảng viên (tùy chọn)..."
+                        />
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={handleRegister}
+                                disabled={registering}
+                                className="flex-1 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary-light transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {registering ? (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                                ) : (
+                                    <span className="material-symbols-outlined text-lg">check</span>
+                                )}
+                                Xác nhận
+                            </button>
+                            <button
+                                onClick={() => { setRegisterTopicId(null); setRegisterNote('') }}
+                                className="px-5 py-2.5 border border-[#e9ecf1] text-[#58698d] rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors"
+                            >
+                                Hủy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     )
 }
