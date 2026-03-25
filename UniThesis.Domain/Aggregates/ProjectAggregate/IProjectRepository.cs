@@ -121,5 +121,13 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
         /// Used to enforce MentorCannotExceedMaxGroupsPerSemesterRule.
         /// </summary>
         Task<int> CountMentorActiveProjectsInSemesterAsync(Guid mentorId, int semesterId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets a paginated list of projects with optional filters.
+        /// Search matches against NameVi, NameEn, Code, and NameAbbr.
+        /// </summary>
+        Task<(IEnumerable<Project> Items, int TotalCount)> GetPagedAsync(
+            string? search, int? semesterId, ProjectStatus? status, int? majorId,
+            int page, int pageSize, CancellationToken ct = default);
     }
 }
