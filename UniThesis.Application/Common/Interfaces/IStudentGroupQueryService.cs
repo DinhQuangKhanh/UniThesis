@@ -27,10 +27,12 @@ public interface IStudentGroupQueryService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets all open groups (active, not full, accepting requests) in a semester.
-    /// If semesterId is null, uses the currently active semester.
+    /// Gets all open groups (active, not full, accepting requests) in the next semester.
+    /// Excludes groups that the student is already a member of.
+    /// If semesterId is null, automatically resolves the next semester.
     /// </summary>
     Task<List<OpenGroupDto>> GetOpenGroupsAsync(
+        Guid studentId,
         int? semesterId,
         CancellationToken cancellationToken = default);
 
