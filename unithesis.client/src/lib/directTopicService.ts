@@ -35,11 +35,12 @@ export interface MentorReviewPayload {
 
 export const directTopicService = {
   createDirectTopic: (data: CreateDirectTopicPayload): Promise<{ id: string }> => {
-    return apiClient.post<{ id: string }>("/api/student/direct-topic", data);
+    const { groupId, ...requestBody } = data;
+    return apiClient.post<{ id: string }>(`/api/student/${groupId}/direct-topic`, requestBody);
   },
 
-  submitToMentor: (projectId: string): Promise<void> => {
-    return apiClient.put<void>(`/api/student/direct-topic/${projectId}/submit-to-mentor`);
+  submitToMentor: (groupId: string, projectId: string): Promise<void> => {
+    return apiClient.put<void>(`/api/student/direct-topic/${groupId}/${projectId}/submit-to-mentor`);
   },
 
   updateTopic: (projectId: string, data: Partial<CreateDirectTopicPayload>): Promise<void> => {

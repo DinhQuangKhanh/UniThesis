@@ -44,6 +44,10 @@ export interface TopicDetail {
   updatedAt: string | null;
 }
 
+type TopicDetailRaw = TopicDetail & {
+  techologies?: string | null;
+};
+
 export interface MentorSummary {
   mentorId: string;
   fullName: string;
@@ -95,7 +99,10 @@ export const topicPoolService = {
 
   /** Get full detail of a topic by ID. Works for FromPool and DirectRegistration. */
   getTopicDetail: (topicId: string): Promise<TopicDetail> => {
-    return apiClient.get<TopicDetail>(`/api/topics/${topicId}`);
+    return apiClient.get<TopicDetailRaw>(`/api/topics/${topicId}`).then((raw) => ({
+      ...raw,
+      technologies: raw.technologies ?? raw.techologies ?? null,
+    }));
   },
 
   getMajors: (): Promise<MajorOption[]> => {
