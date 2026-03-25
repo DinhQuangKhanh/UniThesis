@@ -3,6 +3,7 @@ using UniThesis.API.Extensions;
 using UniThesis.Application.Common;
 using UniThesis.Application.Features.Dashboard.DTOs;
 using UniThesis.Application.Features.Dashboard.Queries.GetMentorDashboard;
+using UniThesis.Infrastructure.Authorization.Policies;
 using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Mentor;
@@ -19,7 +20,7 @@ public class GetMentorDashboardEndpoint : IEndpoint
                     new GetMentorDashboardQuery(), cancellationToken);
                 return Ok(result);
             })
-            .RequireAuthorization()
+            .RequireAuthorization(PolicyNames.RequireMentor)
             .WithTags("Mentor")
             .WithName("GetMentorDashboard")
             .Produces<ApiResponse<MentorDashboardDto>>()

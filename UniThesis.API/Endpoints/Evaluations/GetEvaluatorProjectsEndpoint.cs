@@ -3,6 +3,7 @@ using UniThesis.API.Extensions;
 using UniThesis.Application.Common;
 using UniThesis.Application.Features.Evaluations.DTOs;
 using UniThesis.Application.Features.Evaluations.Queries.GetEvaluatorProjects;
+using UniThesis.Infrastructure.Authorization.Policies;
 using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Evaluations;
@@ -38,7 +39,7 @@ public class GetEvaluatorProjectsEndpoint : IEndpoint
                     return Results.Json(ApiResponse.Fail("Không thể tải danh sách đề tài cần thẩm định. Vui lòng thử lại sau."), statusCode: 500);
                 }
             })
-            .RequireAuthorization()
+            .RequireAuthorization(PolicyNames.RequireEvaluator)
             .WithTags("Evaluator")
             .WithName("GetEvaluatorProjects")
             .Produces<ApiResponse<EvaluatorProjectsDto>>()

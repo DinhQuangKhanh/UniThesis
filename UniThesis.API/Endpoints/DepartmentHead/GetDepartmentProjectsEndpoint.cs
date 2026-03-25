@@ -1,6 +1,7 @@
 using MediatR;
 using UniThesis.API.Extensions;
 using UniThesis.Application.Features.Departments.Queries.GetDepartmentProjects;
+using UniThesis.Infrastructure.Authorization.Policies;
 using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.DepartmentHead;
@@ -16,7 +17,7 @@ public class GetDepartmentProjectsEndpoint : IEndpoint
                 var result = await sender.Send(new GetDepartmentProjectsQuery(), cancellationToken);
                 return Ok(result);
             })
-            .RequireAuthorization("RequireDepartmentHead")
+             .RequireAuthorization(PolicyNames.DepartmentHeadOfDepartment)
             .WithTags("DepartmentHead")
             .WithName("GetDepartmentProjects");
     }

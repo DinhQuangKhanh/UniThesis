@@ -4,6 +4,7 @@ using UniThesis.API.Extensions;
 using UniThesis.Application.Common;
 using UniThesis.Application.Features.Mentor.DTOs;
 using UniThesis.Application.Features.Mentor.Queries.GetMentorTopics;
+using UniThesis.Infrastructure.Authorization.Policies;
 using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Mentor;
@@ -29,7 +30,7 @@ public class GetMentorTopicsEndpoint : IEndpoint
                     cancellationToken);
                 return Ok(result);
             })
-            .RequireAuthorization()
+            .RequireAuthorization(PolicyNames.RequireMentor)
             .WithTags("Mentor")
             .WithName("GetMentorTopics")
             .Produces<ApiResponse<GetMentorTopicsResult>>()

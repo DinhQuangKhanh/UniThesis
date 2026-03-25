@@ -3,6 +3,7 @@ using UniThesis.API.Extensions;
 using UniThesis.Application.Common;
 using UniThesis.Application.Features.Evaluations.DTOs;
 using UniThesis.Application.Features.Evaluations.Queries.GetEvaluatorHistory;
+using UniThesis.Infrastructure.Authorization.Policies;
 using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Evaluations;
@@ -37,7 +38,7 @@ public class GetEvaluatorHistoryEndpoint : IEndpoint
                     return Results.Json(ApiResponse.Fail("Không thể tải lịch sử thẩm định. Vui lòng thử lại sau."), statusCode: 500);
                 }
             })
-            .RequireAuthorization()
+            .RequireAuthorization(PolicyNames.RequireEvaluator)
             .WithTags("Evaluator")
             .WithName("GetEvaluatorHistory")
             .Produces<ApiResponse<EvaluatorHistoryDto>>()

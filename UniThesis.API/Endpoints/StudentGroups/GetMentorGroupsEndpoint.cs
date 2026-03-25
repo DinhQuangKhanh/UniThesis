@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using UniThesis.API.Extensions;
 using UniThesis.Application.Features.StudentGroups.DTOs;
 using UniThesis.Application.Features.StudentGroups.Queries.GetMentorGroups;
+using UniThesis.Infrastructure.Authorization.Policies;
 using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.StudentGroups;
@@ -19,7 +20,7 @@ public class GetMentorGroupsEndpoint : IEndpoint
                 var result = await sender.Send(new GetMentorGroupsQuery(semesterId), cancellationToken);
                 return Ok(result);
             })
-            .RequireAuthorization()
+            .RequireAuthorization(PolicyNames.RequireMentor)
             .WithTags("StudentGroups")
             .WithName("GetMentorGroups")
             .Produces<List<MentorGroupDto>>()
