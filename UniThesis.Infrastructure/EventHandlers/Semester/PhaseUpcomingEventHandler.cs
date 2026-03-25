@@ -33,21 +33,30 @@ public class PhaseUpcomingEventHandler : INotificationHandler<PhaseUpcomingEvent
             notification.PhaseId,
             notification.PhaseType);
 
-        // We only care about the Registration phase
-        if (notification.PhaseType != SemesterPhaseType.Registration)
+        switch (notification.PhaseType)
         {
-            return;
+            case SemesterPhaseType.Registration:
+                await HandleRegistrationUpcoming(notification, cancellationToken);
+                break;
+            case SemesterPhaseType.Evaluation:
+                await HandleEvaluationUpcoming(notification, cancellationToken);
+                break;
+            default:
+                _logger.LogInformation("No notification configured for upcoming phase type {PhaseType}", notification.PhaseType);
+                break;
         }
+    }
 
+    private async Task HandleRegistrationUpcoming(PhaseUpcomingEvent notification, CancellationToken cancellationToken)
+    {
         // Get all students
         var students = await _userRepository.GetByRoleAsync(RoleNames.Student, cancellationToken);
         
-        // Get lecturers (interpreting this as Mentor, Evaluator, DepartmentHead based on the available roles)
+        // Get lecturers
         var mentors = await _userRepository.GetByRoleAsync(RoleNames.Mentor, cancellationToken);
         var evaluators = await _userRepository.GetByRoleAsync(RoleNames.Evaluator, cancellationToken);
         var departmentHeads = await _userRepository.GetByRoleAsync(RoleNames.DepartmentHead, cancellationToken);
 
-        // Combine unique user IDs
         var targetUserIds = students.Select(u => u.Id)
             .Union(mentors.Select(u => u.Id))
             .Union(evaluators.Select(u => u.Id))
@@ -57,27 +66,52 @@ public class PhaseUpcomingEventHandler : INotificationHandler<PhaseUpcomingEvent
 
         if (targetUserIds.Count > 0)
         {
-            var title = "Sắp tới hạn đăng ký đề tài/đồ án";
-            var content = $"Thời gian đăng ký đề tài cho học kỳ sắp diễn ra (còn 3 ngày). Quý thầy cô và sinh viên vui lòng chuẩn bị.";
-
             await _notificationService.SendToMultipleAsync(
                 userIds: targetUserIds,
-                title: title,
-                content: content,
+                title: "Sắp tới hạn đăng ký đề tài/đồ án",
+                content: "Thời gian đăng ký đề tài cho học kỳ sắp diễn ra (còn 3 ngày). Quý thầy cô và sinh viên vui lòng chuẩn bị.",
                 type: NotificationType.Warning,
                 category: NotificationCategory.System,
                 targetUrl: null,
                 ct: cancellationToken);
 
             _logger.LogInformation(
-                "Successfully dispatched 'Phase Upcoming' notifications to {Count} users for SemesterId={SemesterId}, PhaseType={PhaseType}.",
-                targetUserIds.Count,
-                notification.SemesterId,
-                notification.PhaseType);
+                "Dispatched Registration upcoming notifications to {Count} users for SemesterId={SemesterId}.",
+                targetUserIds.Count, notification.SemesterId);
+        }
+    }
+
+    private async Task HandleEvaluationUpcoming(PhaseUpcomingEvent notification, CancellationToken cancellationToken)
+    {
+        // Only notify lecturers (Mentor, Evaluator, DepartmentHead)
+        var mentors = await _userRepository.GetByRoleAsync(RoleNames.Mentor, cancellationToken);
+        var evaluators = await _userRepository.GetByRoleAsync(RoleNames.Evaluator, cancellationToken);
+        var departmentHeads = await _userRepository.GetByRoleAsync(RoleNames.DepartmentHead, cancellationToken);
+
+        var targetUserIds = mentors.Select(u => u.Id)
+            .Union(evaluators.Select(u => u.Id))
+            .Union(departmentHeads.Select(u => u.Id))
+            .Distinct()
+            .ToList();
+
+        if (targetUserIds.Count > 0)
+        {
+            await _notificationService.SendToMultipleAsync(
+                userIds: targetUserIds,
+                title: "Sắp tới thời gian thẩm định đề tài",
+                content: "Thời gian thẩm định đề tài cho học kỳ sắp diễn ra (còn 3 ngày). Quý thầy cô vui lòng chuẩn bị thẩm định các đề tài đã đăng ký.",
+                type: NotificationType.Warning,
+                category: NotificationCategory.System,
+                targetUrl: null,
+                ct: cancellationToken);
+
+            _logger.LogInformation(
+                "Dispatched Evaluation upcoming notifications to {Count} lecturers for SemesterId={SemesterId}.",
+                targetUserIds.Count, notification.SemesterId);
         }
         else
         {
-            _logger.LogWarning("No target users found to notify for upcoming phase Registration in SemesterId={SemesterId}", notification.SemesterId);
+            _logger.LogWarning("No lecturers found to notify for upcoming Evaluation phase in SemesterId={SemesterId}", notification.SemesterId);
         }
     }
 }

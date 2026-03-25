@@ -23,25 +23,27 @@ namespace UniThesis.Infrastructure.BackgroundJobs.Jobs
 
         public async Task ExecuteAsync(CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("Starting SemesterPhaseTransitionJob - checking for upcoming Registration phases.");
+            _logger.LogInformation("Starting SemesterPhaseTransitionJob - checking for upcoming phases.");
 
             // Find all semesters where ANY phase starts in exactly 3 days
             var upcomingSemesters = await _semesterRepository.GetSemestersWithPhaseStartingInAsync(3, cancellationToken);
             var count = 0;
+            var targetDate = DateTime.UtcNow.Date.AddDays(3);
 
             foreach (var semester in upcomingSemesters)
             {
-                // We are looking for Registration phase that starts in 3 days
-                var targetDate = DateTime.UtcNow.Date.AddDays(3);
-                var registrationPhase = semester.Phases.FirstOrDefault(p => 
-                    p.Type == SemesterPhaseType.Registration && p.StartDate.Date == targetDate);
+                // Check for Registration and Evaluation phases that start in 3 days
+                var upcomingPhases = semester.Phases.Where(p =>
+                    (p.Type == SemesterPhaseType.Registration || p.Type == SemesterPhaseType.Evaluation)
+                    && p.StartDate.Date == targetDate);
 
-                if (registrationPhase != null)
+                foreach (var phase in upcomingPhases)
                 {
-                    _logger.LogInformation("Found upcoming Registration phase {PhaseId} in Semester {SemesterId}", registrationPhase.Id, semester.Id);
-                    
+                    _logger.LogInformation("Found upcoming {PhaseType} phase {PhaseId} in Semester {SemesterId}",
+                        phase.Type, phase.Id, semester.Id);
+
                     // Trigger the Domain Event
-                    semester.NotifyUpcomingPhase(registrationPhase.Id);
+                    semester.NotifyUpcomingPhase(phase.Id);
                     count++;
                 }
             }
@@ -50,7 +52,7 @@ namespace UniThesis.Infrastructure.BackgroundJobs.Jobs
             {
                 // Save changes will trigger the DomainEventInterceptor, which will dispatch PhaseUpcomingEvent to MediatR
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
-                _logger.LogInformation("Dispatched {Count} PhaseUpcomingEvents for upcoming Registration phases.", count);
+                _logger.LogInformation("Dispatched {Count} PhaseUpcomingEvents for upcoming phases.", count);
             }
 
             _logger.LogInformation("SemesterPhaseTransitionJob completed");
