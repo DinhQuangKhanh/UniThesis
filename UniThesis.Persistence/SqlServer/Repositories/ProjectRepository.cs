@@ -257,6 +257,42 @@ namespace UniThesis.Persistence.SqlServer.Repositories
                 .CountAsync(cancellationToken);
         }
 
+        public async Task<(IEnumerable<Project> Items, int TotalCount)> GetPagedAsync(
+            string? search, int? semesterId, ProjectStatus? status, int? majorId,
+            int page, int pageSize, CancellationToken ct = default)
+        {
+            var query = _dbSet.AsNoTracking().Include(p => p.Mentors).AsQueryable();
+
+            if (semesterId.HasValue)
+                query = query.Where(p => p.SemesterId == semesterId.Value);
+
+            if (status.HasValue)
+                query = query.Where(p => p.Status == status.Value);
+
+            if (majorId.HasValue)
+                query = query.Where(p => p.MajorId == majorId.Value);
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                query = query.Where(p =>
+                    p.NameVi.Value.Contains(term) ||
+                    p.NameEn.Value.Contains(term) ||
+                    p.Code.Value.Contains(term) ||
+                    p.NameAbbr.Contains(term));
+            }
+
+            var totalCount = await query.CountAsync(ct);
+
+            var items = await query
+                .OrderByDescending(p => p.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return (items, totalCount);
+        }
+
         /// <inheritdoc />
         public async Task<bool> InsertDocumentAsync(
             Guid projectId, string fileName, string originalFileName,
