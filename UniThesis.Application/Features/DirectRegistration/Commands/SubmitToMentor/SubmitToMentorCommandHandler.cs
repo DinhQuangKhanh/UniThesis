@@ -1,6 +1,5 @@
 using MediatR;
 using UniThesis.Application.Common.Abstractions;
-using UniThesis.Domain.Aggregates.GroupAggregate;
 using ICurrentUserService = UniThesis.Application.Common.Interfaces.ICurrentUserService;
 using UniThesis.Domain.Aggregates.ProjectAggregate;
 using UniThesis.Domain.Common.Exceptions;
@@ -12,18 +11,15 @@ namespace UniThesis.Application.Features.DirectRegistration.Commands.SubmitToMen
 public class SubmitToMentorCommandHandler : ICommandHandler<SubmitToMentorCommand>
 {
     private readonly IProjectRepository _projectRepository;
-    private readonly IGroupRepository _groupRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
 
     public SubmitToMentorCommandHandler(
         IProjectRepository projectRepository,
-        IGroupRepository groupRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser)
     {
         _projectRepository = projectRepository;
-        _groupRepository = groupRepository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
     }
