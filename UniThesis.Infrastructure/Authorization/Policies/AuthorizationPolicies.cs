@@ -56,6 +56,9 @@ namespace UniThesis.Infrastructure.Authorization.Policies
 
                 options.AddPolicy(PolicyNames.MentorOfProject, policy =>
                     policy.Requirements.Add(new MentorOfProjectRequirement()));
+
+                options.AddPolicy(PolicyNames.DepartmentHeadOfDepartment, policy =>
+                    policy.Requirements.Add(new DepartmentHeadOfDepartmentRequirement()));
             });
         }
     }

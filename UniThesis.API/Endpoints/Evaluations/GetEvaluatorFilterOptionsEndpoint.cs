@@ -3,6 +3,7 @@ using UniThesis.API.Extensions;
 using UniThesis.Application.Common;
 using UniThesis.Application.Features.Evaluations.DTOs;
 using UniThesis.Application.Features.Evaluations.Queries.GetEvaluatorFilterOptions;
+using UniThesis.Infrastructure.Authorization.Policies;
 using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Evaluations;
@@ -30,7 +31,7 @@ public class GetEvaluatorFilterOptionsEndpoint : IEndpoint
                         statusCode: 500);
                 }
             })
-            .RequireAuthorization()
+            .RequireAuthorization(PolicyNames.RequireEvaluator)
             .WithTags("Evaluator")
             .WithName("GetEvaluatorFilterOptions")
             .Produces<ApiResponse<EvaluatorFilterOptionsDto>>()

@@ -22,5 +22,6 @@ namespace UniThesis.Infrastructure.Authorization.Policies
         public const string GroupMember = "GroupMember";
         public const string GroupLeader = "GroupLeader";
         public const string MentorOfProject = "MentorOfProject";
+        public const string DepartmentHeadOfDepartment = "DepartmentHeadOfDepartment";
     }
 }

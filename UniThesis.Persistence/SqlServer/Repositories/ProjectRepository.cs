@@ -2,6 +2,7 @@
 using UniThesis.Domain.Aggregates.ProjectAggregate;
 using UniThesis.Domain.Aggregates.ProjectAggregate.ValueObjects;
 using UniThesis.Domain.Enums.Document;
+using UniThesis.Domain.Enums.Mentor;
 using UniThesis.Domain.Enums.Project;
 using UniThesis.Domain.Enums.TopicPool;
 using UniThesis.Domain.Specifications.Projects;
@@ -144,7 +145,7 @@ namespace UniThesis.Persistence.SqlServer.Repositories
                 .Where(p => p.TopicPoolId == topicPoolId &&
                            p.SourceType == ProjectSourceType.FromPool &&
                            (p.PoolStatus == PoolTopicStatus.Available || p.PoolStatus == PoolTopicStatus.Reserved) &&
-                           p.Mentors.Any(m => m.MentorId == mentorId && m.IsActive))
+                           p.Mentors.Any(m => m.MentorId == mentorId && m.Status == ProjectMentorStatus.Active))
                 .CountAsync(cancellationToken);
         }
 
@@ -169,7 +170,7 @@ namespace UniThesis.Persistence.SqlServer.Repositories
         {
             return await _dbSet
                 .Where(p => p.TopicPoolId == topicPoolId && p.SourceType == ProjectSourceType.FromPool)
-                .SelectMany(p => p.Mentors.Where(m => m.IsActive))
+                .SelectMany(p => p.Mentors.Where(m => m.Status == ProjectMentorStatus.Active))
                 .GroupBy(m => m.MentorId)
                 .Select(g => g.Count())
                 .ToListAsync(cancellationToken);
@@ -244,6 +245,16 @@ namespace UniThesis.Persistence.SqlServer.Repositories
                            p.Status == ProjectStatus.PendingEvaluation)
                 .OrderByDescending(p => p.SubmittedAt)
                 .ToListAsync(cancellationToken);
+        }
+
+        public async Task<int> CountMentorActiveProjectsInSemesterAsync(Guid mentorId, int semesterId, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Where(p => p.SemesterId == semesterId &&
+                           p.Status != ProjectStatus.Cancelled &&
+                           p.Status != ProjectStatus.Rejected &&
+                           p.Mentors.Any(m => m.MentorId == mentorId && m.Status == ProjectMentorStatus.Active))
+                .CountAsync(cancellationToken);
         }
 
         /// <inheritdoc />

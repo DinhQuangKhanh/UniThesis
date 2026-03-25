@@ -42,9 +42,6 @@ public class GetDepartmentEvaluatorsQueryHandler : IQueryHandler<GetDepartmentEv
         var department = await _departmentRepository.GetByIdAsync(currentUser.DepartmentId.Value, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Department), currentUser.DepartmentId.Value);
 
-        if (department.HeadOfDepartmentId != _currentUser.UserId.Value)
-            throw new UnauthorizedAccessException("You are not the Head of Department.");
-
         return await _queryService.GetDepartmentEvaluatorsAsync(
             currentUser.DepartmentId.Value, cancellationToken);
     }

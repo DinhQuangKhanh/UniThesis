@@ -2,6 +2,7 @@ using MediatR;
 using UniThesis.API.Extensions;
 using UniThesis.Application.Common;
 using UniThesis.Application.Features.Evaluations.Commands.SubmitEvaluation;
+using UniThesis.Infrastructure.Authorization.Policies;
 using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.Evaluations;
@@ -41,7 +42,7 @@ public class SubmitEvaluationEndpoint : IEndpoint
                     return Results.Json(ApiResponse.Fail("Không thể gửi thẩm định. Vui lòng thử lại sau."), statusCode: 500);
                 }
             })
-            .RequireAuthorization()
+             .RequireAuthorization(PolicyNames.RequireEvaluator)
             .WithTags("Evaluator")
             .WithName("SubmitEvaluation")
             .Produces<ApiResponse<string>>()

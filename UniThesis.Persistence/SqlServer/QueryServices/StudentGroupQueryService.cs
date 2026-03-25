@@ -76,7 +76,7 @@ public class StudentGroupQueryService : IStudentGroupQueryService
         int? semesterId,
         CancellationToken cancellationToken = default)
     {
-        var targetSemesterId = await ResolveSemesterIdAsync(semesterId, cancellationToken);
+        var targetSemesterId = await ResolveNextSemesterIdAsync(semesterId, cancellationToken);
         if (targetSemesterId == 0) return null;
 
         var groupData = await (
@@ -146,16 +146,20 @@ public class StudentGroupQueryService : IStudentGroupQueryService
     }
 
     public async Task<List<OpenGroupDto>> GetOpenGroupsAsync(
+        Guid studentId,
         int? semesterId,
         CancellationToken cancellationToken = default)
     {
-        var targetSemesterId = await ResolveSemesterIdAsync(semesterId, cancellationToken);
+        // Open groups are always from the NEXT semester (after the currently active one)
+        var targetSemesterId = await ResolveNextSemesterIdAsync(semesterId, cancellationToken);
         if (targetSemesterId == 0) return [];
 
         var groups = await _context.Groups.AsNoTracking()
             .Where(g => g.SemesterId == targetSemesterId
                      && g.Status == GroupStatus.Active
-                     && g.IsOpenForRequests)
+                     && g.IsOpenForRequests
+                     // Exclude groups where the student is already an active member
+                     && !_context.GroupMembers.Any(m => m.GroupId == g.Id && m.StudentId == studentId && m.Status == GroupMemberStatus.Active))
             .Select(g => new
             {
                 g.Id,
@@ -269,7 +273,8 @@ public class StudentGroupQueryService : IStudentGroupQueryService
         int? semesterId,
         CancellationToken cancellationToken = default)
     {
-        var targetSemesterId = await ResolveSemesterIdAsync(semesterId, cancellationToken);
+        // Pending join requests target groups from the NEXT semester
+        var targetSemesterId = await ResolveNextSemesterIdAsync(semesterId, cancellationToken);
         if (targetSemesterId == 0) return null;
 
         var now = DateTime.UtcNow;
@@ -303,5 +308,34 @@ public class StudentGroupQueryService : IStudentGroupQueryService
                 .Where(s => s.StartDate <= DateTime.UtcNow && s.EndDate >= DateTime.UtcNow)
                 .Select(s => s.Id)
                 .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Resolves the next semester after the currently active one.
+    /// Used for open groups and pending join requests — students browse/join groups for the upcoming semester.
+    /// If semesterId is explicitly provided, uses it directly. Otherwise finds the next semester automatically.
+    /// Returns 0 if no next semester exists (admin hasn't created one yet).
+    /// </summary>
+    private async Task<int> ResolveNextSemesterIdAsync(int? semesterId, CancellationToken cancellationToken)
+    {
+        if (semesterId.HasValue) return semesterId.Value;
+
+        var now = DateTime.UtcNow;
+
+        var activeSemester = await _context.Semesters
+            .AsNoTracking()
+            .Where(s => s.StartDate <= now && s.EndDate >= now)
+            .Select(s => new { s.Id, s.EndDate })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (activeSemester is null) return 0;
+
+        // Find the next semester that starts after the current one ends
+        return await _context.Semesters
+            .AsNoTracking()
+            .Where(s => s.StartDate > activeSemester.EndDate)
+            .OrderBy(s => s.StartDate)
+            .Select(s => s.Id)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 }

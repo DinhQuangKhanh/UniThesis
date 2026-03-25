@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Header } from '@/components/layout'
+import { SemesterTimeline } from '@/components/shared/SemesterTimeline'
 import { useSystemError } from '@/contexts/SystemErrorContext'
 import { dashboardService, type AdminDashboardData, type RecentTicket } from '@/lib/dashboardService'
 
@@ -76,19 +77,7 @@ export function DashboardPage() {
     const seg3 = seg2 + rejectedPct
     const gradient = `conic-gradient(#5F8F61 0% ${seg1}%, #3b82f6 ${seg1}% ${seg2}%, #A64B4B ${seg2}% ${seg3}%, #94a3b8 ${seg3}% 100%)`
 
-    // Compute timeline progress
-    const completedPhases = semesterProgress?.phases.filter(p => p.status === 2).length ?? 0
     const currentPhase = semesterProgress?.phases.find(p => p.status === 1)
-    const totalPhases = semesterProgress?.phases.length ?? 1
-    const progressWidth = Math.round(((completedPhases + (currentPhase ? 0.5 : 0)) / totalPhases) * 100)
-
-    // Days remaining for current phase
-    let daysRemaining = 0
-    if (currentPhase) {
-        const now = new Date()
-        const end = new Date(currentPhase.endDate)
-        daysRemaining = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
-    }
 
     return (
         <>
@@ -159,50 +148,7 @@ export function DashboardPage() {
                                     </div>
 
                                     {/* Timeline */}
-                                    <div className="px-2 mt-auto">
-                                        {/* Icons row with progress bar */}
-                                        <div className="relative py-4">
-                                            <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-200 -translate-y-1/2 rounded-full" />
-                                            <div
-                                                className="absolute top-1/2 left-0 h-1 bg-gradient-to-r from-blue-600 to-primary -translate-y-1/2 rounded-full"
-                                                style={{ width: `${progressWidth}%` }}
-                                            />
-                                            <div className="relative z-10 flex justify-between w-full">
-                                                {semesterProgress.phases.map((phase) => {
-                                                    const phaseStatus =
-                                                        phase.status === 2 ? 'completed' :
-                                                        phase.status === 1 ? 'current' : 'pending'
-                                                    return (
-                                                        <TimelineIcon
-                                                            key={phase.order}
-                                                            icon={phaseIcon(phase.type)}
-                                                            status={phaseStatus}
-                                                        />
-                                                    )
-                                                })}
-                                            </div>
-                                        </div>
-                                        {/* Labels row — outside progress bar */}
-                                        <div className="flex justify-between w-full mt-2">
-                                            {semesterProgress.phases.map((phase) => {
-                                                const phaseStatus =
-                                                    phase.status === 2 ? 'completed' :
-                                                    phase.status === 1 ? 'current' : 'pending'
-                                                return (
-                                                    <TimelineLabel
-                                                        key={phase.order}
-                                                        label={phase.name}
-                                                        status={phaseStatus}
-                                                        subtitle={
-                                                            phase.status === 1
-                                                                ? `Đang diễn ra (${daysRemaining} ngày còn lại)`
-                                                                : undefined
-                                                        }
-                                                    />
-                                                )
-                                            })}
-                                        </div>
-                                    </div>
+                                    <SemesterTimeline phases={semesterProgress.phases} className="mt-auto" />
                                 </>
                             ) : (
                                 <div className="flex-1 flex items-center justify-center text-slate-400">
@@ -286,16 +232,6 @@ export function DashboardPage() {
 
 // ── Helpers ──────────────────────────────────────────
 
-function phaseIcon(type: number): string {
-    switch (type) {
-        case 0: return 'edit_calendar'  // Registration
-        case 1: return 'fact_check'     // Evaluation
-        case 2: return 'code'           // Implementation
-        case 3: return 'shield'         // Defense
-        default: return 'circle'
-    }
-}
-
 const ticketStatusLabels: Record<number, string> = {
     0: 'Chưa xử lý',
     1: 'Đang xem xét',
@@ -369,59 +305,6 @@ function StatsCard({
                 <p className="text-sm text-slate-500 font-medium">{label}</p>
             </div>
         </motion.div>
-    )
-}
-
-function TimelineIcon({
-    icon,
-    status,
-}: {
-    icon: string
-    status: 'completed' | 'current' | 'pending'
-}) {
-    const isCurrent = status === 'current'
-
-    return (
-        <div className="flex justify-center">
-            <div
-                className={`rounded-full flex items-center justify-center ${isCurrent
-                    ? 'w-10 h-10 bg-primary text-white shadow-lg shadow-primary/20 ring-4 ring-white'
-                    : status === 'completed'
-                        ? 'w-8 h-8 bg-white border-2 border-primary text-primary shadow-sm'
-                        : 'w-8 h-8 bg-white border-2 border-slate-300 text-slate-400'
-                    }`}
-            >
-                <span className={`material-symbols-outlined ${isCurrent ? 'text-[20px]' : 'text-[16px]'}`}>
-                    {status === 'completed' ? 'check' : icon}
-                </span>
-            </div>
-        </div>
-    )
-}
-
-function TimelineLabel({
-    label,
-    status,
-    subtitle,
-}: {
-    label: string
-    status: 'completed' | 'current' | 'pending'
-    subtitle?: string
-}) {
-    const isCurrent = status === 'current'
-    const isPending = status === 'pending'
-
-    return (
-        <div className={`flex flex-col items-center gap-1 ${isPending ? 'opacity-50' : ''}`}>
-            <p className={`text-xs font-medium text-center ${isCurrent ? 'text-sm font-bold text-slate-800' : 'text-slate-500'}`}>
-                {label}
-            </p>
-            {subtitle && (
-                <span className="text-[10px] text-primary-light font-semibold bg-primary/10 px-2 py-0.5 rounded whitespace-nowrap">
-                    {subtitle}
-                </span>
-            )}
-        </div>
     )
 }
 

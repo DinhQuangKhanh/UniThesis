@@ -61,9 +61,6 @@ public class SubmitFinalDecisionCommandHandler : ICommandHandler<SubmitFinalDeci
         var department = await _departmentRepository.GetByIdAsync(currentUser.DepartmentId.Value, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Department), currentUser.DepartmentId.Value);
 
-        if (department.HeadOfDepartmentId != currentUserId)
-            throw new UnauthorizedAccessException("You are not the Head of Department for your department.");
-
         // 2. Load project
         var project = await _projectRepository.GetWithMentorsAsync(request.ProjectId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Project), request.ProjectId);

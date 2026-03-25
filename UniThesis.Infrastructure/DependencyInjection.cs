@@ -30,7 +30,6 @@ using UniThesis.Infrastructure.Services.Email;
 using UniThesis.Infrastructure.Services.Email.Templates;
 using UniThesis.Infrastructure.Services.FileStorage;
 using UniThesis.Infrastructure.Services.Notification;
-using UniThesis.Infrastructure.Services;
 using UniThesis.Persistence.SqlServer.QueryServices;
 
 namespace UniThesis.Infrastructure
@@ -145,6 +144,7 @@ namespace UniThesis.Infrastructure
             services.AddScoped<IAuthorizationHandler, GroupMemberAuthorizationHandler>();
             services.AddScoped<IAuthorizationHandler, GroupLeaderAuthorizationHandler>();
             services.AddScoped<IAuthorizationHandler, MentorOfProjectAuthorizationHandler>();
+            services.AddScoped<IAuthorizationHandler, DepartmentHeadOfDepartmentAuthorizationHandler>();
 
             // Firebase Auth Service
             services.AddScoped<IFirebaseAuthService, FirebaseAuthService>();

@@ -2,6 +2,7 @@ using MediatR;
 using UniThesis.API.Extensions;
 using UniThesis.API.Endpoints.DepartmentHead.Requests;
 using UniThesis.Application.Features.Departments.Commands.SubmitFinalDecision;
+using UniThesis.Infrastructure.Authorization.Policies;
 using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.DepartmentHead;
@@ -20,7 +21,7 @@ public class SubmitFinalDecisionEndpoint : IEndpoint
                 await sender.Send(command, cancellationToken);
                 return NoContent("Quyết định cuối cùng đã được gửi thành công.");
             })
-            .RequireAuthorization("RequireDepartmentHead")
+             .RequireAuthorization(PolicyNames.DepartmentHeadOfDepartment)
             .WithTags("DepartmentHead")
             .WithName("SubmitFinalDecision")
             .Produces(204)

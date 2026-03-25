@@ -2,6 +2,7 @@ using MediatR;
 using UniThesis.API.Extensions;
 using UniThesis.API.Endpoints.DepartmentHead.Requests;
 using UniThesis.Application.Features.Departments.Commands.AssignEvaluator;
+using UniThesis.Infrastructure.Authorization.Policies;
 using static UniThesis.API.Extensions.ApiResponseExtensions;
 
 namespace UniThesis.API.Endpoints.DepartmentHead;
@@ -23,7 +24,7 @@ public class AssignEvaluatorEndpoint : IEndpoint
                 await sender.Send(command, cancellationToken);
                 return NoContent("Gán thẩm pồi thành công.");
             })
-            .RequireAuthorization("RequireDepartmentHead")
+             .RequireAuthorization(PolicyNames.DepartmentHeadOfDepartment)
             .WithTags("DepartmentHead")
             .WithName("AssignEvaluator")
             .Produces(204)

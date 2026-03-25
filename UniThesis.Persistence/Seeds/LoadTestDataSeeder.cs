@@ -21,12 +21,27 @@ public static class LoadTestDataSeeder
     // ────────────────── Distribution ──────────────────
     public const int SeededAdminCount = 250;
     public const int SeededDualRoleCount = 250;
-    public const int SeededStudentCount = 420;
+    // 50*5 (Fall) + 40*5 (Spring) + 15*4 (Summer) = 510
+    public const int SeededStudentCount = 510;
 
     private const int AdminCount = SeededAdminCount;
     private const int DualRoleCount = SeededDualRoleCount;
     private const int StudentCount = SeededStudentCount;
-    private const int StudentsPerGroup = 4;
+
+    /// <summary>Number of members per group: 5 for Fall/Spring (full), 4 for Summer (open for requests).</summary>
+    private static int MembersForGroup(int groupIndex) =>
+        groupIndex <= Fall25GroupCount + Spring26GroupCount ? 5 : 4;
+
+    /// <summary>1-based student index of the first member (leader) in the given group.</summary>
+    private static int StudentStartIndex(int groupIndex)
+    {
+        if (groupIndex <= Fall25GroupCount)
+            return (groupIndex - 1) * 5 + 1;
+        if (groupIndex <= Fall25GroupCount + Spring26GroupCount)
+            return Fall25GroupCount * 5 + (groupIndex - Fall25GroupCount - 1) * 5 + 1;
+        return Fall25GroupCount * 5 + Spring26GroupCount * 5
+             + (groupIndex - Fall25GroupCount - Spring26GroupCount - 1) * 4 + 1;
+    }
 
     // Semester IDs (assigned, not auto-generated)
     private const int Fall2025Id = 100;
@@ -123,6 +138,7 @@ public static class LoadTestDataSeeder
         await SeedUserRolesAsync(context, logger);
         await SeedTopicPoolsAsync(context, logger);
         await SeedTopicPoolProjectsAsync(context, logger);
+        await SeedTopicPoolProjectMentorsAsync(context, logger);
         await SeedGroupsAsync(context, logger);
         await SeedGroupMembersAsync(context, logger);
         await SeedFall25ProjectsAsync(context, logger);
@@ -492,6 +508,55 @@ public static class LoadTestDataSeeder
     }
 
     // ════════════════════════════════════════════════
+    //  TOPIC POOL PROJECT MENTORS (1 per pool project, matches SubmittedBy)
+    // ════════════════════════════════════════════════
+    private static async Task SeedTopicPoolProjectMentorsAsync(AppDbContext context, ILogger? logger)
+    {
+        var totalCount = 0;
+
+        for (var m = 0; m < AllMajorIds.Length; m++)
+        {
+            var topicNames = GetGeneratedTopicNames(m);
+            var topicsPerMajor = Math.Min(topicNames.Length, TopicPoolProjectsPerMajor);
+
+            for (var batch = 0; batch < topicsPerMajor; batch += BatchSize)
+            {
+                var end = Math.Min(batch + BatchSize, topicsPerMajor);
+                var valueClauses = new List<string>();
+                var parameters = new List<object>();
+                var paramIndex = 0;
+
+                for (var t = batch; t < end; t++)
+                {
+                    totalCount++;
+                    // Must match the SubmittedBy logic in SeedTopicPoolProjectsAsync
+                    var mentorId = DualRoleId((t % DualRoleCount) + 1);
+
+                    var pProject = $"@p{paramIndex++}";
+                    var pMentor = $"@p{paramIndex++}";
+                    var pDate = $"@p{paramIndex++}";
+
+                    valueClauses.Add($"({pProject}, {pMentor}, 0, {pDate}, NULL, NULL)");
+                    parameters.Add(PoolProjectId(m, t + 1));
+                    parameters.Add(mentorId);
+                    parameters.Add(SeedDate);
+                }
+
+                if (valueClauses.Count > 0)
+                {
+                    var sql = $@"
+                        INSERT INTO ProjectMentors (ProjectId, MentorId, Status, AssignedAt, AssignedBy, Notes)
+                        VALUES {string.Join(",\n                               ", valueClauses)};";
+
+                    await context.Database.ExecuteSqlRawAsync(sql, parameters.ToArray());
+                }
+            }
+        }
+
+        logger?.LogInformation("Seeded {Count} topic pool project mentors.", totalCount);
+    }
+
+    // ════════════════════════════════════════════════
     //  GROUPS (50 Fall25 + 40 Spring26 + 15 Summer26 = 105 groups)
     // ════════════════════════════════════════════════
     private static async Task SeedGroupsAsync(AppDbContext context, ILogger? logger)
@@ -521,25 +586,26 @@ public static class LoadTestDataSeeder
                     semesterId = Fall2025Id;
                     groupStatus = 1; // Completed
                     code = $"FA25-G-{i:D3}";
-                    name = $"Nhóm Fall 2025 - {i}";
+                    name = $"SE_{i:D2}";
                 }
                 else if (isSpring)
                 {
+                    var springIdx = i - Fall25GroupCount;
                     semesterId = Spring2026Id;
                     groupStatus = 0; // Active
-                    code = $"SP26-G-{i - Fall25GroupCount:D3}";
-                    name = $"Nhóm Spring 2026 - {i - Fall25GroupCount}";
+                    code = $"SP26-G-{springIdx:D3}";
+                    name = $"SE_{springIdx:D2}";
                 }
                 else
                 {
+                    var summerIndex = i - Fall25GroupCount - Spring26GroupCount;
                     semesterId = Summer2026Id;
                     groupStatus = 0; // Active
-                    var summerIndex = i - Fall25GroupCount - Spring26GroupCount;
                     code = $"SU26-G-{summerIndex:D3}";
-                    name = $"Nhóm Summer 2026 - {summerIndex}";
+                    name = $"SE_{summerIndex:D2}";
                 }
 
-                var leaderId = StudentId((i - 1) * StudentsPerGroup + 1);
+                var leaderId = StudentId(StudentStartIndex(i));
 
                 var pId = $"@p{paramIndex++}";
                 var pCode = $"@p{paramIndex++}";
@@ -558,7 +624,7 @@ public static class LoadTestDataSeeder
                 parameters.Add(leaderId);
                 parameters.Add(groupStatus);
                 parameters.Add(SeedDate);
-                parameters.Add(true); // IsOpenForRequests
+                parameters.Add(!isFall && !isSpring); // Only Summer groups are open for requests
             }
 
             var sql = $@"
@@ -572,19 +638,21 @@ public static class LoadTestDataSeeder
     }
 
     // ════════════════════════════════════════════════
-    //  GROUP MEMBERS (420 students in 105 groups)
+    //  GROUP MEMBERS (510 students: 90 groups × 5 + 15 groups × 4)
     // ════════════════════════════════════════════════
     private static async Task SeedGroupMembersAsync(AppDbContext context, ILogger? logger)
     {
         var totalGroups = Fall25GroupCount + Spring26GroupCount + Summer26GroupCount;
-        var totalStudents = totalGroups * StudentsPerGroup; // 360
         var members = new List<(Guid GroupId, Guid StudentId, int Role)>();
 
-        for (var s = 1; s <= totalStudents; s++)
+        for (var g = 1; g <= totalGroups; g++)
         {
-            var currentGroup = (s - 1) / StudentsPerGroup + 1;
-            var isLeader = (s - 1) % StudentsPerGroup == 0;
-            members.Add((GroupId(currentGroup), StudentId(s), isLeader ? 0 : 1));
+            var count = MembersForGroup(g);
+            var start = StudentStartIndex(g);
+            for (var s = 0; s < count; s++)
+            {
+                members.Add((GroupId(g), StudentId(start + s), s == 0 ? 0 : 1));
+            }
         }
 
         for (var batch = 0; batch < members.Count; batch += BatchSize)
@@ -947,7 +1015,7 @@ public static class LoadTestDataSeeder
 
             for (var i = batch + 1; i <= end; i++)
             {
-                var leaderId = StudentId((i - 1) * StudentsPerGroup + 1);
+                var leaderId = StudentId(StudentStartIndex(i));
                 var mentorIndex = ((i - 1) % DualRoleCount) + 1;
 
                 var pId = $"@p{paramIndex++}";
@@ -1097,7 +1165,7 @@ public static class LoadTestDataSeeder
         {
             var projectIndex = Fall25GroupCount + i; // 51..90
             var groupIndex = projectIndex;
-            var leaderId = StudentId((projectIndex - 1) * StudentsPerGroup + 1);
+            var leaderId = StudentId(StudentStartIndex(projectIndex));
             var mentorIndex = ((projectIndex - 1) % DualRoleCount) + 1;
 
             var pId = $"@p{paramIndex++}";
@@ -1137,7 +1205,7 @@ public static class LoadTestDataSeeder
         for (var i = 1; i <= RejectedProjectCount; i++)
         {
             // Use students not assigned to any project group (students 361+)
-            var studentIndex = Fall25GroupCount * StudentsPerGroup + Spring26GroupCount * StudentsPerGroup + i; // 360+1
+            var studentIndex = Fall25GroupCount * 5 + Spring26GroupCount * 5 + i; // 450+1
             if (studentIndex > StudentCount) studentIndex = (i % StudentCount) + 1;
 
             var registrationIndex = registrationOffset + Spring26GroupCount + i; // 90 + i
@@ -1162,7 +1230,7 @@ public static class LoadTestDataSeeder
             rejParams.Add(RegistrationId(registrationIndex));
             rejParams.Add(RejectedProjectId(i));
             rejParams.Add(GroupId(groupIndex));
-            rejParams.Add(StudentId((groupIndex - 1) * StudentsPerGroup + 1));
+            rejParams.Add(StudentId(StudentStartIndex(groupIndex)));
             rejParams.Add(new DateTime(2025, 11, 12, 0, 0, 0, DateTimeKind.Utc));
             rejParams.Add(DualRoleId(mentorIndex));
             rejParams.Add(new DateTime(2025, 12, 10, 0, 0, 0, DateTimeKind.Utc));

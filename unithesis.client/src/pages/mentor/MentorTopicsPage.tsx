@@ -6,11 +6,13 @@ import {
   mentorTopicService,
   sourceTypeLabel,
   statusConfig,
+  evaluationStatusConfig,
   type MentorTopicItem,
   type MentorTopicsResponse,
   type SemesterOption,
 } from "@/lib/mentorTopicService";
 import { topicPoolService, type TopicDetail, type TopicDocument } from "@/lib/topicPoolService";
+import { directTopicService } from "@/lib/directTopicService";
 
 // ── Animation variants ───────────────────────────────────────────────────────
 
@@ -116,10 +118,8 @@ export function MentorTopicsPage() {
   }, [selectedSemester, debouncedSearch, page]);
 
   useEffect(() => {
-    if (selectedSemester !== undefined) {
-      fetchTopics();
-    }
-  }, [fetchTopics, selectedSemester]);
+    fetchTopics();
+  }, [fetchTopics]);
 
   const totalPages = data?.totalPages ?? 1;
   const pageNumbers = getPageNumbers(page, totalPages);
@@ -225,8 +225,7 @@ export function MentorTopicsPage() {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {data.items.map((topic) => {
-                        const sc = statusConfig(topic.status);
-                        const canEdit = topic.status === 2; // NeedsModification
+                        const evalSc = evaluationStatusConfig(topic.status);
                         return (
                           <tr
                             key={topic.id}
@@ -260,30 +259,16 @@ export function MentorTopicsPage() {
                             </td>
                             <td className="px-6 py-4 text-center">
                               <span
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${sc.bg} ${sc.text} border border-current/10`}
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${evalSc.bg} ${evalSc.text} border border-current/10`}
                               >
-                                <span className={`size-1.5 rounded-full ${sc.dot}`} />
-                                {sc.label}
+                                <span className={`size-1.5 rounded-full ${evalSc.dot}`} />
+                                {evalSc.label}
                               </span>
                             </td>
                             <td className="px-6 py-4 text-sm text-slate-600">
                               {formatDate(topic.submittedAt ?? topic.createdAt)}
                             </td>
-                            <td className="px-6 py-4 text-right">
-                              {canEdit && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    // TODO: open edit modal
-                                    alert("Chức năng chỉnh sửa sẽ được cập nhật sau.");
-                                  }}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
-                                >
-                                  <span className="material-symbols-outlined text-[16px]">edit</span>
-                                  Chỉnh sửa
-                                </button>
-                              )}
-                            </td>
+                            <td className="px-6 py-4 text-right"></td>
                           </tr>
                         );
                       })}
@@ -355,7 +340,16 @@ export function MentorTopicsPage() {
 
       {/* Topic Detail Modal */}
       <AnimatePresence>
-        {detailTopic && <TopicDetailModal topic={detailTopic} onClose={() => setDetailTopic(null)} />}
+        {detailTopic && (
+          <TopicDetailModal
+            topic={detailTopic}
+            onClose={() => setDetailTopic(null)}
+            onReviewed={() => {
+              setDetailTopic(null);
+              fetchTopics();
+            }}
+          />
+        )}
       </AnimatePresence>
     </>
   );
@@ -363,10 +357,24 @@ export function MentorTopicsPage() {
 
 // ── Topic Detail Modal ───────────────────────────────────────────────────────
 
-function TopicDetailModal({ topic, onClose }: { topic: MentorTopicItem; onClose: () => void }) {
+function TopicDetailModal({
+  topic,
+  onClose,
+  onReviewed,
+}: {
+  topic: MentorTopicItem;
+  onClose: () => void;
+  onReviewed: () => void;
+}) {
   const [detail, setDetail] = useState<TopicDetail | null>(null);
   const [documents, setDocuments] = useState<TopicDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reviewAction, setReviewAction] = useState<"approve" | "requestModification" | null>(null);
+  const [feedback, setFeedback] = useState("");
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+
+  const isPendingMentorReview = topic.status === 8;
 
   useEffect(() => {
     setLoading(true);
@@ -502,13 +510,120 @@ function TopicDetailModal({ topic, onClose }: { topic: MentorTopicItem; onClose:
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-200 flex justify-end shrink-0">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            Đóng
-          </button>
+        <div className="px-6 py-4 border-t border-slate-200 shrink-0">
+          {isPendingMentorReview && !reviewAction && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setReviewAction("approve")}
+                className="flex-1 px-4 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-lg">check_circle</span>
+                Duyệt & gửi thẩm định
+              </button>
+              <button
+                onClick={() => setReviewAction("requestModification")}
+                className="flex-1 px-4 py-2.5 bg-amber-500 text-white text-sm font-semibold rounded-lg hover:bg-amber-600 transition-colors flex items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-lg">edit_note</span>
+                Yêu cầu chỉnh sửa
+              </button>
+            </div>
+          )}
+
+          {reviewAction === "approve" && (
+            <div className="space-y-3">
+              {reviewError && <p className="text-sm text-red-600">{reviewError}</p>}
+              <p className="text-sm text-slate-600">Xác nhận duyệt đề tài này và gửi đi thẩm định?</p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={async () => {
+                    setReviewLoading(true);
+                    setReviewError(null);
+                    try {
+                      await directTopicService.mentorReviewTopic(topic.id, { action: "approve" });
+                      onReviewed();
+                    } catch (err) {
+                      setReviewError(err instanceof Error ? err.message : "Đã xảy ra lỗi.");
+                    } finally {
+                      setReviewLoading(false);
+                    }
+                  }}
+                  disabled={reviewLoading}
+                  className="flex-1 px-4 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {reviewLoading && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  )}
+                  Xác nhận duyệt
+                </button>
+                <button
+                  onClick={() => setReviewAction(null)}
+                  className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          )}
+
+          {reviewAction === "requestModification" && (
+            <div className="space-y-3">
+              {reviewError && <p className="text-sm text-red-600">{reviewError}</p>}
+              <textarea
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none"
+                placeholder="Nhập góp ý cho sinh viên (tùy chọn)..."
+              />
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={async () => {
+                    setReviewLoading(true);
+                    setReviewError(null);
+                    try {
+                      await directTopicService.mentorReviewTopic(topic.id, {
+                        action: "requestModification",
+                        feedback: feedback.trim() || undefined,
+                      });
+                      onReviewed();
+                    } catch (err) {
+                      setReviewError(err instanceof Error ? err.message : "Đã xảy ra lỗi.");
+                    } finally {
+                      setReviewLoading(false);
+                    }
+                  }}
+                  disabled={reviewLoading}
+                  className="flex-1 px-4 py-2.5 bg-amber-500 text-white text-sm font-semibold rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {reviewLoading && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  )}
+                  Gửi yêu cầu chỉnh sửa
+                </button>
+                <button
+                  onClick={() => {
+                    setReviewAction(null);
+                    setFeedback("");
+                  }}
+                  className="px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!isPendingMentorReview && !reviewAction && (
+            <div className="flex justify-end">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Đóng
+              </button>
+            </div>
+          )}
         </div>
       </motion.div>
     </motion.div>

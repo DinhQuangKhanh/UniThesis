@@ -206,9 +206,10 @@ public class TopicQueryService : ITopicQueryService
         Guid mentorId, int? semesterId, string? search,
         int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        // If a semester is selected, find the PREVIOUS semester
-        // (topics are proposed in semester N-1 for use in semester N)
-        int? targetSemesterId = null;
+        // For selected semester N:
+        // - Pool topics are from previous semester N-1
+        // - Direct-registration topics are in semester N
+        int? previousSemesterId = null;
         if (semesterId.HasValue)
         {
             var selectedSemester = await _context.Semesters.AsNoTracking()
@@ -218,19 +219,16 @@ public class TopicQueryService : ITopicQueryService
 
             if (selectedSemester != null)
             {
-                var previousSemesterId = await _context.Semesters.AsNoTracking()
+                var previousSemester = await _context.Semesters.AsNoTracking()
                     .Where(s => s.StartDate < selectedSemester.StartDate)
                     .OrderByDescending(s => s.StartDate)
                     .Select(s => s.Id)
                     .FirstOrDefaultAsync(cancellationToken);
 
-                // If previous semester found (non-default int), use it; otherwise no topics exist
-                targetSemesterId = previousSemesterId != 0 ? previousSemesterId : null;
+                // If previous semester found (non-default int), keep it for pool-topic filtering
+                if (previousSemester != 0)
+                    previousSemesterId = previousSemester;
             }
-
-            // No previous semester found → return empty result immediately
-            if (!targetSemesterId.HasValue)
-                return new GetMentorTopicsResult([], 0, page, pageSize, 0);
         }
 
         var query = from p in _context.Projects.AsNoTracking()
@@ -239,9 +237,15 @@ public class TopicQueryService : ITopicQueryService
                     join s in _context.Semesters.AsNoTracking() on p.SemesterId equals s.Id
                     select new { Project = p, MajorName = m.Name, SemesterName = s.Name };
 
-        // Always filter by semester when a semester is selected
-        if (targetSemesterId.HasValue)
-            query = query.Where(x => x.Project.SemesterId == targetSemesterId.Value);
+        if (semesterId.HasValue)
+        {
+            var selectedSemesterId = semesterId.Value;
+            var targetPoolSemesterId = previousSemesterId;
+
+            query = query.Where(x =>
+                (x.Project.SourceType == ProjectSourceType.DirectRegistration && x.Project.SemesterId == selectedSemesterId) ||
+                (x.Project.SourceType == ProjectSourceType.FromPool && targetPoolSemesterId.HasValue && x.Project.SemesterId == targetPoolSemesterId.Value));
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
         {

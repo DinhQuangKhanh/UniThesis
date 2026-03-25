@@ -71,9 +71,6 @@ public class AssignEvaluatorCommandHandler : ICommandHandler<AssignEvaluatorComm
         var department = await _departmentRepository.GetByIdAsync(departmentId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Department), departmentId);
 
-        if (department.HeadOfDepartmentId != currentUserId)
-            throw new UnauthorizedAccessException("You are not the Head of Department for your department.");
-
         // 3. Load the project with mentors
         var project = await _projectRepository.GetWithMentorsAsync(request.ProjectId, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Project), request.ProjectId);
