@@ -306,9 +306,9 @@ export function SemestersPage() {
                           </span>
                         )}
                       </div>
-                      <div className="relative px-2 pt-4 pb-8">
+                      <div className="relative px-2 pt-6 pb-2">
                         {/* Track background */}
-                        <div className="absolute left-0 z-0 w-full h-1 -translate-y-1/2 rounded-full top-1/2 bg-slate-100"></div>
+                        <div className="absolute left-0 z-0 w-full h-1 rounded-full top-[34px] bg-slate-100"></div>
                         {/* Track progress */}
                         {(() => {
                           const total = semester.phases.length;
@@ -334,7 +334,7 @@ export function SemestersPage() {
                           }
                           return (
                             <div
-                              className={`absolute top-1/2 left-0 h-1 -translate-y-1/2 rounded-full z-0 transition-all duration-1000 ease-in-out ${isActive ? "bg-green-600 shadow-[0_0_8px_rgba(22,163,74,0.5)]" : "bg-green-600"}`}
+                              className={`absolute top-[34px] left-0 h-1 rounded-full z-0 transition-all duration-1000 ease-in-out ${isActive ? "bg-green-600 shadow-[0_0_8px_rgba(22,163,74,0.5)]" : "bg-green-600"}`}
                               style={{ width: `${pct}%` }}
                             ></div>
                           );
