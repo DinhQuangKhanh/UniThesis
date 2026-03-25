@@ -114,5 +114,12 @@ namespace UniThesis.Domain.Aggregates.ProjectAggregate
             string fileType, long fileSize, string filePath,
             DocumentType documentType, Guid uploadedBy,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Counts the number of active projects (not Cancelled/Rejected) where the mentor
+        /// is an active ProjectMentor in the given semester.
+        /// Used to enforce MentorCannotExceedMaxGroupsPerSemesterRule.
+        /// </summary>
+        Task<int> CountMentorActiveProjectsInSemesterAsync(Guid mentorId, int semesterId, CancellationToken cancellationToken = default);
     }
 }

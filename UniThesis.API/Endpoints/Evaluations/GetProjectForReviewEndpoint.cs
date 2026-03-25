@@ -1,5 +1,5 @@
 using MediatR;
-using UniThesis.API.Extensions;
+using UniThesis.Infrastructure.Authorization.Policies;
 using UniThesis.Application.Common;
 using UniThesis.Application.Features.Evaluations.DTOs;
 using UniThesis.Application.Features.Evaluations.Queries.GetProjectForReview;
@@ -37,7 +37,7 @@ public class GetProjectForReviewEndpoint : IEndpoint
                     return Results.Json(ApiResponse.Fail("Không thể tải thông tin đề tài. Vui lòng thử lại sau."), statusCode: 500);
                 }
             })
-            .RequireAuthorization()
+            .RequireAuthorization(PolicyNames.RequireEvaluator)
             .WithTags("Evaluator")
             .WithName("GetProjectForReview")
             .Produces<ApiResponse<ProjectReviewDetailDto>>()

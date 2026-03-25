@@ -43,8 +43,8 @@ public class SubmitEvaluationCommandHandler : ICommandHandler<SubmitEvaluationCo
 
         var assignment = await _assignmentRepository.GetActiveByProjectAndEvaluatorAsync(
             request.ProjectId, evaluatorId, cancellationToken)
-            ?? throw new InvalidOperationException("Không tìm thấy phân công thẩm định cho đề tài này.");
 
+             ?? throw new UnauthorizedAccessException("Bạn không được gán để thẩm định đề tài này.");
         var result = (EvaluationResult)request.Result;
         assignment.SubmitEvaluation(result, request.Feedback);
 

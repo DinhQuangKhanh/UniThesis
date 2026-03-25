@@ -27,5 +27,8 @@ public enum ProjectStatus
     Completed = 6,
 
     /// <summary>Project has been cancelled.</summary>
-    Cancelled = 7
+    Cancelled = 7,
+
+    /// <summary>Project submitted to mentor for review (direct registration only).</summary>
+    PendingMentorReview = 8
 }

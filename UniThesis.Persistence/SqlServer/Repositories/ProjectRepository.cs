@@ -246,6 +246,16 @@ namespace UniThesis.Persistence.SqlServer.Repositories
                 .ToListAsync(cancellationToken);
         }
 
+        public async Task<int> CountMentorActiveProjectsInSemesterAsync(Guid mentorId, int semesterId, CancellationToken cancellationToken = default)
+        {
+            return await _dbSet
+                .Where(p => p.SemesterId == semesterId &&
+                           p.Status != ProjectStatus.Cancelled &&
+                           p.Status != ProjectStatus.Rejected &&
+                           p.Mentors.Any(m => m.MentorId == mentorId && m.IsActive))
+                .CountAsync(cancellationToken);
+        }
+
         /// <inheritdoc />
         public async Task<bool> InsertDocumentAsync(
             Guid projectId, string fileName, string originalFileName,
