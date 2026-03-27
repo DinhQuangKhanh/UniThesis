@@ -1,11 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using UniThesis.Domain.Aggregates.DefenseAggregate;
-using UniThesis.Domain.Aggregates.DefenseAggregate.Entities;
 using UniThesis.Domain.Aggregates.EvaluationAggregate;
 using UniThesis.Domain.Aggregates.EvaluationAggregate.Entities;
 using UniThesis.Domain.Aggregates.GroupAggregate;
 using UniThesis.Domain.Aggregates.GroupAggregate.Entities;
-using UniThesis.Domain.Aggregates.MeetingAggregate;
 using UniThesis.Domain.Aggregates.ProjectAggregate;
 using UniThesis.Domain.Aggregates.ProjectAggregate.Entities;
 using UniThesis.Domain.Aggregates.SemesterAggregate;
@@ -61,16 +58,6 @@ public class AppDbContext : DbContext
     #region Evaluation Aggregate
     public DbSet<EvaluationSubmission> EvaluationSubmissions => Set<EvaluationSubmission>();
     public DbSet<ProjectEvaluatorAssignment> ProjectEvaluatorAssignments => Set<ProjectEvaluatorAssignment>();
-    #endregion
-
-    #region Defense Aggregate
-    public DbSet<DefenseSchedule> DefenseSchedules => Set<DefenseSchedule>();
-    public DbSet<DefenseCouncil> DefenseCouncils => Set<DefenseCouncil>();
-    public DbSet<CouncilMember> CouncilMembers => Set<CouncilMember>();
-    #endregion
-
-    #region Meeting Aggregate
-    public DbSet<MeetingSchedule> MeetingSchedules => Set<MeetingSchedule>();
     #endregion
 
     #region Support Aggregate
