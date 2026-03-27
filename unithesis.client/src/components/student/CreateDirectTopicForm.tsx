@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { directTopicService, type AvailableMentor, type CreateDirectTopicPayload } from '@/lib/directTopicService'
 import { topicPoolService, type MajorOption } from '@/lib/topicPoolService'
 
@@ -41,6 +41,21 @@ export function CreateDirectTopicForm({ groupId, onCreated, onCancel }: Props) {
             .finally(() => setLoading(false))
     }, [])
 
+    // Mentor autocomplete state (must be before any early returns - Rules of Hooks)
+    const [mentorSearch, setMentorSearch] = useState('')
+    const [mentorOpen, setMentorOpen] = useState(false)
+    const mentorRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        function handleClickOutside(e: MouseEvent) {
+            if (mentorRef.current && !mentorRef.current.contains(e.target as Node)) {
+                setMentorOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
+
     const update = (key: string, value: string | number) =>
         setForm(prev => ({ ...prev, [key]: value }))
 
@@ -75,6 +90,15 @@ export function CreateDirectTopicForm({ groupId, onCreated, onCancel }: Props) {
         }
     }
 
+    const selectedMentor = mentors.find(m => m.mentorId === form.mentorId)
+
+    const filteredMentors = mentors.filter(m => {
+        if (!mentorSearch.trim()) return true
+        const q = mentorSearch.toLowerCase()
+        const label = `${m.academicTitle ? m.academicTitle + '. ' : ''}${m.fullName} ${m.email}`.toLowerCase()
+        return label.includes(q)
+    })
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-48">
@@ -82,8 +106,6 @@ export function CreateDirectTopicForm({ groupId, onCreated, onCancel }: Props) {
             </div>
         )
     }
-
-    const selectedMentor = mentors.find(m => m.mentorId === form.mentorId)
 
     return (
         <div className="bg-white rounded-xl border border-[#e9ecf1] shadow-sm">
@@ -221,25 +243,64 @@ export function CreateDirectTopicForm({ groupId, onCreated, onCancel }: Props) {
                 </div>
 
                 {/* Mentor Selection */}
-                <div>
+                <div ref={mentorRef} className="relative">
                     <label className="block text-sm font-semibold text-[#101319] mb-1.5">Giảng viên hướng dẫn <span className="text-red-500">*</span></label>
-                    <select
-                        value={form.mentorId}
-                        onChange={e => update('mentorId', e.target.value)}
-                        className="w-full px-3 py-2.5 border border-[#e9ecf1] rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                    >
-                        <option value="">Chọn giảng viên</option>
-                        {mentors.map(m => (
-                            <option
-                                key={m.mentorId}
-                                value={m.mentorId}
-                                disabled={m.currentGroupCount >= m.maxGroups}
+                    <div className="relative">
+                        <input
+                            value={form.mentorId ? (selectedMentor ? `${selectedMentor.academicTitle ? selectedMentor.academicTitle + '. ' : ''}${selectedMentor.fullName}` : '') : mentorSearch}
+                            onChange={e => {
+                                setMentorSearch(e.target.value)
+                                setMentorOpen(true)
+                                if (form.mentorId) update('mentorId', '')
+                            }}
+                            onFocus={() => setMentorOpen(true)}
+                            placeholder="Nhập tên giảng viên để tìm kiếm..."
+                            className="w-full px-3 py-2.5 pr-8 border border-[#e9ecf1] rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                        />
+                        {form.mentorId ? (
+                            <button
+                                type="button"
+                                onClick={() => { update('mentorId', ''); setMentorSearch('') }}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"
                             >
-                                {m.academicTitle ? `${m.academicTitle}. ` : ''}{m.fullName} — {m.currentGroupCount}/{m.maxGroups} nhóm
-                                {m.currentGroupCount >= m.maxGroups ? ' (Đã đầy)' : ''}
-                            </option>
-                        ))}
-                    </select>
+                                <span className="material-symbols-outlined text-lg">close</span>
+                            </button>
+                        ) : (
+                            <span className="material-symbols-outlined text-lg text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">search</span>
+                        )}
+                    </div>
+                    {mentorOpen && filteredMentors.length > 0 && !form.mentorId && (
+                        <div className="absolute z-20 mt-1 w-full bg-white border border-[#e9ecf1] rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                            {filteredMentors.map(m => {
+                                const isFull = m.currentGroupCount >= m.maxGroups
+                                return (
+                                    <button
+                                        key={m.mentorId}
+                                        type="button"
+                                        disabled={isFull}
+                                        onClick={() => {
+                                            update('mentorId', m.mentorId)
+                                            setMentorSearch('')
+                                            setMentorOpen(false)
+                                        }}
+                                        className={`w-full text-left px-3 py-2.5 text-sm border-b border-[#e9ecf1] last:border-b-0 transition-colors ${isFull ? 'opacity-50 cursor-not-allowed bg-slate-50' : 'hover:bg-primary/5 cursor-pointer'}`}
+                                    >
+                                        <div className="font-medium text-[#101319]">
+                                            {m.academicTitle ? `${m.academicTitle}. ` : ''}{m.fullName}
+                                        </div>
+                                        <div className="text-xs text-[#58698d]">
+                                            {m.email} · {m.currentGroupCount}/{m.maxGroups} nhóm {isFull ? '(Đã đầy)' : ''}
+                                        </div>
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    )}
+                    {mentorOpen && filteredMentors.length === 0 && mentorSearch.trim() && !form.mentorId && (
+                        <div className="absolute z-20 mt-1 w-full bg-white border border-[#e9ecf1] rounded-lg shadow-lg p-3 text-sm text-slate-500 text-center">
+                            Không tìm thấy giảng viên
+                        </div>
+                    )}
                     {selectedMentor && (
                         <p className="mt-1.5 text-xs text-[#58698d]">
                             {selectedMentor.email} · Đang hướng dẫn {selectedMentor.currentGroupCount}/{selectedMentor.maxGroups} nhóm

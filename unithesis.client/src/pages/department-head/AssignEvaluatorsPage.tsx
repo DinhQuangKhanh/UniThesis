@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Header } from "@/components/layout/Header";
 import {
@@ -581,15 +581,39 @@ function AssignEvaluatorModal({
 
   const [eval1, setEval1] = useState("");
   const [eval2, setEval2] = useState("");
+  const [eval1Search, setEval1Search] = useState("");
+  const [eval2Search, setEval2Search] = useState("");
+  const [eval1Open, setEval1Open] = useState(false);
+  const [eval2Open, setEval2Open] = useState(false);
+  const eval1Ref = useRef<HTMLDivElement>(null);
+  const eval2Ref = useRef<HTMLDivElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (eval1Ref.current && !eval1Ref.current.contains(e.target as Node)) setEval1Open(false);
+      if (eval2Ref.current && !eval2Ref.current.contains(e.target as Node)) setEval2Open(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Filter out mentors and already-assigned evaluators
   const mentorIds = new Set(project.mentors.map((m) => m.mentorId));
   const available = evaluators.filter(
     (e) => !mentorIds.has(e.userId) && !existingIds.has(e.userId)
   );
+
+  const selectedEval1 = available.find((e) => e.userId === eval1);
+  const selectedEval2 = available.find((e) => e.userId === eval2);
+
+  function filterEvaluators(list: typeof available, search: string) {
+    if (!search.trim()) return list;
+    const q = search.toLowerCase();
+    return list.filter((e) => `${e.fullName} ${e.email}`.toLowerCase().includes(q));
+  }
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -670,44 +694,94 @@ function AssignEvaluatorModal({
 
               {/* Evaluator 1 */}
               {needsBoth && (
-                <div>
+                <div ref={eval1Ref} className="relative">
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Evaluator 1</label>
-                  <select
-                    value={eval1}
-                    onChange={(e) => setEval1(e.target.value)}
-                    className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  >
-                    <option value="">-- Chọn evaluator --</option>
-                    {available
-                      .filter((e) => e.userId !== eval2)
-                      .map((e) => (
-                        <option key={e.userId} value={e.userId}>
-                          {e.fullName} ({e.email}) — {e.activeAssignmentCount} đề tài đang thẩm định
-                        </option>
-                      ))}
-                  </select>
+                  <div className="relative">
+                    <input
+                      value={eval1 ? (selectedEval1 ? selectedEval1.fullName : '') : eval1Search}
+                      onChange={(e) => {
+                        setEval1Search(e.target.value);
+                        setEval1Open(true);
+                        if (eval1) { setEval1(""); }
+                      }}
+                      onFocus={() => setEval1Open(true)}
+                      placeholder="Nhập tên evaluator để tìm kiếm..."
+                      className="w-full px-3 py-2.5 pr-8 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    />
+                    {eval1 ? (
+                      <button type="button" onClick={() => { setEval1(""); setEval1Search(""); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500">
+                        <span className="material-symbols-outlined text-lg">close</span>
+                      </button>
+                    ) : (
+                      <span className="material-symbols-outlined text-lg text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">search</span>
+                    )}
+                  </div>
+                  {eval1Open && !eval1 && (() => {
+                    const filtered = filterEvaluators(available.filter((e) => e.userId !== eval2), eval1Search);
+                    return filtered.length > 0 ? (
+                      <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {filtered.map((e) => (
+                          <button key={e.userId} type="button" onClick={() => { setEval1(e.userId); setEval1Search(""); setEval1Open(false); }}
+                            className="w-full text-left px-3 py-2.5 text-sm border-b border-slate-100 last:border-b-0 hover:bg-primary/5 transition-colors">
+                            <div className="font-medium text-slate-900">{e.fullName}</div>
+                            <div className="text-xs text-slate-500">{e.email} · {e.activeAssignmentCount} đề tài đang thẩm định</div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : eval1Search.trim() ? (
+                      <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-sm text-slate-500 text-center">Không tìm thấy</div>
+                    ) : null;
+                  })()}
+                  {selectedEval1 && (
+                    <p className="mt-1 text-xs text-slate-500">{selectedEval1.email} · {selectedEval1.activeAssignmentCount} đề tài đang thẩm định</p>
+                  )}
                 </div>
               )}
 
               {/* Evaluator 2 (or single remaining) */}
-              <div>
+              <div ref={eval2Ref} className="relative">
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
                   {needsBoth ? "Evaluator 2" : `Evaluator ${nextOrder}`}
                 </label>
-                <select
-                  value={needsBoth ? eval2 : eval1}
-                  onChange={(e) => (needsBoth ? setEval2(e.target.value) : setEval1(e.target.value))}
-                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                >
-                  <option value="">-- Chọn evaluator --</option>
-                  {available
-                    .filter((e) => (needsBoth ? e.userId !== eval1 : true))
-                    .map((e) => (
-                      <option key={e.userId} value={e.userId}>
-                        {e.fullName} ({e.email}) — {e.activeAssignmentCount} đề tài đang thẩm định
-                      </option>
-                    ))}
-                </select>
+                <div className="relative">
+                  <input
+                    value={(needsBoth ? eval2 : eval1) ? ((needsBoth ? selectedEval2 : selectedEval1)?.fullName ?? '') : eval2Search}
+                    onChange={(e) => {
+                      setEval2Search(e.target.value);
+                      setEval2Open(true);
+                      if (needsBoth ? eval2 : eval1) { needsBoth ? setEval2("") : setEval1(""); }
+                    }}
+                    onFocus={() => setEval2Open(true)}
+                    placeholder="Nhập tên evaluator để tìm kiếm..."
+                    className="w-full px-3 py-2.5 pr-8 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                  {(needsBoth ? eval2 : eval1) ? (
+                    <button type="button" onClick={() => { needsBoth ? setEval2("") : setEval1(""); setEval2Search(""); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500">
+                      <span className="material-symbols-outlined text-lg">close</span>
+                    </button>
+                  ) : (
+                    <span className="material-symbols-outlined text-lg text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">search</span>
+                  )}
+                </div>
+                {eval2Open && !(needsBoth ? eval2 : eval1) && (() => {
+                  const filtered = filterEvaluators(available.filter((e) => (needsBoth ? e.userId !== eval1 : true)), eval2Search);
+                  return filtered.length > 0 ? (
+                    <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {filtered.map((e) => (
+                        <button key={e.userId} type="button" onClick={() => { needsBoth ? setEval2(e.userId) : setEval1(e.userId); setEval2Search(""); setEval2Open(false); }}
+                          className="w-full text-left px-3 py-2.5 text-sm border-b border-slate-100 last:border-b-0 hover:bg-primary/5 transition-colors">
+                          <div className="font-medium text-slate-900">{e.fullName}</div>
+                          <div className="text-xs text-slate-500">{e.email} · {e.activeAssignmentCount} đề tài đang thẩm định</div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : eval2Search.trim() ? (
+                    <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-sm text-slate-500 text-center">Không tìm thấy</div>
+                  ) : null;
+                })()}
+                {(needsBoth ? selectedEval2 : selectedEval1) && (
+                  <p className="mt-1 text-xs text-slate-500">{(needsBoth ? selectedEval2 : selectedEval1)!.email} · {(needsBoth ? selectedEval2 : selectedEval1)!.activeAssignmentCount} đề tài đang thẩm định</p>
+                )}
               </div>
             </div>
 

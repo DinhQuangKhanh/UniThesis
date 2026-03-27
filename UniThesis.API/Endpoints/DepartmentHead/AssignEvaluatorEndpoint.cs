@@ -22,7 +22,7 @@ public class AssignEvaluatorEndpoint : IEndpoint
                     request.EvaluatorOrder);
 
                 await sender.Send(command, cancellationToken);
-                return NoContent("Gán thẩm pồi thành công.");
+                return NoContent("Gán người thẩm định thành công.");
             })
              .RequireAuthorization(PolicyNames.DepartmentHeadOfDepartment)
             .WithTags("DepartmentHead")
